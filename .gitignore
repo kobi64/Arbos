@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual Environment
+venv/
+
+# Logs
+logs/
+
+# Reports
+reports/
+
+# Journal
+journal/
+
+# macOS
+.DS_Store
+
+# Environment
+.env
