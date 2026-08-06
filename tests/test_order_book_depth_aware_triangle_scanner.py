@@ -138,3 +138,30 @@ def test_rejects_non_positive_starting_value():
             fee_rate=0.004,
             max_slippage_percent=1.0,
         )
+
+
+def test_total_fee_amount_is_reported_in_terminal_currency():
+    scanner = OrderBookDepthAwareTriangleScanner(
+        FakeOrderBookProvider()
+    )
+
+    result = scanner.scan_route(
+        route=valid_route(),
+        starting_value=100.0,
+        fee_rate=0.004,
+        max_slippage_percent=1.0,
+    )
+
+    gross_amount = 100.0
+
+    for leg in result["legs"]:
+        if leg["side"] == "buy":
+            gross_amount = gross_amount / leg["average_price"]
+        else:
+            gross_amount = gross_amount * leg["average_price"]
+
+    expected_fee_impact = gross_amount - result["net_final_value"]
+
+    assert result["total_fee_amount"] == pytest.approx(
+        expected_fee_impact
+    )
