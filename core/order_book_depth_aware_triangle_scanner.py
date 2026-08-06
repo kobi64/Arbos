@@ -31,7 +31,7 @@ class OrderBookDepthAwareTriangleScanner:
             raise ValueError("max_slippage_percent cannot be negative")
 
         amount = float(starting_value)
-        total_fee_amount = 0.0
+        gross_amount = float(starting_value)
         valued_legs = []
 
         for index, leg in enumerate(route.get("legs") or [], start=1):
@@ -84,7 +84,6 @@ class OrderBookDepthAwareTriangleScanner:
 
             fee_amount = gross_output * float(fee_rate)
             net_output = gross_output - fee_amount
-            total_fee_amount += fee_amount
 
             valued_legs.append({
                 "leg_number": index,
@@ -100,7 +99,14 @@ class OrderBookDepthAwareTriangleScanner:
 
             amount = net_output
 
+            if side == "buy":
+                gross_amount = gross_amount / depth["average_price"]
+            else:
+                gross_amount = gross_amount * depth["average_price"]
+
         net_final_value = amount
+        gross_final_value = gross_amount
+        total_fee_amount = gross_final_value - net_final_value
         net_profit = net_final_value - float(starting_value)
         net_profit_percent = (
             net_profit / float(starting_value)
@@ -116,6 +122,7 @@ class OrderBookDepthAwareTriangleScanner:
             "filled": True,
             "reason": None,
             "starting_value": float(starting_value),
+            "gross_final_value": gross_final_value,
             "net_final_value": net_final_value,
             "net_profit": net_profit,
             "net_profit_percent": net_profit_percent,
