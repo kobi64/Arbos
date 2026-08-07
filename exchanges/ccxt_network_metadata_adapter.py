@@ -12,7 +12,25 @@ from exchanges.network_registry import (
 class CCXTNetworkMetadataAdapter:
     def __init__(self, exchange):
         self._exchange = exchange
-        self._currencies = self._exchange.load_currencies()
+
+        load_currencies = getattr(
+            self._exchange,
+            "load_currencies",
+            None,
+        )
+
+        if callable(load_currencies):
+            self._currencies = load_currencies()
+        else:
+            self._exchange.load_markets()
+            self._currencies = (
+                getattr(
+                    self._exchange,
+                    "currencies",
+                    {},
+                )
+                or {}
+            )
 
     def get_networks(self, coin):
         if coin is None or not str(coin).strip():
