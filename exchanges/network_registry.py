@@ -7,7 +7,7 @@ Maintains blockchain network information for supported assets.
 """
 
 from dataclasses import dataclass
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 
 @dataclass
@@ -20,7 +20,7 @@ class NetworkInfo:
 
     maintenance: bool = False
 
-    withdraw_fee: float = 0.0
+    withdraw_fee: Optional[float] = 0.0
     min_withdraw: float = 0.0
 
     confirmations: int = 0

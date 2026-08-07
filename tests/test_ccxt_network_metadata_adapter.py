@@ -109,3 +109,36 @@ def test_supports_ccxt_exchange_without_load_currencies():
     assert len(networks) == 1
     assert networks[0].network == "BTC"
     assert networks[0].withdraw_fee == 0.0001
+
+
+class FakeUnknownFeeExchange:
+    def __init__(self):
+        self.currencies = {}
+
+    def load_markets(self):
+        self.currencies = {
+            "ETH": {
+                "code": "ETH",
+                "deposit": True,
+                "withdraw": True,
+                "networks": {
+                    "ETH": {
+                        "deposit": True,
+                        "withdraw": True,
+                        "fee": None,
+                    },
+                },
+            },
+        }
+        return {}
+
+
+def test_preserves_unknown_withdraw_fee_as_none():
+    adapter = CCXTNetworkMetadataAdapter(
+        FakeUnknownFeeExchange()
+    )
+
+    networks = adapter.get_networks("ETH")
+
+    assert len(networks) == 1
+    assert networks[0].withdraw_fee is None

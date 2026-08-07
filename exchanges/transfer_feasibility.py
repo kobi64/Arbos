@@ -49,6 +49,13 @@ class TransferFeasibility:
                 reason="below_minimum_withdrawal",
             )
 
+        if network.withdraw_fee is None:
+            return TransferFeasibilityResult(
+                feasible=False,
+                net_amount=0.0,
+                reason="withdrawal_fee_unknown",
+            )
+
         net_amount = amount - network.withdraw_fee
 
         if net_amount <= 0:
