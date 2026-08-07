@@ -60,7 +60,13 @@ class PublicLiveMultiPathVerificationRunner:
             prepared = preparer.prepare(
                 source_exchange_id=source_exchange_id,
                 destination_exchange_id=destination_exchange_id,
-                **prepare_kwargs,
+                coin_asset=prepare_kwargs["coin_asset"],
+                starting_usdt_value=prepare_kwargs[
+                    "starting_usdt_value"
+                ],
+                source_fee_rate=prepare_kwargs[
+                    "source_fee_rate"
+                ],
             )
 
             starting_value = float(

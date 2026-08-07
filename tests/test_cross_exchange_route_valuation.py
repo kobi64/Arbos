@@ -122,3 +122,105 @@ def test_rejects_candidate_that_is_already_non_executable():
 
     assert result["executable"] is False
     assert result["reason"] == "no_compatible_network"
+
+
+def test_destination_result_does_not_expose_mixed_unit_pnl():
+    class MixedUnitDestinationScanner:
+        def scan_route(
+            self,
+            route,
+            starting_value,
+            fee_rate,
+            max_slippage_percent,
+        ):
+            return {
+                "route_id": route["route_id"],
+                "filled": True,
+                "starting_value": starting_value,
+                "net_final_value": 99.5,
+                "net_profit": 99.447,
+                "net_profit_percent": 190000.0,
+                "paper_only": True,
+                "live_order_submitted": False,
+            }
+
+    valuation = CrossExchangeRouteValuation(
+        destination_scanner=MixedUnitDestinationScanner(),
+    )
+
+    candidate = {
+        "route_id": "DIRECT-ETH",
+        "route_type": "direct_cross_exchange",
+        "transfer_asset": "ETH",
+        "transfer_amount": 0.053,
+        "executable": True,
+    }
+
+    result = valuation.evaluate(
+        candidate=candidate,
+        starting_usdt_value=100.0,
+        destination_fee_rate=0.001,
+        max_slippage_percent=0.5,
+    )
+
+    assert result["net_profit"] == -0.5
+    assert result["net_profit_percent"] == -0.5
+
+    destination = result["destination_result"]
+
+    assert "net_profit" not in destination
+    assert "net_profit_percent" not in destination
+    assert destination["input_asset"] == "ETH"
+    assert destination["output_asset"] == "USDT"
+    assert destination["pnl_comparable"] is False
+
+
+def test_destination_result_does_not_expose_mixed_unit_pnl():
+    class MixedUnitDestinationScanner:
+        def scan_route(
+            self,
+            route,
+            starting_value,
+            fee_rate,
+            max_slippage_percent,
+        ):
+            return {
+                "route_id": route["route_id"],
+                "filled": True,
+                "starting_value": starting_value,
+                "net_final_value": 99.5,
+                "net_profit": 99.447,
+                "net_profit_percent": 190000.0,
+                "paper_only": True,
+                "live_order_submitted": False,
+            }
+
+    valuation = CrossExchangeRouteValuation(
+        destination_scanner=MixedUnitDestinationScanner(),
+    )
+
+    candidate = {
+        "route_id": "DIRECT-ETH",
+        "route_type": "direct_cross_exchange",
+        "transfer_asset": "ETH",
+        "transfer_amount": 0.053,
+        "executable": True,
+    }
+
+    result = valuation.evaluate(
+        candidate=candidate,
+        starting_usdt_value=100.0,
+        destination_fee_rate=0.001,
+        max_slippage_percent=0.5,
+    )
+
+    assert result["net_profit"] == -0.5
+    assert result["net_profit_percent"] == -0.5
+
+    destination = result["destination_result"]
+
+    assert "net_profit" not in destination
+    assert "net_profit_percent" not in destination
+    assert destination["input_asset"] == "ETH"
+    assert destination["output_asset"] == "USDT"
+    assert destination["pnl_comparable"] is False

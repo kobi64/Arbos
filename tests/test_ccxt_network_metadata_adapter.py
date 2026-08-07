@@ -75,3 +75,37 @@ def test_preserves_disabled_withdrawal_status():
     assert erc20.withdraw_enabled is False
     assert erc20.withdraw_fee == 8.0
     assert erc20.min_withdraw == 20.0
+
+
+class FakeRealCCXTStyleExchange:
+    def __init__(self):
+        self.currencies = {}
+
+    def load_markets(self):
+        self.currencies = {
+            "BTC": {
+                "code": "BTC",
+                "deposit": True,
+                "withdraw": True,
+                "networks": {
+                    "BTC": {
+                        "deposit": True,
+                        "withdraw": True,
+                        "fee": 0.0001,
+                    },
+                },
+            },
+        }
+        return {}
+
+
+def test_supports_ccxt_exchange_without_load_currencies():
+    adapter = CCXTNetworkMetadataAdapter(
+        FakeRealCCXTStyleExchange()
+    )
+
+    networks = adapter.get_networks("BTC")
+
+    assert len(networks) == 1
+    assert networks[0].network == "BTC"
+    assert networks[0].withdraw_fee == 0.0001

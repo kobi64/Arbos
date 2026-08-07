@@ -78,6 +78,23 @@ class CrossExchangeRouteValuation:
             scanned["net_final_value"]
         )
 
+        destination_result = dict(scanned)
+
+        destination_result.pop(
+            "net_profit",
+            None,
+        )
+        destination_result.pop(
+            "net_profit_percent",
+            None,
+        )
+
+        destination_result["input_asset"] = (
+            transfer_asset
+        )
+        destination_result["output_asset"] = "USDT"
+        destination_result["pnl_comparable"] = False
+
         net_profit = (
             net_final_value
             - float(starting_usdt_value)
@@ -94,5 +111,5 @@ class CrossExchangeRouteValuation:
             "net_final_value": net_final_value,
             "net_profit": net_profit,
             "net_profit_percent": net_profit_percent,
-            "destination_result": scanned,
+            "destination_result": destination_result,
         }
