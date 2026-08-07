@@ -92,10 +92,10 @@ class CCXTNetworkMetadataAdapter:
                         withdraw_enabled is not False
                     ),
                     maintenance=False,
-                    withdraw_fee=float(
-                        fee
+                    withdraw_fee=(
+                        float(fee)
                         if fee is not None
-                        else 0.0
+                        else None
                     ),
                     min_withdraw=float(
                         min_withdraw

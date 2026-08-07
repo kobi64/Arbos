@@ -138,3 +138,34 @@ def test_rejects_route_when_all_compatible_networks_are_infeasible():
     )
 
     assert result.executable is False
+
+
+def test_unknown_withdraw_fee_is_not_executable():
+    source_networks = [
+        NetworkInfo(
+            coin="ETH",
+            network="ETH",
+            deposit_enabled=True,
+            withdraw_enabled=True,
+            withdraw_fee=None,
+        ),
+    ]
+
+    destination_networks = [
+        NetworkInfo(
+            coin="ETH",
+            network="ETH",
+            deposit_enabled=True,
+            withdraw_enabled=True,
+            withdraw_fee=0.0,
+        ),
+    ]
+
+    result = TransferRouteEvaluation.evaluate(
+        amount=1.0,
+        source_networks=source_networks,
+        destination_networks=destination_networks,
+    )
+
+    assert result.executable is False
+    assert result.reason == "no_feasible_network"
