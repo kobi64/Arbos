@@ -138,3 +138,73 @@ def test_excludes_unfilled_internal_routes_from_final_competition():
         route["route_id"] != "INTERNAL-FAILED"
         for route in result["ranked_routes"]
     )
+
+
+def test_exposes_route_class_aware_rankings():
+    class ClassAwareEvaluator:
+        def evaluate(self, candidates):
+            internal = next(
+                candidate
+                for candidate in candidates
+                if candidate.get("route_type")
+                == "internal_triangle"
+            )
+
+            cross_exchange = next(
+                candidate
+                for candidate in candidates
+                if candidate.get("route_type")
+                in {
+                    "direct_cross_exchange",
+                    "bridge_cross_exchange",
+                }
+            )
+
+            return {
+                "best_route": cross_exchange,
+                "ranked_routes": [
+                    cross_exchange,
+                    internal,
+                ],
+                "executable_count": 2,
+                "best_internal": internal,
+                "best_cross_exchange": cross_exchange,
+                "ranked_internal": [internal],
+                "ranked_cross_exchange": [
+                    cross_exchange,
+                ],
+            }
+
+    coordinator = MultiPathArbitrageIntegrationCoordinator(
+        cross_exchange_generator=FakeCrossExchangeGenerator(),
+        cross_exchange_valuation=FakeCrossExchangeValuation(),
+        evaluator=ClassAwareEvaluator(),
+    )
+
+    result = coordinator.evaluate(
+        internal_routes=[
+            {
+                "route_id": "INTERNAL-CLASS",
+                "route_type": "internal_triangle",
+                "filled": True,
+                "net_profit": 1.0,
+                "net_profit_percent": 1.0,
+            },
+        ],
+        cross_exchange_generate_kwargs={
+            "dummy": True,
+        },
+        starting_usdt_value=100.0,
+        destination_fee_rate=0.001,
+        max_slippage_percent=0.5,
+    )
+
+    assert (
+        result["best_internal"]["route_id"]
+        == "INTERNAL-CLASS"
+    )
+
+    assert result["best_cross_exchange"] is not None
+
+    assert len(result["ranked_internal"]) == 1
+    assert len(result["ranked_cross_exchange"]) == 1

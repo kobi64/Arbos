@@ -60,8 +60,42 @@ class MultiPathArbitrageRouteEvaluator:
             else None
         )
 
+        ranked_internal = [
+            route
+            for route in ranked_routes
+            if route.get("route_type")
+            == "internal_triangle"
+        ]
+
+        ranked_cross_exchange = [
+            route
+            for route in ranked_routes
+            if route.get("route_type") in {
+                "direct_cross_exchange",
+                "bridge_cross_exchange",
+            }
+        ]
+
+        best_internal = (
+            ranked_internal[0]
+            if ranked_internal
+            else None
+        )
+
+        best_cross_exchange = (
+            ranked_cross_exchange[0]
+            if ranked_cross_exchange
+            else None
+        )
+
         return {
             "best_route": best_route,
             "ranked_routes": ranked_routes,
             "executable_count": len(ranked_routes),
+            "best_internal": best_internal,
+            "best_cross_exchange": best_cross_exchange,
+            "ranked_internal": ranked_internal,
+            "ranked_cross_exchange": (
+                ranked_cross_exchange
+            ),
         }
