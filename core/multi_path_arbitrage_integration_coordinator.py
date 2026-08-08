@@ -71,6 +71,20 @@ class MultiPathArbitrageIntegrationCoordinator:
             "best_route": result["best_route"],
             "ranked_routes": result["ranked_routes"],
             "executable_count": result["executable_count"],
+            "best_internal": result.get(
+                "best_internal"
+            ),
+            "best_cross_exchange": result.get(
+                "best_cross_exchange"
+            ),
+            "ranked_internal": result.get(
+                "ranked_internal",
+                [],
+            ),
+            "ranked_cross_exchange": result.get(
+                "ranked_cross_exchange",
+                [],
+            ),
             "internal_candidate_count": sum(
                 1
                 for candidate in candidates

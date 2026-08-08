@@ -96,3 +96,57 @@ def test_returns_no_best_route_when_none_are_executable():
 
     assert result["best_route"] is None
     assert result["ranked_routes"] == []
+
+
+def test_separates_internal_and_cross_exchange_rankings():
+    evaluator = MultiPathArbitrageRouteEvaluator()
+
+    candidates = [
+        {
+            "route_id": "INTERNAL-1",
+            "route_type": "internal_triangle",
+            "executable": True,
+            "net_profit": 1.5,
+            "net_profit_percent": 1.5,
+        },
+        {
+            "route_id": "DIRECT-1",
+            "route_type": "direct_cross_exchange",
+            "executable": True,
+            "net_profit": 2.0,
+            "net_profit_percent": 2.0,
+        },
+        {
+            "route_id": "BRIDGE-1",
+            "route_type": "bridge_cross_exchange",
+            "executable": True,
+            "net_profit": 1.0,
+            "net_profit_percent": 1.0,
+        },
+    ]
+
+    result = evaluator.evaluate(candidates)
+
+    assert result["best_route"]["route_id"] == "DIRECT-1"
+
+    assert result["best_internal"]["route_id"] == "INTERNAL-1"
+
+    assert (
+        result["best_cross_exchange"]["route_id"]
+        == "DIRECT-1"
+    )
+
+    assert [
+        route["route_id"]
+        for route in result["ranked_internal"]
+    ] == [
+        "INTERNAL-1",
+    ]
+
+    assert [
+        route["route_id"]
+        for route in result["ranked_cross_exchange"]
+    ] == [
+        "DIRECT-1",
+        "BRIDGE-1",
+    ]
