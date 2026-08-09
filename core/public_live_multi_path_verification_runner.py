@@ -95,6 +95,12 @@ class PublicLiveMultiPathVerificationRunner:
                         0.5,
                     )
                 ),
+                "minimum_profit_percent": float(
+                    prepare_kwargs.get(
+                        "minimum_profit_percent",
+                        0.0,
+                    )
+                ),
                 "cross_exchange_generate_kwargs": {
                     "source_exchange": (
                         source_exchange_id
