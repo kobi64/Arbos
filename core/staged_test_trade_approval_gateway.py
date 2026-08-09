@@ -15,6 +15,9 @@ from exchanges.manual_approval import (
 
 
 class StagedTestTradeApprovalGateway:
+    def __init__(self):
+        self._pending_approval_ids = set()
+
     def request(
         self,
         staged_package,
@@ -102,6 +105,10 @@ class StagedTestTradeApprovalGateway:
             ),
         )
 
+        self._pending_approval_ids.add(
+            result["approval_id"]
+        )
+
         return {
             **result,
             "route_id": staged_package.get(
@@ -117,9 +124,22 @@ class StagedTestTradeApprovalGateway:
         self,
         approval_id,
     ):
+        if approval_id not in self._pending_approval_ids:
+            return {
+                "approved": False,
+                "status": "not_found",
+                "approval_id": approval_id,
+                "live_order_submitted": False,
+            }
+
         result = ManualApproval.approve(
             approval_id=approval_id
         )
+
+        if result.get("approved") is True:
+            self._pending_approval_ids.discard(
+                approval_id
+            )
 
         return {
             **result,
@@ -131,9 +151,21 @@ class StagedTestTradeApprovalGateway:
         approval_id,
         reason,
     ):
+        if approval_id not in self._pending_approval_ids:
+            return {
+                "approved": False,
+                "status": "not_found",
+                "approval_id": approval_id,
+                "live_order_submitted": False,
+            }
+
         result = ManualApproval.reject(
             approval_id=approval_id,
             reason=reason,
+        )
+
+        self._pending_approval_ids.discard(
+            approval_id
         )
 
         return {

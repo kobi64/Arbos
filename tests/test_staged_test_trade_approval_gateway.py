@@ -145,3 +145,26 @@ def test_missing_package_is_rejected():
         gateway.request(
             staged_package=None,
         )
+
+
+def test_rejected_request_cannot_later_be_approved():
+    gateway = StagedTestTradeApprovalGateway()
+
+    request = gateway.request(
+        staged_package=prepared_package(),
+    )
+
+    rejected = gateway.reject(
+        approval_id=request["approval_id"],
+        reason="manual_rejection",
+    )
+
+    assert rejected["approved"] is False
+
+    result = gateway.approve(
+        approval_id=request["approval_id"],
+    )
+
+    assert result["approved"] is False
+    assert result["status"] == "not_found"
+    assert result["live_order_submitted"] is False
