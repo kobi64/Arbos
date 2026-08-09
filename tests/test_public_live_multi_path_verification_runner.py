@@ -115,3 +115,79 @@ def test_can_prepare_live_inputs_automatically():
 
     assert result["paper_only"] is True
     assert result["live_order_submitted"] is False
+
+
+def test_forwards_minimum_profit_percent_from_prepare_kwargs():
+    class CapturingScanner:
+        def __init__(self):
+            self.scan_kwargs = None
+
+        def scan(self, **kwargs):
+            self.scan_kwargs = kwargs
+            return {
+                "best_route": None,
+                "ranked_routes": [],
+                "paper_only": True,
+                "live_order_submitted": False,
+            }
+
+    class CapturingFactory:
+        def __init__(self):
+            self.scanner = CapturingScanner()
+
+        def build(
+            self,
+            source_exchange,
+            destination_exchange,
+        ):
+            return self.scanner
+
+    class FakeBootstrap:
+        def create(self, exchange_id):
+            return object()
+
+    class FakePreparer:
+        def __init__(
+            self,
+            source_exchange,
+            destination_exchange,
+        ):
+            pass
+
+        def prepare(self, **kwargs):
+            return {
+                "markets": {},
+                "coin_asset": "ETH",
+                "coin_amount": 0.05,
+                "source_networks": {},
+                "destination_networks": {},
+                "bridge_quotes": {},
+            }
+
+    factory = CapturingFactory()
+
+    runner = PublicLiveMultiPathVerificationRunner(
+        bootstrap=FakeBootstrap(),
+        pipeline_factory=factory,
+        input_preparer_factory=FakePreparer,
+    )
+
+    runner.run(
+        source_exchange_id="kucoin",
+        destination_exchange_id="gate",
+        prepare_kwargs={
+            "coin_asset": "ETH",
+            "starting_usdt_value": 100.0,
+            "source_fee_rate": 0.001,
+            "destination_fee_rate": 0.001,
+            "max_slippage_percent": 0.5,
+            "minimum_profit_percent": 0.5,
+        },
+    )
+
+    assert (
+        factory.scanner.scan_kwargs[
+            "minimum_profit_percent"
+        ]
+        == 0.5
+    )

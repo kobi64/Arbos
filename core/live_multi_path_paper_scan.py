@@ -4,6 +4,10 @@ EX-140
 Live Multi-Path Paper Scan
 """
 
+from core.profitable_opportunity_selector import (
+    ProfitableOpportunitySelector,
+)
+
 
 class LiveMultiPathPaperScan:
     def __init__(
@@ -24,6 +28,7 @@ class LiveMultiPathPaperScan:
         destination_fee_rate,
         max_slippage_percent,
         cross_exchange_generate_kwargs,
+        minimum_profit_percent=0.0,
     ):
         internal = self._internal_scanner.scan(
             markets=markets,
@@ -47,10 +52,27 @@ class LiveMultiPathPaperScan:
             max_slippage_percent=max_slippage_percent,
         )
 
+        profitability = (
+            ProfitableOpportunitySelector().select(
+                routes=result.get(
+                    "ranked_routes",
+                    [],
+                ),
+                starting_value=starting_value,
+                minimum_profit_percent=(
+                    minimum_profit_percent
+                ),
+            )
+        )
+
         return {
             **result,
+            **profitability,
             "internal_best_route": internal.get(
                 "best_route"
+            ),
+            "minimum_profit_percent": (
+                minimum_profit_percent
             ),
             "paper_only": True,
             "live_order_submitted": False,

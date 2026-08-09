@@ -89,3 +89,55 @@ def test_runs_internal_and_cross_exchange_paths_and_returns_best():
     assert result["best_route"]["route_id"] == "DIRECT-COINX"
     assert result["paper_only"] is True
     assert result["live_order_submitted"] is False
+
+
+class FakeLosingIntegrationCoordinator:
+    def evaluate(
+        self,
+        internal_routes,
+        cross_exchange_generate_kwargs,
+        starting_usdt_value,
+        destination_fee_rate,
+        max_slippage_percent,
+    ):
+        route = {
+            "route_id": "LOSING-ROUTE",
+            "route_type": "direct_cross_exchange",
+            "executable": True,
+            "net_final_value": 99.7,
+            "net_profit": -0.3,
+            "net_profit_percent": -0.3,
+        }
+
+        return {
+            "best_route": route,
+            "ranked_routes": [route],
+            "executable_count": 1,
+            "paper_only": True,
+            "live_order_submitted": False,
+        }
+
+
+def test_keeps_best_route_but_rejects_unprofitable_opportunity():
+    scanner = LiveMultiPathPaperScan(
+        internal_scanner=FakeInternalScanner(),
+        integration_coordinator=FakeLosingIntegrationCoordinator(),
+    )
+
+    result = scanner.scan(
+        markets={"dummy": {}},
+        quote_asset="USDT",
+        coin_asset="COINX",
+        starting_value=100.0,
+        fee_rate=0.001,
+        destination_fee_rate=0.001,
+        max_slippage_percent=0.5,
+        cross_exchange_generate_kwargs={},
+        minimum_profit_percent=0.5,
+    )
+
+    assert result["best_route"]["route_id"] == "LOSING-ROUTE"
+    assert result["best_profitable_route"] is None
+    assert result["profitable_route_count"] == 0
+    assert result["paper_only"] is True
+    assert result["live_order_submitted"] is False
