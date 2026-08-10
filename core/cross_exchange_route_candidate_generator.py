@@ -158,6 +158,9 @@ class CrossExchangeRouteCandidateGenerator:
                     "net_amount",
                     0.0,
                 ),
+                "pre_transfer_amount": float(
+                    coin_amount
+                ),
                 "executable": bool(
                     direct_result.get(
                         "executable"
@@ -291,6 +294,9 @@ class CrossExchangeRouteCandidateGenerator:
                 "transfer_amount": transfer_result.get(
                     "net_amount",
                     0.0,
+                ),
+                "pre_transfer_amount": float(
+                    quoted_amount
                 ),
                 "executable": bool(
                     transfer_result.get(

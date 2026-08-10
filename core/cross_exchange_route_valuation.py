@@ -23,6 +23,102 @@ class CrossExchangeRouteValuation:
             raise ValueError("starting_usdt_value must be positive")
 
         if candidate.get("executable") is not True:
+            pre_transfer_amount = float(
+                candidate.get(
+                    "pre_transfer_amount",
+                    0.0,
+                )
+            )
+
+            if pre_transfer_amount <= 0:
+                return {
+                    **candidate,
+                    "executable": False,
+                    "reason": candidate.get(
+                        "reason",
+                        "candidate_not_executable",
+                    ),
+                    "valuation_only": False,
+                    "paper_market_value_available": False,
+                }
+
+            transfer_asset = str(
+                candidate.get(
+                    "transfer_asset",
+                    "",
+                )
+            ).strip().upper()
+
+            if not transfer_asset:
+                return {
+                    **candidate,
+                    "executable": False,
+                    "reason": candidate.get(
+                        "reason",
+                        "candidate_not_executable",
+                    ),
+                    "valuation_only": False,
+                    "paper_market_value_available": False,
+                }
+
+            route = {
+                "route_id": candidate.get(
+                    "route_id"
+                ),
+                "legs": [
+                    {
+                        "symbol": (
+                            f"{transfer_asset}/USDT"
+                        ),
+                        "side": "sell",
+                    },
+                ],
+            }
+
+            scanned = (
+                self._destination_scanner.scan_route(
+                    route=route,
+                    starting_value=(
+                        pre_transfer_amount
+                    ),
+                    fee_rate=(
+                        destination_fee_rate
+                    ),
+                    max_slippage_percent=(
+                        max_slippage_percent
+                    ),
+                )
+            )
+
+            if scanned.get("filled") is not True:
+                return {
+                    **candidate,
+                    "executable": False,
+                    "reason": candidate.get(
+                        "reason",
+                        "candidate_not_executable",
+                    ),
+                    "valuation_only": True,
+                    "paper_market_value_available": False,
+                    "hypothetical_destination_result": (
+                        scanned
+                    ),
+                }
+
+            hypothetical_final_value = float(
+                scanned["net_final_value"]
+            )
+
+            hypothetical_profit = (
+                hypothetical_final_value
+                - float(starting_usdt_value)
+            )
+
+            hypothetical_profit_percent = (
+                hypothetical_profit
+                / float(starting_usdt_value)
+            ) * 100.0
+
             return {
                 **candidate,
                 "executable": False,
@@ -30,6 +126,24 @@ class CrossExchangeRouteValuation:
                     "reason",
                     "candidate_not_executable",
                 ),
+                "valuation_only": True,
+                "paper_market_value_available": True,
+                "hypothetical_transfer_amount": (
+                    pre_transfer_amount
+                ),
+                "hypothetical_final_value": (
+                    hypothetical_final_value
+                ),
+                "hypothetical_profit": (
+                    hypothetical_profit
+                ),
+                "hypothetical_profit_percent": (
+                    hypothetical_profit_percent
+                ),
+                "hypothetical_destination_result": (
+                    scanned
+                ),
+                "transfer_verified": False,
             }
 
         transfer_asset = str(
