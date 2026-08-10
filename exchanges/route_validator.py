@@ -51,3 +51,138 @@ class RouteValidator:
             network=best_network.network,
             withdraw_fee=best_network.withdraw_fee,
         )
+
+
+def _identity_verified_transfer_route(
+    source_exchange,
+    destination_exchange,
+    coin,
+    source_network_records,
+    destination_network_records,
+):
+    """
+    EX-177 strict network-identity route validation.
+
+    Unlike the legacy EX-006 method, matching display names alone
+    are not sufficient. A source/destination network pair must be
+    VERIFIED by ExchangeNetworkIdentityValidator before it can be
+    considered executable.
+    """
+    from exchanges.exchange_network_identity_validator import (
+        ExchangeNetworkIdentityValidator,
+    )
+
+    if not source_network_records:
+        return RouteValidationResult(
+            executable=False,
+            network=None,
+            withdraw_fee=0.0,
+        )
+
+    if not destination_network_records:
+        return RouteValidationResult(
+            executable=False,
+            network=None,
+            withdraw_fee=0.0,
+        )
+
+    validator = ExchangeNetworkIdentityValidator()
+
+    verified = []
+
+    for source in source_network_records:
+        source_name = str(
+            source.get(
+                "network_name",
+                source.get(
+                    "network",
+                    source.get(
+                        "chain_name",
+                        source.get("chain", ""),
+                    ),
+                ),
+            )
+        ).strip().upper()
+
+        if not source_name:
+            continue
+
+        for destination in destination_network_records:
+            destination_name = str(
+                destination.get(
+                    "network_name",
+                    destination.get(
+                        "network",
+                        destination.get(
+                            "chain_name",
+                            destination.get(
+                                "chain",
+                                "",
+                            ),
+                        ),
+                    ),
+                )
+            ).strip().upper()
+
+            if (
+                not destination_name
+                or source_name != destination_name
+            ):
+                continue
+
+            identity = validator.validate(
+                coin=coin,
+                source_exchange=source_exchange,
+                destination_exchange=destination_exchange,
+                source_network=source,
+                destination_network=destination,
+            )
+
+            if identity.get(
+                "execution_allowed"
+            ) is not True:
+                continue
+
+            fee = source.get(
+                "withdraw_fee",
+                source.get(
+                    "fee",
+                    None,
+                ),
+            )
+
+            if fee is None:
+                continue
+
+            verified.append({
+                "network": source_name,
+                "withdraw_fee": float(fee),
+                "identity_result": identity,
+            })
+
+    if not verified:
+        return RouteValidationResult(
+            executable=False,
+            network=None,
+            withdraw_fee=0.0,
+        )
+
+    best = min(
+        verified,
+        key=lambda item: item[
+            "withdraw_fee"
+        ],
+    )
+
+    return RouteValidationResult(
+        executable=True,
+        network=best["network"],
+        withdraw_fee=best["withdraw_fee"],
+    )
+
+
+RouteValidator.validate_identity_verified_transfer_route = (
+    staticmethod(
+        _identity_verified_transfer_route
+    )
+)
