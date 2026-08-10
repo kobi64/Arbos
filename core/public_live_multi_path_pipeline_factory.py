@@ -34,6 +34,9 @@ from core.order_book_depth_aware_triangle_scanner import (
 from exchanges.live_order_book_snapshot_engine import (
     LiveOrderBookSnapshotEngine,
 )
+from exchanges.verified_native_order_book_provider_factory import (
+    VerifiedNativeOrderBookProviderFactory,
+)
 from exchanges.verified_digifinex_order_book_provider import (
     VerifiedDigiFinexOrderBookProvider,
 )
@@ -55,27 +58,10 @@ class PublicLiveMultiPathPipelineFactory:
             source_exchange
         )
 
-        destination_exchange_id = str(
-            getattr(
-                destination_exchange,
-                "id",
-                "",
-            )
-            or ""
-        ).strip().lower()
-
-        if destination_exchange_id == "digifinex":
-            destination_order_books = (
-                VerifiedDigiFinexOrderBookProvider(
-                    destination_exchange
-                )
-            )
-        else:
-            destination_order_books = (
-                LiveOrderBookSnapshotEngine(
-                    destination_exchange
-                )
-            )
+        destination_order_books = (
+            VerifiedNativeOrderBookProviderFactory()
+            .build(destination_exchange)
+        )
 
         source_route_scanner = (
             OrderBookDepthAwareTriangleScanner(
