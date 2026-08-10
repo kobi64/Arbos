@@ -1,7 +1,12 @@
 """
 ArbOS™
-EX-135
+EX-135 / EX-179
 Multi-Path Arbitrage Route Evaluator
+
+Ranks executable opportunities while preserving rejected
+candidates for audit and observability.
+
+Rejected candidates never enter executable rankings.
 """
 
 from exchanges.opportunity_ranking import (
@@ -16,12 +21,21 @@ class MultiPathArbitrageRouteEvaluator:
                 "best_route": None,
                 "ranked_routes": [],
                 "executable_count": 0,
+                "rejected_routes": [],
+                "rejected_count": 0,
+                "rejected_cross_exchange": [],
             }
 
         executable = [
             candidate
             for candidate in candidates
             if candidate.get("executable") is True
+        ]
+
+        rejected = [
+            candidate
+            for candidate in candidates
+            if candidate.get("executable") is not True
         ]
 
         ranking_inputs = []
@@ -76,6 +90,15 @@ class MultiPathArbitrageRouteEvaluator:
             }
         ]
 
+        rejected_cross_exchange = [
+            route
+            for route in rejected
+            if route.get("route_type") in {
+                "direct_cross_exchange",
+                "bridge_cross_exchange",
+            }
+        ]
+
         best_internal = (
             ranked_internal[0]
             if ranked_internal
@@ -97,5 +120,10 @@ class MultiPathArbitrageRouteEvaluator:
             "ranked_internal": ranked_internal,
             "ranked_cross_exchange": (
                 ranked_cross_exchange
+            ),
+            "rejected_routes": rejected,
+            "rejected_count": len(rejected),
+            "rejected_cross_exchange": (
+                rejected_cross_exchange
             ),
         }

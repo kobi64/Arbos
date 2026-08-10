@@ -85,6 +85,18 @@ class MultiPathArbitrageIntegrationCoordinator:
                 "ranked_cross_exchange",
                 [],
             ),
+            "rejected_routes": result.get(
+                "rejected_routes",
+                [],
+            ),
+            "rejected_count": result.get(
+                "rejected_count",
+                0,
+            ),
+            "rejected_cross_exchange": result.get(
+                "rejected_cross_exchange",
+                [],
+            ),
             "internal_candidate_count": sum(
                 1
                 for candidate in candidates
