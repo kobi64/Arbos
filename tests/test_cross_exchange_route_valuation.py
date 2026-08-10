@@ -224,3 +224,86 @@ def test_destination_result_does_not_expose_mixed_unit_pnl():
     assert destination["input_asset"] == "ETH"
     assert destination["output_asset"] == "USDT"
     assert destination["pnl_comparable"] is False
+
+
+def test_values_blocked_candidate_for_research_only():
+    scanner = FakeDestinationScanner()
+
+    valuation = CrossExchangeRouteValuation(
+        destination_scanner=scanner,
+    )
+
+    candidate = {
+        "route_id": "DIRECT-kucoin-COTI-digifinex",
+        "route_type": "direct_cross_exchange",
+        "transfer_asset": "COINX",
+        "pre_transfer_amount": 98.0,
+        "transfer_amount": 0.0,
+        "executable": False,
+        "reason": "network_identity_unverified",
+    }
+
+    result = valuation.evaluate(
+        candidate=candidate,
+        starting_usdt_value=100.0,
+        destination_fee_rate=0.001,
+        max_slippage_percent=0.5,
+    )
+
+    assert result["executable"] is False
+    assert result["reason"] == (
+        "network_identity_unverified"
+    )
+
+    assert result["valuation_only"] is True
+    assert (
+        result["paper_market_value_available"]
+        is True
+    )
+
+    assert (
+        result["hypothetical_transfer_amount"]
+        == 98.0
+    )
+
+    assert result["hypothetical_final_value"] == 104.0
+    assert result["hypothetical_profit"] == 4.0
+    assert (
+        result["hypothetical_profit_percent"]
+        == 4.0
+    )
+
+    assert result["transfer_verified"] is False
+
+
+def test_blocked_candidate_without_pre_transfer_amount_is_not_valued():
+    scanner = FakeDestinationScanner()
+
+    valuation = CrossExchangeRouteValuation(
+        destination_scanner=scanner,
+    )
+
+    candidate = {
+        "route_id": "FAILED",
+        "route_type": "direct_cross_exchange",
+        "transfer_asset": "COINX",
+        "transfer_amount": 0.0,
+        "executable": False,
+        "reason": "no_compatible_network",
+    }
+
+    result = valuation.evaluate(
+        candidate=candidate,
+        starting_usdt_value=100.0,
+        destination_fee_rate=0.001,
+        max_slippage_percent=0.5,
+    )
+
+    assert result["executable"] is False
+    assert result["valuation_only"] is False
+    assert (
+        result["paper_market_value_available"]
+        is False
+    )
+
+    assert scanner.calls == []

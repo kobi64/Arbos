@@ -22,3 +22,23 @@ def test_builds_live_multi_path_paper_pipeline():
         scanner,
         LiveMultiPathPaperScan,
     )
+
+
+def test_builds_pipeline_with_digifinex_destination():
+    class DigiFinexExchange:
+        id = "digifinex"
+
+    scanner = (
+        PublicLiveMultiPathPipelineFactory()
+        .build(
+            source_exchange=FakeExchange(),
+            destination_exchange=(
+                DigiFinexExchange()
+            ),
+        )
+    )
+
+    assert isinstance(
+        scanner,
+        LiveMultiPathPaperScan,
+    )

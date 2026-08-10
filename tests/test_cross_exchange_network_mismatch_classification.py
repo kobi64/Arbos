@@ -163,3 +163,60 @@ def test_true_identity_conflict_stays_legacy_blocked():
     assert candidate["reason"] == (
         "no_compatible_network"
     )
+
+
+def test_blocked_coti_preserves_pre_transfer_amount():
+    candidates = strict_generator().generate(
+        source_exchange="kucoin",
+        destination_exchange="digifinex",
+        coin_asset="COTI",
+        coin_amount=9500.0,
+        source_networks={
+            "COTI": [
+                {"network": "COTIEVM"},
+            ],
+        },
+        destination_networks={
+            "COTI": [
+                {"network": "COTI"},
+            ],
+        },
+        source_network_identity_records={
+            "COTI": [
+                {
+                    "coin": "COTI",
+                    "network": "COTIEVM",
+                    "network_name": "COTIEVM",
+                    "chain_id": "cotievm",
+                    "contract_address": None,
+                    "deposit": True,
+                    "withdraw": True,
+                    "withdraw_fee": 150.0,
+                },
+            ],
+        },
+        destination_network_identity_records={
+            "COTI": [
+                {
+                    "coin": "COTI",
+                    "network": "COTI",
+                    "network_name": "COTI",
+                    "chain_id": None,
+                    "contract_address": None,
+                    "deposit": True,
+                    "withdraw": True,
+                    "withdraw_fee": 0.0006,
+                },
+            ],
+        },
+        bridge_quotes={},
+    )
+
+    candidate = candidates[0]
+
+    assert candidate["executable"] is False
+    assert candidate["transfer_amount"] == 0.0
+    assert candidate["pre_transfer_amount"] == 9500.0
+    assert candidate["reason"] == (
+        "network_identity_unverified"
+    )
