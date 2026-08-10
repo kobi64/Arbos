@@ -93,6 +93,25 @@ class CrossExchangeRouteCandidateGenerator:
                 else direct.__dict__
             )
 
+            direct_result = self._diagnose_network_mismatch(
+                transfer_asset=coin_asset,
+                source_exchange=source_exchange,
+                destination_exchange=destination_exchange,
+                transfer_result=direct_result,
+                source_identity_records=(
+                    source_network_identity_records.get(
+                        coin_asset,
+                        [],
+                    )
+                ),
+                destination_identity_records=(
+                    destination_network_identity_records.get(
+                        coin_asset,
+                        [],
+                    )
+                ),
+            )
+
             direct_result = self._enforce_identity(
                 transfer_asset=coin_asset,
                 source_exchange=source_exchange,
@@ -151,6 +170,20 @@ class CrossExchangeRouteCandidateGenerator:
                 "network_identity": (
                     direct_result.get(
                         "network_identity"
+                    )
+                ),
+                "source_network": direct_result.get(
+                    "source_network"
+                ),
+                "destination_network": direct_result.get(
+                    "destination_network"
+                ),
+                "legacy_reason": direct_result.get(
+                    "legacy_reason"
+                ),
+                "network_identity_result": (
+                    direct_result.get(
+                        "network_identity_result"
                     )
                 ),
             })
@@ -276,6 +309,227 @@ class CrossExchangeRouteCandidateGenerator:
             })
 
         return candidates
+
+    def _diagnose_network_mismatch(
+        self,
+        transfer_asset,
+        source_exchange,
+        destination_exchange,
+        transfer_result,
+        source_identity_records,
+        destination_identity_records,
+    ):
+        result = dict(transfer_result)
+
+        if not self._require_verified_identity:
+            return result
+
+        if result.get("reason") != "no_compatible_network":
+            return result
+
+        if (
+            not source_identity_records
+            or not destination_identity_records
+        ):
+            return result
+
+        for source_record in source_identity_records:
+            if source_record.get("withdraw") is False:
+                continue
+
+            for destination_record in (
+                destination_identity_records
+            ):
+                if destination_record.get("deposit") is False:
+                    continue
+
+                source_chain_id = str(
+                    source_record.get(
+                        "chain_id",
+                        "",
+                    )
+                    or ""
+                ).strip()
+
+                destination_chain_id = str(
+                    destination_record.get(
+                        "chain_id",
+                        "",
+                    )
+                    or ""
+                ).strip()
+
+                source_contract = str(
+                    source_record.get(
+                        "contract_address",
+                        "",
+                    )
+                    or ""
+                ).strip()
+
+                destination_contract = str(
+                    destination_record.get(
+                        "contract_address",
+                        "",
+                    )
+                    or ""
+                ).strip()
+
+                source_has_identity = bool(
+                    source_chain_id
+                    or source_contract
+                )
+
+                destination_has_identity = bool(
+                    destination_chain_id
+                    or destination_contract
+                )
+
+                # EX-180:
+                # If one exchange provides strong network
+                # identity and the other does not, differing
+                # display names are not enough evidence to
+                # declare the networks incompatible.
+                #
+                # Keep execution blocked, but classify the
+                # relationship as UNVERIFIED for audit.
+                if (
+                    source_has_identity
+                    != destination_has_identity
+                ):
+                    source_name = str(
+                        source_record.get(
+                            "network",
+                            source_record.get(
+                                "network_name",
+                                "",
+                            ),
+                        )
+                    ).strip().upper()
+
+                    destination_name = str(
+                        destination_record.get(
+                            "network",
+                            destination_record.get(
+                                "network_name",
+                                "",
+                            ),
+                        )
+                    ).strip().upper()
+
+                    result["legacy_reason"] = (
+                        "no_compatible_network"
+                    )
+                    result["reason"] = (
+                        "network_identity_unverified"
+                    )
+                    result["network_identity"] = (
+                        "UNVERIFIED"
+                    )
+                    result["source_network"] = (
+                        source_name or None
+                    )
+                    result["destination_network"] = (
+                        destination_name or None
+                    )
+
+                    result[
+                        "network_identity_result"
+                    ] = {
+                        "coin": str(
+                            transfer_asset
+                        ).strip().upper(),
+                        "source_exchange": (
+                            source_exchange
+                        ),
+                        "destination_exchange": (
+                            destination_exchange
+                        ),
+                        "source_network": {
+                            "network_name": (
+                                source_name or None
+                            ),
+                            "chain_id": (
+                                source_chain_id or None
+                            ),
+                            "contract_address": (
+                                source_contract or None
+                            ),
+                        },
+                        "destination_network": {
+                            "network_name": (
+                                destination_name or None
+                            ),
+                            "chain_id": (
+                                destination_chain_id
+                                or None
+                            ),
+                            "contract_address": (
+                                destination_contract
+                                or None
+                            ),
+                        },
+                        "network_match": (
+                            "UNVERIFIED"
+                        ),
+                        "reason": (
+                            "incomplete_network_identity"
+                        ),
+                        "verified": False,
+                        "execution_allowed": False,
+                        "live_transfer_submitted": False,
+                        "live_order_submitted": False,
+                    }
+
+                    return result
+
+                # When both sides contain strong identity,
+                # let EX-177 determine VERIFIED versus
+                # INCOMPATIBLE.
+                if (
+                    source_has_identity
+                    and destination_has_identity
+                ):
+                    identity = (
+                        self._identity_validator.validate(
+                            coin=transfer_asset,
+                            source_exchange=(
+                                source_exchange
+                            ),
+                            destination_exchange=(
+                                destination_exchange
+                            ),
+                            source_network=(
+                                source_record
+                            ),
+                            destination_network=(
+                                destination_record
+                            ),
+                        )
+                    )
+
+                    if (
+                        identity.get(
+                            "network_match"
+                        )
+                        == "UNVERIFIED"
+                    ):
+                        result["legacy_reason"] = (
+                            "no_compatible_network"
+                        )
+                        result["reason"] = (
+                            "network_identity_unverified"
+                        )
+                        result[
+                            "network_identity"
+                        ] = "UNVERIFIED"
+                        result[
+                            "network_identity_result"
+                        ] = identity
+
+                        return result
+
+        return result
 
     def _enforce_identity(
         self,
