@@ -37,6 +37,9 @@ from exchanges.live_order_book_snapshot_engine import (
 from exchanges.transfer_route_evaluation import (
     TransferRouteEvaluation,
 )
+from exchanges.exchange_network_identity_validator import (
+    ExchangeNetworkIdentityValidator,
+)
 
 
 class PublicLiveMultiPathPipelineFactory:

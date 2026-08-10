@@ -104,3 +104,48 @@ def test_prepares_real_cross_exchange_inputs():
         result["bridge_quotes"]["BTC"]["output_amount"]
         == pytest.approx(0.001996002)
     )
+
+
+def test_prepares_network_identity_records():
+    preparer = PublicLiveMultiPathInputPreparer(
+        source_exchange=FakeExchange(),
+        destination_exchange=FakeExchange(
+            destination=True
+        ),
+    )
+
+    result = preparer.prepare(
+        source_exchange_id="source",
+        destination_exchange_id="destination",
+        coin_asset="COINX",
+        starting_usdt_value=100.0,
+        source_fee_rate=0.001,
+    )
+
+    assert (
+        "COINX"
+        in result[
+            "source_network_identity_records"
+        ]
+    )
+
+    assert (
+        "COINX"
+        in result[
+            "destination_network_identity_records"
+        ]
+    )
+
+    assert (
+        "BTC"
+        in result[
+            "source_network_identity_records"
+        ]
+    )
+
+    assert (
+        "BTC"
+        in result[
+            "destination_network_identity_records"
+        ]
+    )

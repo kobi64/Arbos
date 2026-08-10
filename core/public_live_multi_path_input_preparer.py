@@ -13,6 +13,9 @@ from core.order_book_spot_conversion_quote_provider import (
 from exchanges.ccxt_network_metadata_adapter import (
     CCXTNetworkMetadataAdapter,
 )
+from exchanges.ccxt_network_identity_metadata_adapter import (
+    CCXTNetworkIdentityMetadataAdapter,
+)
 from exchanges.live_order_book_snapshot_engine import (
     LiveOrderBookSnapshotEngine,
 )
@@ -92,6 +95,18 @@ class PublicLiveMultiPathInputPreparer:
             )
         )
 
+        source_identity_adapter = (
+            CCXTNetworkIdentityMetadataAdapter(
+                self._source_exchange
+            )
+        )
+
+        destination_identity_adapter = (
+            CCXTNetworkIdentityMetadataAdapter(
+                self._destination_exchange
+            )
+        )
+
         source_networks = {
             coin_asset: (
                 source_network_adapter.get_networks(
@@ -103,6 +118,22 @@ class PublicLiveMultiPathInputPreparer:
         destination_networks = {
             coin_asset: (
                 destination_network_adapter.get_networks(
+                    coin_asset
+                )
+            )
+        }
+
+        source_network_identity_records = {
+            coin_asset: (
+                source_identity_adapter.get_records(
+                    coin_asset
+                )
+            )
+        }
+
+        destination_network_identity_records = {
+            coin_asset: (
+                destination_identity_adapter.get_records(
                     coin_asset
                 )
             )
@@ -181,6 +212,22 @@ class PublicLiveMultiPathInputPreparer:
                 )
             )
 
+            source_network_identity_records[
+                bridge_asset
+            ] = (
+                source_identity_adapter.get_records(
+                    bridge_asset
+                )
+            )
+
+            destination_network_identity_records[
+                bridge_asset
+            ] = (
+                destination_identity_adapter.get_records(
+                    bridge_asset
+                )
+            )
+
             quote = spot_provider.quote(
                 from_asset=coin_asset,
                 to_asset=bridge_asset,
@@ -215,6 +262,12 @@ class PublicLiveMultiPathInputPreparer:
             "source_networks": source_networks,
             "destination_networks": (
                 destination_networks
+            ),
+            "source_network_identity_records": (
+                source_network_identity_records
+            ),
+            "destination_network_identity_records": (
+                destination_network_identity_records
             ),
             "bridge_quotes": bridge_quotes,
             "markets": markets,
