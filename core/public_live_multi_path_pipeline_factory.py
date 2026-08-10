@@ -83,6 +83,10 @@ class PublicLiveMultiPathPipelineFactory:
         cross_exchange_generator = (
             CrossExchangeRouteCandidateGenerator(
                 transfer_evaluator=TransferRouteEvaluation,
+            identity_validator=(
+                ExchangeNetworkIdentityValidator()
+            ),
+            require_verified_identity=True,
             )
         )
 
