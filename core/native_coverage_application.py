@@ -33,6 +33,7 @@ class NativeCoverageApplication:
         exchange_ids=None,
         coverage_orchestrator=None,
         health_reporter=None,
+        health_history_store=None,
     ):
         if ccxt_module is None:
             raise ValueError(
@@ -65,6 +66,10 @@ class NativeCoverageApplication:
             health_reporter
             if health_reporter is not None
             else NativeCoverageHealthReport()
+        )
+
+        self._health_history_store = (
+            health_history_store
         )
 
     def set_enabled(
@@ -110,4 +115,16 @@ class NativeCoverageApplication:
 
         return self._health_reporter.build(
             coverage_result
+        )
+
+    def run_and_record_health_report(self):
+        if self._health_history_store is None:
+            raise ValueError(
+                "health_history_store is required"
+            )
+
+        health_report = self.run_health_report()
+
+        return self._health_history_store.append(
+            health_report
         )
