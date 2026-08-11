@@ -198,3 +198,87 @@ def test_health_report_is_research_only():
     report = app.run_health_report()
 
     assert report["live_order_submitted"] is False
+
+
+class FakeHealthHistoryStore:
+    def __init__(self):
+        self.report = None
+
+    def append(self, health_report):
+        self.report = health_report
+        return {
+            "stored": True,
+            "timestamp": 1234.0,
+            "status": health_report.get(
+                "status"
+            ),
+            "live_order_submitted": False,
+        }
+
+
+def test_run_and_record_health_report_persists_report():
+    orchestrator = FakeCoverageOrchestrator()
+    reporter = FakeHealthReporter()
+    history_store = FakeHealthHistoryStore()
+
+    app = NativeCoverageApplication(
+        ccxt_module=FakeCCXT,
+        fallback_registry=object(),
+        exchange_ids=[
+            "gate",
+            "kucoin",
+        ],
+        coverage_orchestrator=orchestrator,
+        health_reporter=reporter,
+        health_history_store=history_store,
+    )
+
+    result = app.run_and_record_health_report()
+
+    assert history_store.report["status"] == (
+        "HEALTHY"
+    )
+
+    assert result["stored"] is True
+    assert result["timestamp"] == 1234.0
+    assert result["status"] == "HEALTHY"
+
+
+def test_recording_does_not_change_existing_health_report_contract():
+    orchestrator = FakeCoverageOrchestrator()
+    reporter = FakeHealthReporter()
+    history_store = FakeHealthHistoryStore()
+
+    app = NativeCoverageApplication(
+        ccxt_module=FakeCCXT,
+        fallback_registry=object(),
+        exchange_ids=[
+            "gate",
+        ],
+        coverage_orchestrator=orchestrator,
+        health_reporter=reporter,
+        health_history_store=history_store,
+    )
+
+    report = app.run_health_report()
+
+    assert report["status"] == "HEALTHY"
+    assert history_store.report is None
+
+
+def test_run_and_record_requires_history_store():
+    app = NativeCoverageApplication(
+        ccxt_module=FakeCCXT,
+        fallback_registry=object(),
+        exchange_ids=[],
+        coverage_orchestrator=FakeCoverageOrchestrator(),
+        health_reporter=FakeHealthReporter(),
+    )
+
+    try:
+        app.run_and_record_health_report()
+        assert False
+    except ValueError as exc:
+        assert str(exc) == (
+            "health_history_store is required"
+        )
