@@ -20,6 +20,9 @@ from core.native_coverage_exchange_set_registry import (
 from exchanges.config_driven_native_coverage_orchestrator import (
     ConfigDrivenNativeCoverageOrchestrator,
 )
+from core.native_coverage_health_report import (
+    NativeCoverageHealthReport,
+)
 
 
 class NativeCoverageApplication:
@@ -29,6 +32,7 @@ class NativeCoverageApplication:
         fallback_registry,
         exchange_ids=None,
         coverage_orchestrator=None,
+        health_reporter=None,
     ):
         if ccxt_module is None:
             raise ValueError(
@@ -55,6 +59,12 @@ class NativeCoverageApplication:
                     fallback_registry
                 )
             )
+        )
+
+        self._health_reporter = (
+            health_reporter
+            if health_reporter is not None
+            else NativeCoverageHealthReport()
         )
 
     def set_enabled(
@@ -94,3 +104,10 @@ class NativeCoverageApplication:
             ),
             "live_order_submitted": False,
         }
+
+    def run_health_report(self):
+        coverage_result = self.run()
+
+        return self._health_reporter.build(
+            coverage_result
+        )
