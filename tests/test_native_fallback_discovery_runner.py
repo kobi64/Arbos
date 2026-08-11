@@ -135,7 +135,7 @@ def test_discovery_is_research_only():
     assert result["live_order_submitted"] is False
 
 
-def test_discovers_active_spot_markets_only():
+def test_discovers_all_spot_markets_and_reports_status():
     class MixedExchange:
         id = "kucoin"
 
@@ -162,10 +162,19 @@ def test_discovers_active_spot_markets_only():
                 "fetch_complete": True,
                 "symbols": [
                     "BTC/USDT",
+                    "OLD/USDT",
                 ],
                 "markets": [
                     {
                         "symbol": "BTC/USDT",
+                        "status": "TRADING",
+                        "order_types": [
+                            "LIMIT",
+                            "MARKET",
+                        ],
+                    },
+                    {
+                        "symbol": "OLD/USDT",
                         "status": "TRADING",
                         "order_types": [
                             "LIMIT",
@@ -186,11 +195,24 @@ def test_discovers_active_spot_markets_only():
 
     assert result["ccxt_symbols"] == [
         "BTC/USDT",
+        "OLD/USDT",
     ]
 
-    assert result["ccxt_market_count"] == 1
-    assert result["native_market_count"] == 1
-    assert result["matched_count"] == 1
+    assert result[
+        "discovered_ccxt_market_count"
+    ] == 2
+
+    assert result[
+        "discovered_ccxt_active_spot_count"
+    ] == 1
+
+    assert result[
+        "discovered_ccxt_inactive_spot_count"
+    ] == 1
+
+    assert result["ccxt_market_count"] == 2
+    assert result["native_market_count"] == 2
+    assert result["matched_count"] == 2
 
 
 def test_alias_matches_are_removed_from_discrepancies():

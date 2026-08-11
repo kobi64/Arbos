@@ -66,18 +66,32 @@ class NativeFallbackDiscoveryRunner:
 
         markets = exchange.load_markets()
 
-        ccxt_symbols = sorted(
-            str(symbol).strip().upper()
+        ccxt_spot_markets = {
+            str(symbol).strip().upper(): market
             for symbol, market in (
                 (markets or {}).items()
             )
             if str(symbol).strip()
             and isinstance(market, dict)
             and market.get("spot") is True
-            and market.get(
+        }
+
+        ccxt_symbols = sorted(
+            ccxt_spot_markets.keys()
+        )
+
+        ccxt_active_spot_count = sum(
+            1
+            for market in ccxt_spot_markets.values()
+            if market.get(
                 "active",
                 True,
             ) is not False
+        )
+
+        ccxt_inactive_spot_count = (
+            len(ccxt_spot_markets)
+            - ccxt_active_spot_count
         )
 
         native_result = (
@@ -157,6 +171,12 @@ class NativeFallbackDiscoveryRunner:
             "ccxt_symbols": ccxt_symbols,
             "discovered_ccxt_market_count": len(
                 ccxt_symbols
+            ),
+            "discovered_ccxt_active_spot_count": (
+                ccxt_active_spot_count
+            ),
+            "discovered_ccxt_inactive_spot_count": (
+                ccxt_inactive_spot_count
             ),
             "discovered_native_market_count": len(
                 native_symbols

@@ -140,7 +140,7 @@ def test_different_native_ids_do_not_match():
     assert result["alias_match_count"] == 0
 
 
-def test_inactive_ccxt_market_is_not_alias_candidate():
+def test_inactive_ccxt_spot_can_still_be_alias_identity():
     ccxt_markets = {
         "BSV/USDT": {
             "id": "BCHSV-USDT",
@@ -163,7 +163,7 @@ def test_inactive_ccxt_market_is_not_alias_candidate():
         native_markets=native_markets,
     )
 
-    assert result["alias_match_count"] == 0
+    assert result["alias_match_count"] == 1
 
 
 def test_derivative_market_is_not_alias_candidate():
