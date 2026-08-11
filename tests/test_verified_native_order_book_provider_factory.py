@@ -121,3 +121,24 @@ def test_custom_registry_can_add_exchange_without_factory_change():
         provider,
         CustomProvider,
     )
+
+
+def test_builds_kucoin_verified_provider():
+    from exchanges.verified_kucoin_order_book_provider import (
+        VerifiedKuCoinOrderBookProvider,
+    )
+
+    class KuCoinExchange:
+        id = "kucoin"
+
+    provider = (
+        VerifiedNativeOrderBookProviderFactory()
+        .build(
+            KuCoinExchange()
+        )
+    )
+
+    assert isinstance(
+        provider,
+        VerifiedKuCoinOrderBookProvider,
+    )

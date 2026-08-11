@@ -25,6 +25,9 @@ from exchanges.native_fallback_exchange_registry import (
 from exchanges.verified_digifinex_order_book_provider import (
     VerifiedDigiFinexOrderBookProvider,
 )
+from exchanges.verified_kucoin_order_book_provider import (
+    VerifiedKuCoinOrderBookProvider,
+)
 
 
 class VerifiedNativeOrderBookProviderFactory:
@@ -36,6 +39,15 @@ class VerifiedNativeOrderBookProviderFactory:
                 "digifinex",
                 lambda exchange: (
                     VerifiedDigiFinexOrderBookProvider(
+                        exchange
+                    )
+                ),
+            )
+
+            registry.register(
+                "kucoin",
+                lambda exchange: (
+                    VerifiedKuCoinOrderBookProvider(
                         exchange
                     )
                 ),
