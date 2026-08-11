@@ -191,3 +191,235 @@ def test_forwards_minimum_profit_percent_from_prepare_kwargs():
         ]
         == 0.5
     )
+
+
+def test_forwards_slippage_limit_to_input_preparer():
+    class CapturingPreparer:
+        calls = []
+
+        def __init__(
+            self,
+            source_exchange,
+            destination_exchange,
+        ):
+            pass
+
+        def prepare(self, **kwargs):
+            self.__class__.calls.append(
+                dict(kwargs)
+            )
+
+            return {
+                "prepare_complete": True,
+                "markets": {},
+                "coin_asset": "ALT",
+                "coin_amount": 10.0,
+                "source_networks": {},
+                "destination_networks": {},
+                "source_network_identity_records": {},
+                "destination_network_identity_records": {},
+                "bridge_quotes": {},
+            }
+
+    runner = PublicLiveMultiPathVerificationRunner(
+        bootstrap=FakeBootstrap(),
+        pipeline_factory=FakePipelineFactory(),
+        input_preparer_factory=CapturingPreparer,
+    )
+
+    runner.run(
+        source_exchange_id="kucoin",
+        destination_exchange_id="gate",
+        prepare_kwargs={
+            "coin_asset": "ALT",
+            "starting_usdt_value": 100.0,
+            "source_fee_rate": 0.001,
+            "destination_fee_rate": 0.002,
+            "max_slippage_percent": 0.75,
+        },
+    )
+
+    assert (
+        CapturingPreparer.calls[-1][
+            "max_slippage_percent"
+        ]
+        == 0.75
+    )
+
+
+def test_forwards_network_identity_records_to_cross_exchange_generator():
+    class IdentityPreparer:
+        def __init__(
+            self,
+            source_exchange,
+            destination_exchange,
+        ):
+            pass
+
+        def prepare(self, **kwargs):
+            return {
+                "prepare_complete": True,
+                "markets": {},
+                "coin_asset": "ALT",
+                "coin_amount": 10.0,
+                "source_networks": {
+                    "ALT": [],
+                },
+                "destination_networks": {
+                    "ALT": [],
+                },
+                "source_network_identity_records": {
+                    "ALT": [
+                        {
+                            "network": "ERC20",
+                            "chain_id": "1",
+                        },
+                    ],
+                },
+                "destination_network_identity_records": {
+                    "ALT": [
+                        {
+                            "network": "ERC20",
+                            "chain_id": "1",
+                        },
+                    ],
+                },
+                "bridge_quotes": {},
+            }
+
+    class CapturingScanner:
+        def __init__(self):
+            self.kwargs = None
+
+        def scan(self, **kwargs):
+            self.kwargs = kwargs
+
+            return {
+                "best_route": None,
+                "ranked_routes": [],
+                "paper_only": True,
+                "live_order_submitted": False,
+            }
+
+    class CapturingFactory:
+        def __init__(self):
+            self.scanner = CapturingScanner()
+
+        def build(
+            self,
+            source_exchange,
+            destination_exchange,
+        ):
+            return self.scanner
+
+    factory = CapturingFactory()
+
+    runner = PublicLiveMultiPathVerificationRunner(
+        bootstrap=FakeBootstrap(),
+        pipeline_factory=factory,
+        input_preparer_factory=IdentityPreparer,
+    )
+
+    runner.run(
+        source_exchange_id="kucoin",
+        destination_exchange_id="gate",
+        prepare_kwargs={
+            "coin_asset": "ALT",
+            "starting_usdt_value": 100.0,
+            "source_fee_rate": 0.001,
+            "destination_fee_rate": 0.002,
+            "max_slippage_percent": 0.5,
+        },
+    )
+
+    generate_kwargs = (
+        factory.scanner.kwargs[
+            "cross_exchange_generate_kwargs"
+        ]
+    )
+
+    assert (
+        generate_kwargs[
+            "source_network_identity_records"
+        ]["ALT"][0]["chain_id"]
+        == "1"
+    )
+
+    assert (
+        generate_kwargs[
+            "destination_network_identity_records"
+        ]["ALT"][0]["chain_id"]
+        == "1"
+    )
+
+
+def test_failed_source_preparation_blocks_scan_cleanly():
+    class RejectedPreparer:
+        def __init__(
+            self,
+            source_exchange,
+            destination_exchange,
+        ):
+            pass
+
+        def prepare(self, **kwargs):
+            return {
+                "prepare_complete": False,
+                "reason": (
+                    "source_buy_slippage_exceeded"
+                ),
+                "coin_asset": "ALT",
+                "coin_amount": 0.0,
+                "paper_only": True,
+                "live_order_submitted": False,
+            }
+
+    class NeverScanner:
+        def __init__(self):
+            self.called = False
+
+        def scan(self, **kwargs):
+            self.called = True
+            raise AssertionError(
+                "scanner must not run"
+            )
+
+    class NeverFactory:
+        def __init__(self):
+            self.scanner = NeverScanner()
+
+        def build(
+            self,
+            source_exchange,
+            destination_exchange,
+        ):
+            return self.scanner
+
+    factory = NeverFactory()
+
+    runner = PublicLiveMultiPathVerificationRunner(
+        bootstrap=FakeBootstrap(),
+        pipeline_factory=factory,
+        input_preparer_factory=RejectedPreparer,
+    )
+
+    result = runner.run(
+        source_exchange_id="kucoin",
+        destination_exchange_id="gate",
+        prepare_kwargs={
+            "coin_asset": "ALT",
+            "starting_usdt_value": 100.0,
+            "source_fee_rate": 0.001,
+            "destination_fee_rate": 0.002,
+            "max_slippage_percent": 0.5,
+        },
+    )
+
+    assert factory.scanner.called is False
+    assert result["scan_complete"] is False
+    assert (
+        result["reason"]
+        == "source_buy_slippage_exceeded"
+    )
+    assert result["paper_only"] is True
+    assert result["live_order_submitted"] is False

@@ -67,7 +67,24 @@ class PublicLiveMultiPathVerificationRunner:
                 source_fee_rate=prepare_kwargs[
                     "source_fee_rate"
                 ],
+                max_slippage_percent=float(
+                    prepare_kwargs.get(
+                        "max_slippage_percent",
+                        0.5,
+                    )
+                ),
             )
+
+            if prepared.get(
+                "prepare_complete",
+                True,
+            ) is not True:
+                return {
+                    **prepared,
+                    "scan_complete": False,
+                    "paper_only": True,
+                    "live_order_submitted": False,
+                }
 
             starting_value = float(
                 prepare_kwargs["starting_usdt_value"]
@@ -124,6 +141,18 @@ class PublicLiveMultiPathVerificationRunner:
                     ),
                     "bridge_quotes": (
                         prepared["bridge_quotes"]
+                    ),
+                    "source_network_identity_records": (
+                        prepared.get(
+                            "source_network_identity_records",
+                            {},
+                        )
+                    ),
+                    "destination_network_identity_records": (
+                        prepared.get(
+                            "destination_network_identity_records",
+                            {},
+                        )
                     ),
                 },
             }
