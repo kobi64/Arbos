@@ -48,6 +48,7 @@ class ExchangeMarketAliasReconciler:
 
             native_id = self._normalize_id(
                 raw.get("symbol")
+                or raw.get("id")
             )
 
             if not symbol or not native_id:
