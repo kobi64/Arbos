@@ -54,8 +54,11 @@ def test_discovers_all_coin_first_internal_bridge_routes():
 
     assert route_ids == {
         "USDT-COINX-BTC-USDT",
+        "USDT-BTC-COINX-USDT",
         "USDT-COINX-ETH-USDT",
+        "USDT-ETH-COINX-USDT",
         "USDT-COINX-SOL-USDT",
+        "USDT-SOL-COINX-USDT",
     }
 
 
@@ -88,3 +91,97 @@ def test_coin_is_bought_first_then_sold_into_bridge():
             "side": "sell",
         },
     ]
+
+
+def test_discovers_reverse_bridge_first_routes_too():
+    discovery = CoinFirstMultiBridgeTriangleDiscovery()
+
+    routes = discovery.discover(
+        markets=sample_markets(),
+        quote_asset="USDT",
+        coin_asset="COINX",
+    )
+
+    route_ids = {
+        route["route_id"]
+        for route in routes
+    }
+
+    assert route_ids == {
+        "USDT-COINX-BTC-USDT",
+        "USDT-BTC-COINX-USDT",
+        "USDT-COINX-ETH-USDT",
+        "USDT-ETH-COINX-USDT",
+        "USDT-COINX-SOL-USDT",
+        "USDT-SOL-COINX-USDT",
+    }
+
+
+def test_reverse_route_buys_bridge_then_coin_then_sells_coin():
+    discovery = CoinFirstMultiBridgeTriangleDiscovery()
+
+    routes = discovery.discover(
+        markets=sample_markets(),
+        quote_asset="USDT",
+        coin_asset="COINX",
+    )
+
+    reverse_btc = next(
+        route
+        for route in routes
+        if (
+            route["route_id"]
+            == "USDT-BTC-COINX-USDT"
+        )
+    )
+
+    assert reverse_btc["bridge_asset"] == "BTC"
+
+    assert reverse_btc["legs"] == [
+        {
+            "symbol": "BTC/USDT",
+            "side": "buy",
+        },
+        {
+            "symbol": "COINX/BTC",
+            "side": "buy",
+        },
+        {
+            "symbol": "COINX/USDT",
+            "side": "sell",
+        },
+    ]
+
+
+def test_each_bridge_generates_both_directions():
+    discovery = CoinFirstMultiBridgeTriangleDiscovery()
+
+    routes = discovery.discover(
+        markets=sample_markets(),
+        quote_asset="USDT",
+        coin_asset="COINX",
+    )
+
+    assert len(routes) == 6
+
+    btc_routes = [
+        route
+        for route in routes
+        if route["bridge_asset"] == "BTC"
+    ]
+
+    eth_routes = [
+        route
+        for route in routes
+        if route["bridge_asset"] == "ETH"
+    ]
+
+    sol_routes = [
+        route
+        for route in routes
+        if route["bridge_asset"] == "SOL"
+    ]
+
+    assert len(btc_routes) == 2
+    assert len(eth_routes) == 2
+    assert len(sol_routes) == 2

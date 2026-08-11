@@ -29,9 +29,11 @@ class PublicLiveMultiPathInputPreparer:
         self,
         source_exchange,
         destination_exchange,
+        source_buy_quote=None,
     ):
         self._source_exchange = source_exchange
         self._destination_exchange = destination_exchange
+        self._source_buy_quote = source_buy_quote
 
     def prepare(
         self,
@@ -40,6 +42,7 @@ class PublicLiveMultiPathInputPreparer:
         coin_asset,
         starting_usdt_value,
         source_fee_rate,
+        max_slippage_percent=0.5,
     ):
         if starting_usdt_value <= 0:
             raise ValueError(
@@ -65,23 +68,86 @@ class PublicLiveMultiPathInputPreparer:
             )
         )
 
-        coin_book = source_snapshot.snapshot(
-            coin_symbol
-        )
+        source_buy_result = None
+        source_buy_depth_aware = False
 
-        ask_price = float(
-            coin_book["asks"][0][0]
-        )
+        if self._source_buy_quote is not None:
+            source_buy_result = (
+                self._source_buy_quote.quote(
+                    coin_asset=coin_asset,
+                    starting_usdt_value=(
+                        starting_usdt_value
+                    ),
+                    source_fee_rate=(
+                        source_fee_rate
+                    ),
+                    max_slippage_percent=(
+                        max_slippage_percent
+                    ),
+                )
+            )
 
-        gross_coin_amount = (
-            float(starting_usdt_value)
-            / ask_price
-        )
+            source_buy_depth_aware = True
 
-        coin_amount = (
-            gross_coin_amount
-            * (1.0 - float(source_fee_rate))
-        )
+            if source_buy_result.get(
+                "filled"
+            ) is not True:
+                return {
+                    "source_exchange": (
+                        source_exchange_id
+                    ),
+                    "destination_exchange": (
+                        destination_exchange_id
+                    ),
+                    "coin_asset": coin_asset,
+                    "coin_amount": 0.0,
+                    "prepare_complete": False,
+                    "reason": (
+                        "source_buy_"
+                        + str(
+                            source_buy_result.get(
+                                "reason",
+                                "failed",
+                            )
+                        )
+                    ),
+                    "source_buy_depth_aware": True,
+                    "source_buy_result": (
+                        source_buy_result
+                    ),
+                    "paper_only": True,
+                    "live_order_submitted": False,
+                }
+
+            coin_amount = float(
+                source_buy_result.get(
+                    "coin_amount",
+                    0.0,
+                )
+                or 0.0
+            )
+
+        else:
+            coin_book = source_snapshot.snapshot(
+                coin_symbol
+            )
+
+            ask_price = float(
+                coin_book["asks"][0][0]
+            )
+
+            gross_coin_amount = (
+                float(starting_usdt_value)
+                / ask_price
+            )
+
+            coin_amount = (
+                gross_coin_amount
+                * (
+                    1.0
+                    - float(source_fee_rate)
+                )
+            )
 
         source_network_adapter = (
             CCXTNetworkMetadataAdapter(
@@ -254,6 +320,13 @@ class PublicLiveMultiPathInputPreparer:
             "source_exchange": (
                 source_exchange_id
             ),
+            "source_buy_depth_aware": (
+                source_buy_depth_aware
+            ),
+            "source_buy_result": (
+                source_buy_result
+            ),
+            "prepare_complete": True,
             "destination_exchange": (
                 destination_exchange_id
             ),

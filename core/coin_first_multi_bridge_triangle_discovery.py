@@ -59,6 +59,7 @@ class CoinFirstMultiBridgeTriangleDiscovery:
                 "coin_asset": coin_asset,
                 "bridge_asset": bridge_asset,
                 "quote_asset": quote_asset,
+                "direction": "coin_first",
                 "legs": [
                     {
                         "symbol": coin_quote_symbol,
@@ -70,6 +71,31 @@ class CoinFirstMultiBridgeTriangleDiscovery:
                     },
                     {
                         "symbol": bridge_quote_symbol,
+                        "side": "sell",
+                    },
+                ],
+            })
+
+            routes.append({
+                "route_id": (
+                    f"{quote_asset}-{bridge_asset}-"
+                    f"{coin_asset}-{quote_asset}"
+                ),
+                "coin_asset": coin_asset,
+                "bridge_asset": bridge_asset,
+                "quote_asset": quote_asset,
+                "direction": "bridge_first",
+                "legs": [
+                    {
+                        "symbol": bridge_quote_symbol,
+                        "side": "buy",
+                    },
+                    {
+                        "symbol": symbol,
+                        "side": "buy",
+                    },
+                    {
+                        "symbol": coin_quote_symbol,
                         "side": "sell",
                     },
                 ],
