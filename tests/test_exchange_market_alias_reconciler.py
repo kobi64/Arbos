@@ -200,3 +200,39 @@ def test_reconciliation_is_research_only():
 
     assert result["reconciliation_complete"] is True
     assert result["live_order_submitted"] is False
+
+
+def test_reconciles_native_raw_id_when_symbol_missing():
+    ccxt_markets = {
+        "BSV/USDT": {
+            "id": "BCHSV_USDT",
+            "symbol": "BSV/USDT",
+            "spot": True,
+            "active": True,
+        },
+    }
+
+    native_markets = [
+        {
+            "symbol": "BCHSV/USDT",
+            "status": "TRADING",
+            "raw": {
+                "id": "BCHSV_USDT",
+            },
+        },
+    ]
+
+    result = ExchangeMarketAliasReconciler().reconcile(
+        ccxt_markets=ccxt_markets,
+        native_markets=native_markets,
+    )
+
+    assert result["alias_match_count"] == 1
+
+    assert result["alias_matches"] == [
+        {
+            "ccxt_symbol": "BSV/USDT",
+            "native_symbol": "BCHSV/USDT",
+            "native_market_id": "BCHSV_USDT",
+        },
+    ]
