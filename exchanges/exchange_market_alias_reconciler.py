@@ -66,12 +66,6 @@ class ExchangeMarketAliasReconciler:
             if market.get("spot") is not True:
                 continue
 
-            if market.get(
-                "active",
-                True,
-            ) is False:
-                continue
-
             normalized_ccxt_symbol = (
                 self._normalize_symbol(
                     ccxt_symbol
