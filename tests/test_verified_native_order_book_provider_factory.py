@@ -89,3 +89,35 @@ def test_missing_exchange_is_rejected():
         assert False
     except ValueError as exc:
         assert str(exc) == "exchange is required"
+
+
+def test_custom_registry_can_add_exchange_without_factory_change():
+    from exchanges.native_fallback_exchange_registry import (
+        NativeFallbackExchangeRegistry,
+    )
+
+    class CustomProvider:
+        pass
+
+    class GateExchange:
+        id = "gate"
+
+    registry = NativeFallbackExchangeRegistry()
+
+    registry.register(
+        "gate",
+        lambda exchange: CustomProvider(),
+    )
+
+    factory = VerifiedNativeOrderBookProviderFactory(
+        registry=registry
+    )
+
+    provider = factory.build(
+        GateExchange()
+    )
+
+    assert isinstance(
+        provider,
+        CustomProvider,
+    )
