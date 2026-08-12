@@ -348,3 +348,58 @@ def test_missing_dependencies_are_rejected():
             market_cache=populated_cache(),
             route_registry=None,
         )
+
+
+from core.route_dependency_registry import (
+    RouteDependencyRegistry,
+)
+
+
+def test_worker_uses_central_route_dependency_registry():
+    registry = RouteDependencyRegistry()
+
+    registry.register({
+        "route_id": "R-ETH-BTC-CENTRAL",
+        "exchange_id": "kucoin",
+        "starting_value": 100.0,
+        "fee_rate": 0.001,
+        "max_slippage_percent": 0.5,
+        "legs": [
+            {
+                "symbol": "ETH/USDT",
+                "side": "buy",
+            },
+            {
+                "symbol": "ETH/BTC",
+                "side": "sell",
+            },
+            {
+                "symbol": "BTC/USDT",
+                "side": "sell",
+            },
+        ],
+    })
+
+    queue = FakeWorkQueue([
+        {
+            "request_id": "REQ-CENTRAL",
+            "route_id": (
+                "R-ETH-BTC-CENTRAL"
+            ),
+            "sequence": 700,
+        },
+    ])
+
+    worker = SharedCacheRouteWorker(
+        work_queue=queue,
+        market_cache=populated_cache(),
+        route_registry=registry,
+    )
+
+    result = worker.process_next()
+
+    assert result["processed"] is True
+    assert result["filled"] is True
+    assert result["route_id"] == (
+        "R-ETH-BTC-CENTRAL"
+    )

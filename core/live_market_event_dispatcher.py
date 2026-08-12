@@ -19,6 +19,7 @@ class LiveMarketEventDispatcher:
     def __init__(
         self,
         work_queue,
+        route_registry=None,
     ):
         if work_queue is None:
             raise ValueError(
@@ -26,6 +27,9 @@ class LiveMarketEventDispatcher:
             )
 
         self._work_queue = work_queue
+        self._route_registry = (
+            route_registry
+        )
         self._market_routes = {}
         self._route_markets = {}
 
@@ -34,6 +38,14 @@ class LiveMarketEventDispatcher:
         route_id,
         markets,
     ):
+        if (
+            self._route_registry
+            is not None
+        ):
+            raise ValueError(
+                "register routes through route_registry"
+            )
+
         route_id = str(
             route_id
             or ""
@@ -130,12 +142,24 @@ class LiveMarketEventDispatcher:
             symbol=symbol,
         )
 
-        affected_route_ids = sorted(
-            self._market_routes.get(
-                key,
-                set(),
+        if (
+            self._route_registry
+            is not None
+        ):
+            affected_route_ids = (
+                self._route_registry
+                .routes_for_market(
+                    exchange_id=key[0],
+                    symbol=key[1],
+                )
             )
-        )
+        else:
+            affected_route_ids = sorted(
+                self._market_routes.get(
+                    key,
+                    set(),
+                )
+            )
 
         priority = float(
             event.get(
@@ -214,6 +238,18 @@ class LiveMarketEventDispatcher:
             symbol=symbol,
         )
 
+        if (
+            self._route_registry
+            is not None
+        ):
+            return (
+                self._route_registry
+                .routes_for_market(
+                    exchange_id=key[0],
+                    symbol=key[1],
+                )
+            )
+
         return sorted(
             self._market_routes.get(
                 key,
@@ -229,6 +265,17 @@ class LiveMarketEventDispatcher:
             route_id
             or ""
         ).strip()
+
+        if (
+            self._route_registry
+            is not None
+        ):
+            return (
+                self._route_registry
+                .markets_for_route(
+                    route_id
+                )
+            )
 
         return sorted(
             self._route_markets.get(
