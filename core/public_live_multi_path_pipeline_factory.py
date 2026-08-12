@@ -49,18 +49,14 @@ from exchanges.exchange_network_identity_validator import (
 
 
 class PublicLiveMultiPathPipelineFactory:
-    def build(
+    def build_internal(
         self,
-        source_exchange,
-        destination_exchange,
+        exchange,
     ):
-        source_order_books = LiveOrderBookSnapshotEngine(
-            source_exchange
-        )
-
-        destination_order_books = (
-            VerifiedNativeOrderBookProviderFactory()
-            .build(destination_exchange)
+        source_order_books = (
+            LiveOrderBookSnapshotEngine(
+                exchange
+            )
         )
 
         source_route_scanner = (
@@ -69,29 +65,42 @@ class PublicLiveMultiPathPipelineFactory:
             )
         )
 
+        return (
+            InternalMultiBridgeScanCoordinator(
+                discovery=(
+                    CoinFirstMultiBridgeTriangleDiscovery()
+                ),
+                route_scanner=source_route_scanner,
+                ranker=(
+                    InternalMultiBridgeRouteRanker()
+                ),
+            )
+        )
+
+    def build_cross_exchange(
+        self,
+        destination_exchange,
+    ):
+        destination_order_books = (
+            VerifiedNativeOrderBookProviderFactory()
+            .build(destination_exchange)
+        )
+
         destination_route_scanner = (
             OrderBookDepthAwareTriangleScanner(
                 destination_order_books
             )
         )
 
-        internal_scanner = (
-            InternalMultiBridgeScanCoordinator(
-                discovery=(
-                    CoinFirstMultiBridgeTriangleDiscovery()
-                ),
-                route_scanner=source_route_scanner,
-                ranker=InternalMultiBridgeRouteRanker(),
-            )
-        )
-
         cross_exchange_generator = (
             CrossExchangeRouteCandidateGenerator(
-                transfer_evaluator=TransferRouteEvaluation,
-            identity_validator=(
-                ExchangeNetworkIdentityValidator()
-            ),
-            require_verified_identity=True,
+                transfer_evaluator=(
+                    TransferRouteEvaluation
+                ),
+                identity_validator=(
+                    ExchangeNetworkIdentityValidator()
+                ),
+                require_verified_identity=True,
             )
         )
 
@@ -103,7 +112,7 @@ class PublicLiveMultiPathPipelineFactory:
             )
         )
 
-        integration_coordinator = (
+        return (
             MultiPathArbitrageIntegrationCoordinator(
                 cross_exchange_generator=(
                     cross_exchange_generator
@@ -114,6 +123,25 @@ class PublicLiveMultiPathPipelineFactory:
                 evaluator=(
                     MultiPathArbitrageRouteEvaluator()
                 ),
+            )
+        )
+
+    def build(
+        self,
+        source_exchange,
+        destination_exchange,
+    ):
+        internal_scanner = (
+            self.build_internal(
+                exchange=source_exchange
+            )
+        )
+
+        integration_coordinator = (
+            self.build_cross_exchange(
+                destination_exchange=(
+                    destination_exchange
+                )
             )
         )
 
