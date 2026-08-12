@@ -195,3 +195,91 @@ def test_planner_is_paper_safe():
 
     assert result["paper_only"] is True
     assert result["live_order_submitted"] is False
+
+
+def test_builds_planner_from_exchange_profile():
+    profile = {
+        "exchange_id": "kucoin",
+        "max_symbols_per_batch": 3,
+        "max_batches": 2,
+        "max_total_symbols": 6,
+    }
+
+    planner = (
+        LiveFeedSubscriptionBatchPlanner
+        .from_profile(profile)
+    )
+
+    result = planner.plan(
+        exchange_id="kucoin",
+        symbols=[
+            "A/USDT",
+            "B/USDT",
+            "C/USDT",
+            "D/USDT",
+            "E/USDT",
+            "F/USDT",
+            "G/USDT",
+        ],
+    )
+
+    assert result[
+        "selected_symbol_count"
+    ] == 6
+
+    assert result[
+        "overflow_symbols"
+    ] == [
+        "G/USDT",
+    ]
+
+
+def test_from_profile_requires_profile():
+    import pytest
+
+    with pytest.raises(
+        ValueError,
+        match="profile is required",
+    ):
+        (
+            LiveFeedSubscriptionBatchPlanner
+            .from_profile(None)
+        )
+
+
+def test_from_profile_uses_profile_limits():
+    profile = {
+        "exchange_id": "gate",
+        "max_symbols_per_batch": 2,
+        "max_batches": 3,
+    }
+
+    planner = (
+        LiveFeedSubscriptionBatchPlanner
+        .from_profile(profile)
+    )
+
+    result = planner.plan(
+        exchange_id="gate",
+        symbols=[
+            "A/USDT",
+            "B/USDT",
+            "C/USDT",
+            "D/USDT",
+            "E/USDT",
+            "F/USDT",
+            "G/USDT",
+        ],
+    )
+
+    assert result[
+        "max_symbols_per_batch"
+    ] == 2
+
+    assert result[
+        "max_batches"
+    ] == 3
+
+    assert result[
+        "capacity"
+    ] == 6
