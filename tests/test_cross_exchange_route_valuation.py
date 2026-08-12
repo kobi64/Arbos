@@ -307,3 +307,115 @@ def test_blocked_candidate_without_pre_transfer_amount_is_not_valued():
     )
 
     assert scanner.calls == []
+
+
+def test_destination_market_exception_blocks_executable_route_cleanly():
+    class MissingDestinationMarketScanner:
+        def scan_route(
+            self,
+            route,
+            starting_value,
+            fee_rate,
+            max_slippage_percent,
+        ):
+            raise ValueError(
+                "destination symbol unavailable"
+            )
+
+    valuation = CrossExchangeRouteValuation(
+        destination_scanner=(
+            MissingDestinationMarketScanner()
+        ),
+    )
+
+    candidate = {
+        "route_id": "DIRECT-kucoin-BNB-htx",
+        "route_type": "direct_cross_exchange",
+        "transfer_asset": "BNB",
+        "transfer_amount": 1.0,
+        "executable": True,
+    }
+
+    result = valuation.evaluate(
+        candidate=candidate,
+        starting_usdt_value=100.0,
+        destination_fee_rate=0.002,
+        max_slippage_percent=0.5,
+    )
+
+    assert result["executable"] is False
+    assert result["reason"] == (
+        "destination_market_unavailable"
+    )
+    assert result["destination_result"] is None
+    assert (
+        "ValueError"
+        in result["destination_error"]
+    )
+    assert result["paper_only"] is True
+    assert (
+        result["live_order_submitted"]
+        is False
+    )
+
+
+def test_destination_market_exception_does_not_break_research_valuation():
+    class MissingDestinationMarketScanner:
+        def scan_route(
+            self,
+            route,
+            starting_value,
+            fee_rate,
+            max_slippage_percent,
+        ):
+            raise ValueError(
+                "destination symbol unavailable"
+            )
+
+    valuation = CrossExchangeRouteValuation(
+        destination_scanner=(
+            MissingDestinationMarketScanner()
+        ),
+    )
+
+    candidate = {
+        "route_id": (
+            "DIRECT-kucoin-COTI-htx"
+        ),
+        "route_type": (
+            "direct_cross_exchange"
+        ),
+        "transfer_asset": "COTI",
+        "pre_transfer_amount": 25.0,
+        "transfer_amount": 0.0,
+        "executable": False,
+        "reason": (
+            "network_identity_unverified"
+        ),
+    }
+
+    result = valuation.evaluate(
+        candidate=candidate,
+        starting_usdt_value=100.0,
+        destination_fee_rate=0.002,
+        max_slippage_percent=0.5,
+    )
+
+    assert result["executable"] is False
+    assert result["reason"] == (
+        "network_identity_unverified"
+    )
+    assert result["valuation_only"] is True
+    assert (
+        result["paper_market_value_available"]
+        is False
+    )
+    assert (
+        "ValueError"
+        in result["destination_error"]
+    )
+    assert result["paper_only"] is True
+    assert (
+        result["live_order_submitted"]
+        is False
+    )

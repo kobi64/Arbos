@@ -75,20 +75,37 @@ class CrossExchangeRouteValuation:
                 ],
             }
 
-            scanned = (
-                self._destination_scanner.scan_route(
-                    route=route,
-                    starting_value=(
-                        pre_transfer_amount
-                    ),
-                    fee_rate=(
-                        destination_fee_rate
-                    ),
-                    max_slippage_percent=(
-                        max_slippage_percent
-                    ),
+            try:
+                scanned = (
+                    self._destination_scanner.scan_route(
+                        route=route,
+                        starting_value=(
+                            pre_transfer_amount
+                        ),
+                        fee_rate=(
+                            destination_fee_rate
+                        ),
+                        max_slippage_percent=(
+                            max_slippage_percent
+                        ),
+                    )
                 )
-            )
+            except Exception as exc:
+                return {
+                    **candidate,
+                    "executable": False,
+                    "reason": candidate.get(
+                        "reason",
+                        "candidate_not_executable",
+                    ),
+                    "valuation_only": True,
+                    "paper_market_value_available": False,
+                    "destination_error": (
+                        f"{type(exc).__name__}: {exc}"
+                    ),
+                    "paper_only": True,
+                    "live_order_submitted": False,
+                }
 
             if scanned.get("filled") is not True:
                 return {
@@ -170,12 +187,31 @@ class CrossExchangeRouteValuation:
             ],
         }
 
-        scanned = self._destination_scanner.scan_route(
-            route=route,
-            starting_value=transfer_amount,
-            fee_rate=destination_fee_rate,
-            max_slippage_percent=max_slippage_percent,
-        )
+        try:
+            scanned = (
+                self._destination_scanner.scan_route(
+                    route=route,
+                    starting_value=transfer_amount,
+                    fee_rate=destination_fee_rate,
+                    max_slippage_percent=(
+                        max_slippage_percent
+                    ),
+                )
+            )
+        except Exception as exc:
+            return {
+                **candidate,
+                "executable": False,
+                "reason": (
+                    "destination_market_unavailable"
+                ),
+                "destination_result": None,
+                "destination_error": (
+                    f"{type(exc).__name__}: {exc}"
+                ),
+                "paper_only": True,
+                "live_order_submitted": False,
+            }
 
         if scanned.get("filled") is not True:
             return {
