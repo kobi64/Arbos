@@ -190,3 +190,102 @@ def test_profile_is_paper_safe():
     assert profile[
         "live_order_submitted"
     ] is False
+
+
+def test_profile_preserves_verified_capacity_metadata():
+    profiles = ExchangeSubscriptionCapacityProfiles()
+
+    profile = kucoin_profile()
+
+    profile[
+        "verified_capacity"
+    ] = {
+        "max_topics_per_connection": 400,
+        "max_topics_per_request": 100,
+        "client_messages_per_window": 100,
+        "client_message_window_seconds": 10,
+    }
+
+    profiles.register(profile)
+
+    result = profiles.get(
+        "kucoin"
+    )
+
+    assert result[
+        "verified_capacity"
+    ][
+        "max_topics_per_connection"
+    ] == 400
+
+    assert result[
+        "verified_capacity"
+    ][
+        "max_topics_per_request"
+    ] == 100
+
+
+def test_profile_preserves_provenance_metadata():
+    profiles = ExchangeSubscriptionCapacityProfiles()
+
+    profile = kucoin_profile()
+
+    profile[
+        "provenance"
+    ] = {
+        "source_type": "official_exchange_documentation",
+        "verified": True,
+        "verified_date": "2026-08-12",
+    }
+
+    profiles.register(profile)
+
+    result = profiles.get(
+        "kucoin"
+    )
+
+    assert result[
+        "provenance"
+    ][
+        "source_type"
+    ] == "official_exchange_documentation"
+
+    assert result[
+        "provenance"
+    ][
+        "verified"
+    ] is True
+
+
+def test_verified_metadata_remains_copy_safe():
+    profiles = ExchangeSubscriptionCapacityProfiles()
+
+    profile = kucoin_profile()
+
+    profile[
+        "verified_capacity"
+    ] = {
+        "max_topics_per_connection": 400,
+    }
+
+    profiles.register(profile)
+
+    first = profiles.get(
+        "kucoin"
+    )
+
+    first[
+        "verified_capacity"
+    ][
+        "max_topics_per_connection"
+    ] = 999
+
+    second = profiles.get(
+        "kucoin"
+    )
+
+    assert second[
+        "verified_capacity"
+    ][
+        "max_topics_per_connection"
+    ] == 400
