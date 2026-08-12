@@ -281,3 +281,107 @@ def test_positive_queue_size_is_required():
         LiveMarketRouteWorkQueue(
             max_queue_size=0
         )
+
+
+import threading
+
+
+def test_concurrent_enqueue_keeps_one_latest_item_per_route():
+    queue = LiveMarketRouteWorkQueue(
+        max_queue_size=100
+    )
+
+    barrier = threading.Barrier(20)
+
+    def producer(sequence):
+        barrier.wait()
+
+        queue.enqueue({
+            "request_id": (
+                f"REQ-R1-{sequence}"
+            ),
+            "route_id": "R1",
+            "exchange_id": "kucoin",
+            "symbol": "BTC/USDT",
+            "sequence": sequence,
+            "priority": float(sequence),
+        })
+
+    threads = [
+        threading.Thread(
+            target=producer,
+            args=(sequence,),
+        )
+        for sequence in range(
+            100,
+            120,
+        )
+    ]
+
+    for thread in threads:
+        thread.start()
+
+    for thread in threads:
+        thread.join()
+
+    assert queue.pending_count() == 1
+
+    item = queue.dequeue()
+
+    assert item["route_id"] == "R1"
+    assert item["sequence"] == 119
+
+
+def test_concurrent_dequeue_returns_each_route_at_most_once():
+    queue = LiveMarketRouteWorkQueue(
+        max_queue_size=100
+    )
+
+    route_count = 20
+
+    for index in range(route_count):
+        queue.enqueue({
+            "request_id": (
+                f"REQ-R{index}"
+            ),
+            "route_id": (
+                f"R{index}"
+            ),
+            "sequence": 1,
+            "priority": 1.0,
+        })
+
+    results = []
+    results_lock = threading.Lock()
+
+    def consumer():
+        item = queue.dequeue()
+
+        if item is not None:
+            with results_lock:
+                results.append(
+                    item["route_id"]
+                )
+
+    threads = [
+        threading.Thread(
+            target=consumer
+        )
+        for _ in range(
+            route_count
+        )
+    ]
+
+    for thread in threads:
+        thread.start()
+
+    for thread in threads:
+        thread.join()
+
+    assert len(results) == route_count
+
+    assert len(
+        set(results)
+    ) == route_count
+
+    assert queue.pending_count() == 0
