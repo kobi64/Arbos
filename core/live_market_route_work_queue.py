@@ -16,6 +16,7 @@ No live orders.
 """
 
 import heapq
+import threading
 
 
 class LiveMarketRouteWorkQueue:
@@ -35,8 +36,18 @@ class LiveMarketRouteWorkQueue:
         self._heap = []
         self._active = {}
         self._sequence = 0
+        self._lock = threading.RLock()
 
     def enqueue(
+        self,
+        request,
+    ):
+        with self._lock:
+            return self._enqueue_locked(
+                request
+            )
+
+    def _enqueue_locked(
         self,
         request,
     ):
@@ -157,6 +168,12 @@ class LiveMarketRouteWorkQueue:
     def dequeue(
         self,
     ):
+        with self._lock:
+            return self._dequeue_locked()
+
+    def _dequeue_locked(
+        self,
+    ):
         while self._heap:
             (
                 _,
@@ -198,6 +215,7 @@ class LiveMarketRouteWorkQueue:
     def pending_count(
         self,
     ):
-        return len(
-            self._active
-        )
+        with self._lock:
+            return len(
+                self._active
+            )
