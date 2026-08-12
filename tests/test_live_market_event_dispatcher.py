@@ -251,3 +251,82 @@ def test_dispatcher_is_paper_safe_metadata_only():
     assert queue.items[0][
         "live_order_submitted"
     ] is False
+
+
+from core.route_dependency_registry import (
+    RouteDependencyRegistry,
+)
+
+
+def test_dispatcher_can_use_central_route_registry():
+    queue = FakeWorkQueue()
+
+    registry = RouteDependencyRegistry()
+
+    registry.register({
+        "route_id": "R-ETH-BTC",
+        "exchange_id": "kucoin",
+        "starting_value": 100.0,
+        "fee_rate": 0.001,
+        "max_slippage_percent": 0.5,
+        "legs": [
+            {
+                "symbol": "ETH/USDT",
+                "side": "buy",
+            },
+            {
+                "symbol": "ETH/BTC",
+                "side": "sell",
+            },
+            {
+                "symbol": "BTC/USDT",
+                "side": "sell",
+            },
+        ],
+    })
+
+    dispatcher = LiveMarketEventDispatcher(
+        work_queue=queue,
+        route_registry=registry,
+    )
+
+    result = dispatcher.dispatch({
+        "exchange_id": "kucoin",
+        "symbol": "BTC/USDT",
+        "sequence": 500,
+        "priority": 5.0,
+    })
+
+    assert result[
+        "affected_route_ids"
+    ] == [
+        "R-ETH-BTC",
+    ]
+
+    assert queue.items[0][
+        "route_id"
+    ] == "R-ETH-BTC"
+
+
+def test_dispatcher_registry_and_legacy_registration_are_not_mixed():
+    queue = FakeWorkQueue()
+
+    registry = RouteDependencyRegistry()
+
+    dispatcher = LiveMarketEventDispatcher(
+        work_queue=queue,
+        route_registry=registry,
+    )
+
+    with pytest.raises(
+        ValueError,
+        match=(
+            "register routes through route_registry"
+        ),
+    ):
+        dispatcher.register_route(
+            route_id="R1",
+            markets=[
+                ("kucoin", "BTC/USDT"),
+            ],
+        )
