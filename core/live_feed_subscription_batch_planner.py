@@ -14,6 +14,29 @@ No live orders.
 
 
 class LiveFeedSubscriptionBatchPlanner:
+    @classmethod
+    def from_profile(
+        cls,
+        profile,
+    ):
+        if profile is None:
+            raise ValueError(
+                "profile is required"
+            )
+
+        return cls(
+            max_symbols_per_batch=(
+                profile.get(
+                    "max_symbols_per_batch"
+                )
+            ),
+            max_batches=(
+                profile.get(
+                    "max_batches"
+                )
+            ),
+        )
+
     def __init__(
         self,
         max_symbols_per_batch,
