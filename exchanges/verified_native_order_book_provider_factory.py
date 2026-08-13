@@ -1,6 +1,6 @@
 """
 ArbOS™
-EX-182 / EX-183
+EX-182 / EX-183 / EX-217
 Verified Native Order Book Provider Factory
 
 Selects the appropriate public order-book provider for an exchange.
@@ -28,12 +28,32 @@ from exchanges.verified_digifinex_order_book_provider import (
 from exchanges.verified_kucoin_order_book_provider import (
     VerifiedKuCoinOrderBookProvider,
 )
+from exchanges.weex_native_order_book_provider import (
+    WeexNativeOrderBookProvider,
+)
+from exchanges.weex_network_normalizer import (
+    WeexNetworkNormalizer,
+)
+from exchanges.weex_public_spot_client import (
+    WeexPublicSpotClient,
+)
+from exchanges.weex_verification_adapter import (
+    WeexVerificationAdapter,
+)
+from exchanges.weex_verification_provider import (
+    WeexVerificationProvider,
+)
 
 
 class VerifiedNativeOrderBookProviderFactory:
-    def __init__(self, registry=None):
+    def __init__(
+        self,
+        registry=None,
+    ):
         if registry is None:
-            registry = NativeFallbackExchangeRegistry()
+            registry = (
+                NativeFallbackExchangeRegistry()
+            )
 
             registry.register(
                 "digifinex",
@@ -53,11 +73,38 @@ class VerifiedNativeOrderBookProviderFactory:
                 ),
             )
 
+            registry.register(
+                "weex",
+                lambda exchange: (
+                    WeexNativeOrderBookProvider(
+                        provider=(
+                            WeexVerificationProvider(
+                                client=(
+                                    WeexPublicSpotClient()
+                                ),
+                                adapter=(
+                                    WeexVerificationAdapter(
+                                        network_normalizer=(
+                                            WeexNetworkNormalizer()
+                                        )
+                                    )
+                                ),
+                            )
+                        )
+                    )
+                ),
+            )
+
         self._registry = registry
 
-    def build(self, exchange):
+    def build(
+        self,
+        exchange,
+    ):
         if exchange is None:
-            raise ValueError("exchange is required")
+            raise ValueError(
+                "exchange is required"
+            )
 
         exchange_id = str(
             getattr(

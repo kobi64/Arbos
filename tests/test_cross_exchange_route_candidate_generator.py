@@ -172,3 +172,121 @@ def test_does_not_invent_bridge_without_quote():
     )
 
     assert candidates == []
+
+
+def test_direct_route_remains_visible_when_transfer_verification_unavailable():
+    generator = CrossExchangeRouteCandidateGenerator(
+        transfer_evaluator=FakeTransferEvaluator(),
+    )
+
+    candidates = generator.generate(
+        source_exchange="weex",
+        destination_exchange="gateio",
+        coin_asset="FIR",
+        coin_amount=100000.0,
+        source_networks={
+            "FIR": [],
+        },
+        destination_networks={
+            "FIR": [
+                {"asset": "FIR"},
+            ],
+        },
+        bridge_quotes={},
+        source_network_metadata={
+            "FIR": {
+                "network_metadata_available": False,
+                "network_metadata_reason": (
+                    "empty_network_list"
+                ),
+                "transfer_verification_available": False,
+            },
+        },
+        destination_network_metadata={
+            "FIR": {
+                "network_metadata_available": True,
+                "network_metadata_reason": None,
+                "transfer_verification_available": True,
+            },
+        },
+    )
+
+    assert len(candidates) == 1
+
+    candidate = candidates[0]
+
+    assert candidate[
+        "route_type"
+    ] == "direct_cross_exchange"
+
+    assert candidate[
+        "executable"
+    ] is False
+
+    assert candidate[
+        "reason"
+    ] == "transfer_verification_unavailable"
+
+    assert candidate[
+        "transfer_verification_available"
+    ] is False
+
+    assert candidate[
+        "source_network_metadata_reason"
+    ] == "empty_network_list"
+
+
+def test_verified_empty_networks_keep_no_compatible_network_semantics():
+    class NoNetworkEvaluator:
+        @staticmethod
+        def evaluate(
+            amount,
+            source_networks,
+            destination_networks,
+        ):
+            return {
+                "executable": False,
+                "network": None,
+                "withdraw_fee": 0.0,
+                "net_amount": 0.0,
+                "reason": "no_compatible_network",
+            }
+
+    generator = CrossExchangeRouteCandidateGenerator(
+        transfer_evaluator=NoNetworkEvaluator(),
+    )
+
+    candidates = generator.generate(
+        source_exchange="a",
+        destination_exchange="b",
+        coin_asset="COINX",
+        coin_amount=100.0,
+        source_networks={
+            "COINX": [
+                {"asset": "COINX"},
+            ],
+        },
+        destination_networks={
+            "COINX": [
+                {"asset": "COINX"},
+            ],
+        },
+        bridge_quotes={},
+        source_network_metadata={
+            "COINX": {
+                "network_metadata_available": True,
+                "transfer_verification_available": True,
+            },
+        },
+        destination_network_metadata={
+            "COINX": {
+                "network_metadata_available": True,
+                "transfer_verification_available": True,
+            },
+        },
+    )
+
+    assert len(candidates) == 1
+    assert candidates[0][
+        "reason"
+    ] == "no_compatible_network"
