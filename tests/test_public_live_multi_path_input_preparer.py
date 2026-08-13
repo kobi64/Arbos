@@ -306,3 +306,228 @@ def test_legacy_best_ask_source_buy_remains_supported():
         "source_buy_depth_aware",
         False,
     ) is False
+
+
+def test_weex_source_uses_network_metadata_factory():
+    from exchanges.network_metadata_adapter_factory import (
+        NetworkMetadataAdapterFactory,
+    )
+
+    class FakeNetworkAdapter:
+        def __init__(self):
+            self.calls = []
+
+        def get_networks(self, coin):
+            self.calls.append(coin)
+            return []
+
+    source_adapter = FakeNetworkAdapter()
+    destination_adapter = FakeNetworkAdapter()
+
+    class FakeFactory:
+        def __init__(self):
+            self.calls = []
+
+        def build(self, exchange):
+            self.calls.append(exchange)
+
+            if getattr(exchange, "id", "") == "weex":
+                return source_adapter
+
+            return destination_adapter
+
+    factory = FakeFactory()
+
+    source_exchange = type(
+        "WeexExchange",
+        (),
+        {"id": "weex"},
+    )()
+
+    destination_exchange = type(
+        "KuCoinExchange",
+        (),
+        {"id": "kucoin"},
+    )()
+
+    preparer = PublicLiveMultiPathInputPreparer(
+        source_exchange=source_exchange,
+        destination_exchange=destination_exchange,
+        network_metadata_adapter_factory=factory,
+    )
+
+    assert preparer._network_metadata_adapter_factory is factory
+
+
+def test_network_metadata_factory_defaults_when_not_supplied():
+    preparer = PublicLiveMultiPathInputPreparer(
+        source_exchange=object(),
+        destination_exchange=object(),
+    )
+
+    assert (
+        preparer._network_metadata_adapter_factory
+        is not None
+    )
+
+
+
+
+
+
+def test_preparer_preserves_network_metadata_status():
+    class MetadataAwareAdapter:
+        def __init__(
+            self,
+            available,
+            reason=None,
+        ):
+            self.available = available
+            self.reason = reason
+
+        def get_networks(
+            self,
+            coin,
+        ):
+            return []
+
+        def describe_networks(
+            self,
+            coin,
+        ):
+            return {
+                "coin": coin,
+                "available": True,
+                "network_metadata_available": (
+                    self.available
+                ),
+                "network_metadata_reason": (
+                    self.reason
+                ),
+                "transfer_verification_available": (
+                    self.available
+                ),
+                "networks": [],
+                "paper_only": True,
+                "live_order_submitted": False,
+            }
+
+    source_adapter = MetadataAwareAdapter(
+        available=False,
+        reason="empty_network_list",
+    )
+
+    destination_adapter = MetadataAwareAdapter(
+        available=True,
+    )
+
+    class FakeFactory:
+        def build(
+            self,
+            exchange,
+        ):
+            if getattr(
+                exchange,
+                "destination",
+                False,
+            ):
+                return destination_adapter
+
+            return source_adapter
+
+    source_exchange = FakeExchange()
+    destination_exchange = FakeExchange(
+        destination=True
+    )
+
+    preparer = PublicLiveMultiPathInputPreparer(
+        source_exchange=source_exchange,
+        destination_exchange=destination_exchange,
+        network_metadata_adapter_factory=(
+            FakeFactory()
+        ),
+    )
+
+    result = preparer.prepare(
+        source_exchange_id="weex",
+        destination_exchange_id="gateio",
+        coin_asset="COINX",
+        starting_usdt_value=100.0,
+        source_fee_rate=0.001,
+    )
+
+    source_status = result[
+        "source_network_metadata"
+    ]["COINX"]
+
+    destination_status = result[
+        "destination_network_metadata"
+    ]["COINX"]
+
+    assert source_status[
+        "network_metadata_available"
+    ] is False
+
+    assert source_status[
+        "network_metadata_reason"
+    ] == "empty_network_list"
+
+    assert source_status[
+        "transfer_verification_available"
+    ] is False
+
+    assert destination_status[
+        "network_metadata_available"
+    ] is True
+
+
+def test_legacy_network_adapter_gets_safe_metadata_status():
+    class LegacyAdapter:
+        def get_networks(
+            self,
+            coin,
+        ):
+            return []
+
+    class LegacyFactory:
+        def build(
+            self,
+            exchange,
+        ):
+            return LegacyAdapter()
+
+    preparer = PublicLiveMultiPathInputPreparer(
+        source_exchange=FakeExchange(),
+        destination_exchange=FakeExchange(
+            destination=True
+        ),
+        network_metadata_adapter_factory=(
+            LegacyFactory()
+        ),
+    )
+
+    result = preparer.prepare(
+        source_exchange_id="source",
+        destination_exchange_id="destination",
+        coin_asset="COINX",
+        starting_usdt_value=100.0,
+        source_fee_rate=0.001,
+    )
+
+    assert (
+        result[
+            "source_network_metadata"
+        ]["COINX"][
+            "transfer_verification_available"
+        ]
+        is False
+    )
+
+    assert (
+        result[
+            "source_network_metadata"
+        ]["COINX"][
+            "network_metadata_reason"
+        ]
+        == "network_metadata_unavailable"
+    )

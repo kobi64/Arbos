@@ -142,3 +142,89 @@ def test_builds_kucoin_verified_provider():
         provider,
         VerifiedKuCoinOrderBookProvider,
     )
+
+
+def test_builds_weex_native_provider():
+    from exchanges.weex_native_order_book_provider import (
+        WeexNativeOrderBookProvider,
+    )
+    from exchanges.native_fallback_exchange_registry import (
+        NativeFallbackExchangeRegistry,
+    )
+
+    class WeexExchange:
+        id = "weex"
+
+    class FakeWeexBackend:
+        def get_order_book(
+            self,
+            symbol,
+            limit=200,
+        ):
+            return {
+                "exchange": "weex",
+                "available": True,
+                "symbol": symbol,
+                "best_bid": 1.0,
+                "best_ask": 1.01,
+                "bids": [
+                    {
+                        "price": 1.0,
+                        "quantity": 10.0,
+                    },
+                ],
+                "asks": [
+                    {
+                        "price": 1.01,
+                        "quantity": 10.0,
+                    },
+                ],
+                "paper_only": True,
+                "live_order_submitted": False,
+            }
+
+    registry = NativeFallbackExchangeRegistry()
+
+    registry.register(
+        "weex",
+        lambda exchange: (
+            WeexNativeOrderBookProvider(
+                provider=FakeWeexBackend()
+            )
+        ),
+    )
+
+    provider = (
+        VerifiedNativeOrderBookProviderFactory(
+            registry=registry
+        )
+        .build(
+            WeexExchange()
+        )
+    )
+
+    assert isinstance(
+        provider,
+        WeexNativeOrderBookProvider,
+    )
+
+
+def test_default_factory_builds_weex_provider():
+    from exchanges.weex_native_order_book_provider import (
+        WeexNativeOrderBookProvider,
+    )
+
+    class WeexExchange:
+        id = "weex"
+
+    provider = (
+        VerifiedNativeOrderBookProviderFactory()
+        .build(
+            WeexExchange()
+        )
+    )
+
+    assert isinstance(
+        provider,
+        WeexNativeOrderBookProvider,
+    )

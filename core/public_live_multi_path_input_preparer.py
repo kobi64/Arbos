@@ -13,6 +13,9 @@ from core.order_book_spot_conversion_quote_provider import (
 from exchanges.ccxt_network_metadata_adapter import (
     CCXTNetworkMetadataAdapter,
 )
+from exchanges.network_metadata_adapter_factory import (
+    NetworkMetadataAdapterFactory,
+)
 from exchanges.ccxt_network_identity_metadata_adapter import (
     CCXTNetworkIdentityMetadataAdapter,
 )
@@ -30,10 +33,95 @@ class PublicLiveMultiPathInputPreparer:
         source_exchange,
         destination_exchange,
         source_buy_quote=None,
+        network_metadata_adapter_factory=None,
     ):
         self._source_exchange = source_exchange
         self._destination_exchange = destination_exchange
         self._source_buy_quote = source_buy_quote
+
+        if network_metadata_adapter_factory is None:
+            network_metadata_adapter_factory = (
+                NetworkMetadataAdapterFactory()
+            )
+
+        self._network_metadata_adapter_factory = (
+            network_metadata_adapter_factory
+        )
+
+    @staticmethod
+    def _describe_network_metadata(
+        adapter,
+        coin,
+        networks,
+    ):
+        describe = getattr(
+            adapter,
+            "describe_networks",
+            None,
+        )
+
+        if callable(describe):
+            result = dict(
+                describe(
+                    coin
+                )
+            )
+
+            result.setdefault(
+                "networks",
+                networks,
+            )
+
+            result.setdefault(
+                "network_metadata_available",
+                bool(networks),
+            )
+
+            result.setdefault(
+                "transfer_verification_available",
+                bool(
+                    result.get(
+                        "network_metadata_available"
+                    )
+                ),
+            )
+
+            result.setdefault(
+                "network_metadata_reason",
+                (
+                    None
+                    if result.get(
+                        "network_metadata_available"
+                    )
+                    else "network_metadata_unavailable"
+                ),
+            )
+
+            return result
+
+        available = bool(
+            networks
+        )
+
+        return {
+            "coin": str(
+                coin
+            ).strip().upper(),
+            "network_metadata_available": (
+                available
+            ),
+            "network_metadata_reason": (
+                None
+                if available
+                else "network_metadata_unavailable"
+            ),
+            "transfer_verification_available": (
+                available
+            ),
+            "networks": networks,
+            "paper_only": True,
+            "live_order_submitted": False,
+        }
 
     def prepare(
         self,
@@ -150,13 +238,13 @@ class PublicLiveMultiPathInputPreparer:
             )
 
         source_network_adapter = (
-            CCXTNetworkMetadataAdapter(
+            self._network_metadata_adapter_factory.build(
                 self._source_exchange
             )
         )
 
         destination_network_adapter = (
-            CCXTNetworkMetadataAdapter(
+            self._network_metadata_adapter_factory.build(
                 self._destination_exchange
             )
         )
@@ -185,6 +273,54 @@ class PublicLiveMultiPathInputPreparer:
             coin_asset: (
                 destination_network_adapter.get_networks(
                     coin_asset
+                )
+            )
+        }
+
+        source_network_metadata = {
+            coin_asset: (
+                self._describe_network_metadata(
+                    source_network_adapter,
+                    coin_asset,
+                    source_networks[
+                        coin_asset
+                    ],
+                )
+            )
+        }
+
+        destination_network_metadata = {
+            coin_asset: (
+                self._describe_network_metadata(
+                    destination_network_adapter,
+                    coin_asset,
+                    destination_networks[
+                        coin_asset
+                    ],
+                )
+            )
+        }
+
+        source_network_metadata = {
+            coin_asset: (
+                self._describe_network_metadata(
+                    source_network_adapter,
+                    coin_asset,
+                    source_networks[
+                        coin_asset
+                    ],
+                )
+            )
+        }
+
+        destination_network_metadata = {
+            coin_asset: (
+                self._describe_network_metadata(
+                    destination_network_adapter,
+                    coin_asset,
+                    destination_networks[
+                        coin_asset
+                    ],
                 )
             )
         }
@@ -278,6 +414,54 @@ class PublicLiveMultiPathInputPreparer:
                 )
             )
 
+            source_network_metadata[
+                bridge_asset
+            ] = (
+                self._describe_network_metadata(
+                    source_network_adapter,
+                    bridge_asset,
+                    source_networks[
+                        bridge_asset
+                    ],
+                )
+            )
+
+            destination_network_metadata[
+                bridge_asset
+            ] = (
+                self._describe_network_metadata(
+                    destination_network_adapter,
+                    bridge_asset,
+                    destination_networks[
+                        bridge_asset
+                    ],
+                )
+            )
+
+            source_network_metadata[
+                bridge_asset
+            ] = (
+                self._describe_network_metadata(
+                    source_network_adapter,
+                    bridge_asset,
+                    source_networks[
+                        bridge_asset
+                    ],
+                )
+            )
+
+            destination_network_metadata[
+                bridge_asset
+            ] = (
+                self._describe_network_metadata(
+                    destination_network_adapter,
+                    bridge_asset,
+                    destination_networks[
+                        bridge_asset
+                    ],
+                )
+            )
+
             source_network_identity_records[
                 bridge_asset
             ] = (
@@ -335,6 +519,18 @@ class PublicLiveMultiPathInputPreparer:
             "source_networks": source_networks,
             "destination_networks": (
                 destination_networks
+            ),
+            "source_network_metadata": (
+                source_network_metadata
+            ),
+            "destination_network_metadata": (
+                destination_network_metadata
+            ),
+            "source_network_metadata": (
+                source_network_metadata
+            ),
+            "destination_network_metadata": (
+                destination_network_metadata
             ),
             "source_network_identity_records": (
                 source_network_identity_records

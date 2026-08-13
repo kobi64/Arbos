@@ -51,6 +51,8 @@ class CrossExchangeRouteCandidateGenerator:
         bridge_quotes,
         source_network_identity_records=None,
         destination_network_identity_records=None,
+        source_network_metadata=None,
+        destination_network_metadata=None,
     ):
         candidates = []
 
@@ -68,6 +70,16 @@ class CrossExchangeRouteCandidateGenerator:
             or {}
         )
 
+        source_network_metadata = (
+            source_network_metadata
+            or {}
+        )
+
+        destination_network_metadata = (
+            destination_network_metadata
+            or {}
+        )
+
         direct_source = source_networks.get(
             coin_asset,
             [],
@@ -80,7 +92,85 @@ class CrossExchangeRouteCandidateGenerator:
             )
         )
 
-        if direct_source and direct_destination:
+        source_direct_metadata = (
+            source_network_metadata.get(
+                coin_asset,
+                {},
+            )
+            or {}
+        )
+
+        destination_direct_metadata = (
+            destination_network_metadata.get(
+                coin_asset,
+                {},
+            )
+            or {}
+        )
+
+        source_transfer_available = (
+            source_direct_metadata.get(
+                "transfer_verification_available"
+            )
+        )
+
+        destination_transfer_available = (
+            destination_direct_metadata.get(
+                "transfer_verification_available"
+            )
+        )
+
+        transfer_verification_unavailable = (
+            source_transfer_available is False
+            or destination_transfer_available is False
+        )
+
+        if transfer_verification_unavailable:
+            candidates.append({
+                "route_id": (
+                    f"DIRECT-{source_exchange}-"
+                    f"{coin_asset}-{destination_exchange}"
+                ),
+                "route_type": (
+                    "direct_cross_exchange"
+                ),
+                "source_exchange": source_exchange,
+                "destination_exchange": (
+                    destination_exchange
+                ),
+                "coin_asset": coin_asset,
+                "transfer_asset": coin_asset,
+                "conversion_asset": None,
+                "conversion_method": None,
+                "network": None,
+                "withdraw_fee": 0.0,
+                "transfer_amount": 0.0,
+                "pre_transfer_amount": float(
+                    coin_amount
+                ),
+                "executable": False,
+                "reason": (
+                    "transfer_verification_unavailable"
+                ),
+                "transfer_verification_available": False,
+                "source_network_metadata_reason": (
+                    source_direct_metadata.get(
+                        "network_metadata_reason"
+                    )
+                ),
+                "destination_network_metadata_reason": (
+                    destination_direct_metadata.get(
+                        "network_metadata_reason"
+                    )
+                ),
+                "network_identity": None,
+                "source_network": None,
+                "destination_network": None,
+                "legacy_reason": None,
+                "network_identity_result": None,
+            })
+
+        elif direct_source and direct_destination:
             direct = self._transfer_evaluator.evaluate(
                 amount=coin_amount,
                 source_networks=direct_source,

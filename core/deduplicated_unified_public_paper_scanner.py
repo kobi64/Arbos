@@ -379,6 +379,18 @@ class DeduplicatedUnifiedPublicPaperScanner:
                                         "destination_networks"
                                     ]
                                 ),
+                                "source_network_metadata": (
+                                    prepared.get(
+                                        "source_network_metadata",
+                                        {},
+                                    )
+                                ),
+                                "destination_network_metadata": (
+                                    prepared.get(
+                                        "destination_network_metadata",
+                                        {},
+                                    )
+                                ),
                                 "bridge_quotes": (
                                     prepared[
                                         "bridge_quotes"
