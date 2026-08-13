@@ -241,3 +241,99 @@ def test_adapter_is_paper_safe():
     assert result[
         "live_order_submitted"
     ] is False
+
+
+def real_live_sharpe_row():
+    return {
+        "rank": 1,
+        "coin": "ARB",
+        "buyExchange": "HTX",
+        "sellExchange": "KuCoin",
+        "buyAsk": 0.0752,
+        "sellBid": 0.0754,
+        "grossSpreadPct": 0.265957,
+        "network": "Arbitrum",
+        "contractAddress": (
+            "0x912ce59144191c1204e64559fe8253a0e49e6548"
+        ),
+        "withdrawFee": 0.4784,
+        "depositStatus": "Open",
+        "withdrawStatus": "Open",
+        "transferEta": "1900 confs",
+        "depthUsd": 4632.83,
+        "slippagePct": 0,
+        "netProfitPct": 0.05368,
+        "spreadLifetimeSeconds": 0,
+        "updatedAt": "2026-08-13T14:23:57.841Z",
+        "isStale": False,
+    }
+
+
+def test_adapter_accepts_real_live_coin_field():
+    adapter = SharpeSpotTransferAdapter()
+
+    result = adapter.adapt(
+        real_live_sharpe_row(),
+        observed_at=1000.0,
+    )
+
+    assert result["coin"] == "ARB"
+    assert result["buy_exchange"] == "htx"
+    assert result["sell_exchange"] == "kucoin"
+
+
+def test_real_live_withdraw_fee_field_is_preserved():
+    adapter = SharpeSpotTransferAdapter()
+
+    result = adapter.adapt(
+        real_live_sharpe_row(),
+        observed_at=1000.0,
+    )
+
+    assert result[
+        "reported_withdrawal_fee"
+    ] == 0.4784
+
+
+def test_real_live_transfer_status_is_preserved():
+    adapter = SharpeSpotTransferAdapter()
+
+    result = adapter.adapt(
+        real_live_sharpe_row(),
+        observed_at=1000.0,
+    )
+
+    assert result[
+        "reported_deposit_status"
+    ] == "Open"
+
+    assert result[
+        "reported_withdraw_status"
+    ] == "Open"
+
+    assert result[
+        "reported_transfer_eta"
+    ] == "1900 confs"
+
+
+def test_real_live_contract_and_freshness_are_preserved():
+    adapter = SharpeSpotTransferAdapter()
+
+    result = adapter.adapt(
+        real_live_sharpe_row(),
+        observed_at=1000.0,
+    )
+
+    assert result[
+        "reported_contract_address"
+    ] == (
+        "0x912ce59144191c1204e64559fe8253a0e49e6548"
+    )
+
+    assert result[
+        "reported_spread_lifetime_seconds"
+    ] == 0
+
+    assert result[
+        "reported_is_stale"
+    ] is False

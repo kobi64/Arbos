@@ -92,6 +92,11 @@ class ExternalArbitrageSignalNormalizer:
                 "sell_exchange is required"
             )
 
+        if buy_exchange == sell_exchange:
+            raise ValueError(
+                "buy and sell exchanges must be distinct"
+            )
+
         buy_price = signal.get(
             "buy_price"
         )

@@ -307,3 +307,250 @@ def test_coordinator_is_paper_safe():
     assert result[
         "live_order_submitted"
     ] is False
+
+
+def test_malformed_sharpe_row_does_not_fail_entire_source():
+    class MixedClient:
+        def fetch(
+            self,
+            notional_usd=300.0,
+            limit=10,
+        ):
+            return {
+                "fetch_complete": True,
+                "kind": "cex-spot-transfer",
+                "results": [
+                    {
+                        "unexpectedCoinField": "COTI",
+                        "buyExchange": "KuCoin",
+                        "sellExchange": "Bitget",
+                    },
+                    {
+                        "symbol": "COTI",
+                        "buyExchange": "KuCoin",
+                        "sellExchange": "Bitget",
+                        "buyAsk": 0.0100,
+                        "sellBid": 0.0112,
+                        "netProfitPct": 10.5,
+                    },
+                ],
+            }
+
+    class SelectiveAdapter(FakeAdapter):
+        def adapt(
+            self,
+            row,
+            observed_at,
+        ):
+            if "symbol" not in row:
+                raise ValueError(
+                    "symbol is required"
+                )
+
+            return super().adapt(
+                row,
+                observed_at,
+            )
+
+    coordinator = (
+        SharpeExternalIntelligenceCoordinator(
+            client=MixedClient(),
+            adapter=SelectiveAdapter(),
+            normalizer=FakeNormalizer(),
+            intake=FakeIntake(),
+            correlator=FakeCorrelator(),
+            tracker=FakeTracker(),
+            clock=lambda: 1000.0,
+        )
+    )
+
+    result = coordinator.run_once(
+        notional_usd=300.0,
+        limit=10,
+    )
+
+    assert result[
+        "fetch_complete"
+    ] is True
+
+    assert result[
+        "candidate_count"
+    ] == 1
+
+    assert result[
+        "rejected_row_count"
+    ] == 1
+
+
+def test_rejected_sharpe_row_reason_is_preserved():
+    class BadClient:
+        def fetch(
+            self,
+            notional_usd=300.0,
+            limit=10,
+        ):
+            return {
+                "fetch_complete": True,
+                "kind": "cex-spot-transfer",
+                "results": [
+                    {
+                        "coinCode": "COTI",
+                    },
+                ],
+            }
+
+    class RejectingAdapter:
+        def adapt(
+            self,
+            row,
+            observed_at,
+        ):
+            raise ValueError(
+                "symbol is required"
+            )
+
+    coordinator = (
+        SharpeExternalIntelligenceCoordinator(
+            client=BadClient(),
+            adapter=RejectingAdapter(),
+            normalizer=FakeNormalizer(),
+            intake=FakeIntake(),
+            correlator=FakeCorrelator(),
+            tracker=FakeTracker(),
+            clock=lambda: 1000.0,
+        )
+    )
+
+    result = coordinator.run_once(
+        notional_usd=300.0,
+        limit=10,
+    )
+
+    assert result[
+        "fetch_complete"
+    ] is True
+
+    assert result[
+        "candidate_count"
+    ] == 0
+
+    assert result[
+        "rejected_row_count"
+    ] == 1
+
+    rejection = result[
+        "rejected_rows"
+    ][0]
+
+    assert rejection[
+        "reason"
+    ] == "row_processing_failed"
+
+    assert (
+        "symbol is required"
+        in rejection["error"]
+    )
+
+
+def test_rejected_sharpe_row_never_becomes_candidate():
+    class BadClient:
+        def fetch(
+            self,
+            notional_usd=300.0,
+            limit=10,
+        ):
+            return {
+                "fetch_complete": True,
+                "kind": "cex-spot-transfer",
+                "results": [
+                    {
+                        "unknown": "schema",
+                    },
+                ],
+            }
+
+    class RejectingAdapter:
+        def adapt(
+            self,
+            row,
+            observed_at,
+        ):
+            raise ValueError(
+                "unrecognized Sharpe row"
+            )
+
+    coordinator = (
+        SharpeExternalIntelligenceCoordinator(
+            client=BadClient(),
+            adapter=RejectingAdapter(),
+            normalizer=FakeNormalizer(),
+            intake=FakeIntake(),
+            correlator=FakeCorrelator(),
+            tracker=FakeTracker(),
+            clock=lambda: 1000.0,
+        )
+    )
+
+    result = coordinator.run_once(
+        notional_usd=300.0,
+        limit=10,
+    )
+
+    assert result[
+        "candidate_count"
+    ] == 0
+
+    assert result[
+        "candidates"
+    ] == []
+
+
+def test_rejected_row_reporting_is_paper_safe():
+    class BadClient:
+        def fetch(
+            self,
+            notional_usd=300.0,
+            limit=10,
+        ):
+            return {
+                "fetch_complete": True,
+                "kind": "cex-spot-transfer",
+                "results": [
+                    {"bad": "row"},
+                ],
+            }
+
+    class RejectingAdapter:
+        def adapt(
+            self,
+            row,
+            observed_at,
+        ):
+            raise ValueError(
+                "bad schema"
+            )
+
+    coordinator = (
+        SharpeExternalIntelligenceCoordinator(
+            client=BadClient(),
+            adapter=RejectingAdapter(),
+            normalizer=FakeNormalizer(),
+            intake=FakeIntake(),
+            correlator=FakeCorrelator(),
+            tracker=FakeTracker(),
+            clock=lambda: 1000.0,
+        )
+    )
+
+    result = coordinator.run_once(
+        notional_usd=300.0,
+        limit=10,
+    )
+
+    assert result[
+        "paper_only"
+    ] is True
+
+    assert result[
+        "live_order_submitted"
+    ] is False

@@ -224,3 +224,30 @@ def test_normalizer_is_paper_safe():
     assert result[
         "live_order_submitted"
     ] is False
+
+
+def test_same_exchange_cross_exchange_signal_is_rejected():
+    normalizer = ExternalArbitrageSignalNormalizer()
+
+    signal = {
+        "signal_id": "EXT-1",
+        "coin": "SIREN",
+        "buy_exchange": "ourbit",
+        "sell_exchange": "ourbit",
+        "buy_price": 0.03,
+        "sell_price": 0.04,
+        "spread_percent": 20.0,
+        "status": "reported",
+        "arbos_verified": False,
+        "executable": False,
+        "verification_required": True,
+    }
+
+    with pytest.raises(
+        ValueError,
+        match="buy and sell exchanges must be distinct",
+    ):
+        normalizer.normalize(
+            source="finder",
+            signal=signal,
+        )
