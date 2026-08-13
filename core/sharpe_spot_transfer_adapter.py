@@ -36,7 +36,10 @@ class SharpeSpotTransferAdapter:
         symbol = str(
             row.get(
                 "symbol",
-                "",
+                row.get(
+                    "coin",
+                    "",
+                ),
             )
             or ""
         ).strip().upper()
@@ -201,11 +204,17 @@ class SharpeSpotTransferAdapter:
             "reported_withdrawal_fee": (
                 float(
                     row.get(
-                        "withdrawalFee"
+                        "withdrawalFee",
+                        row.get(
+                            "withdrawFee"
+                        ),
                     )
                 )
                 if row.get(
-                    "withdrawalFee"
+                    "withdrawalFee",
+                    row.get(
+                        "withdrawFee"
+                    ),
                 )
                 is not None
                 else None
@@ -255,6 +264,33 @@ class SharpeSpotTransferAdapter:
                 row.get(
                     "sellDepositEnabled"
                 )
+            ),
+            "reported_deposit_status": row.get(
+                "depositStatus"
+            ),
+            "reported_withdraw_status": row.get(
+                "withdrawStatus"
+            ),
+            "reported_transfer_eta": row.get(
+                "transferEta"
+            ),
+            "reported_contract_address": row.get(
+                "contractAddress"
+            ),
+            "reported_spread_lifetime_seconds": (
+                float(
+                    row.get(
+                        "spreadLifetimeSeconds"
+                    )
+                )
+                if row.get(
+                    "spreadLifetimeSeconds"
+                )
+                is not None
+                else None
+            ),
+            "reported_is_stale": row.get(
+                "isStale"
             ),
             "source_updated_at": row.get(
                 "updatedAt"
