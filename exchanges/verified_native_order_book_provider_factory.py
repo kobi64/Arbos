@@ -54,6 +54,16 @@ from exchanges.poloniex_native_order_book_provider import (
     PoloniexNativeOrderBookProvider,
 )
 
+from exchanges.mexc_public_spot_client import (
+    MexcPublicSpotClient,
+)
+from exchanges.mexc_verification_adapter import (
+    MexcVerificationAdapter,
+)
+from exchanges.mexc_native_order_book_provider import (
+    MexcNativeOrderBookProvider,
+)
+
 
 class VerifiedNativeOrderBookProviderFactory:
     def __init__(
@@ -114,6 +124,20 @@ class VerifiedNativeOrderBookProviderFactory:
                         ),
                         adapter=(
                             PoloniexVerificationAdapter()
+                        ),
+                    )
+                ),
+            )
+
+            registry.register(
+                "mexc",
+                lambda exchange: (
+                    MexcNativeOrderBookProvider(
+                        client=(
+                            MexcPublicSpotClient()
+                        ),
+                        adapter=(
+                            MexcVerificationAdapter()
                         ),
                     )
                 ),
