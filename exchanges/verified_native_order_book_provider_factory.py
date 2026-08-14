@@ -44,6 +44,16 @@ from exchanges.weex_verification_provider import (
     WeexVerificationProvider,
 )
 
+from exchanges.poloniex_public_spot_client import (
+    PoloniexPublicSpotClient,
+)
+from exchanges.poloniex_verification_adapter import (
+    PoloniexVerificationAdapter,
+)
+from exchanges.poloniex_native_order_book_provider import (
+    PoloniexNativeOrderBookProvider,
+)
+
 
 class VerifiedNativeOrderBookProviderFactory:
     def __init__(
@@ -91,6 +101,20 @@ class VerifiedNativeOrderBookProviderFactory:
                                 ),
                             )
                         )
+                    )
+                ),
+            )
+
+            registry.register(
+                "poloniex",
+                lambda exchange: (
+                    PoloniexNativeOrderBookProvider(
+                        client=(
+                            PoloniexPublicSpotClient()
+                        ),
+                        adapter=(
+                            PoloniexVerificationAdapter()
+                        ),
                     )
                 ),
             )

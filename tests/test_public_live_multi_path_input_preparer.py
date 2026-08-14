@@ -531,3 +531,83 @@ def test_legacy_network_adapter_gets_safe_metadata_status():
         ]
         == "network_metadata_unavailable"
     )
+
+
+def test_poloniex_uses_network_identity_metadata_factory():
+    class FakeIdentityAdapter:
+        def get_records(
+            self,
+            coin,
+        ):
+            return []
+
+    source_adapter = FakeIdentityAdapter()
+    destination_adapter = FakeIdentityAdapter()
+
+    class FakeIdentityFactory:
+        def __init__(self):
+            self.calls = []
+
+        def build(
+            self,
+            exchange,
+        ):
+            self.calls.append(
+                exchange
+            )
+
+            if getattr(
+                exchange,
+                "id",
+                "",
+            ) == "poloniex":
+                return source_adapter
+
+            return destination_adapter
+
+    identity_factory = (
+        FakeIdentityFactory()
+    )
+
+    source_exchange = type(
+        "PoloniexExchange",
+        (),
+        {
+            "id": "poloniex",
+        },
+    )()
+
+    destination_exchange = type(
+        "GateExchange",
+        (),
+        {
+            "id": "gate",
+        },
+    )()
+
+    preparer = PublicLiveMultiPathInputPreparer(
+        source_exchange=source_exchange,
+        destination_exchange=destination_exchange,
+        network_identity_metadata_adapter_factory=(
+            identity_factory
+        ),
+    )
+
+    assert (
+        preparer
+        ._network_identity_metadata_adapter_factory
+        is identity_factory
+    )
+
+
+def test_network_identity_metadata_factory_defaults_when_not_supplied():
+    preparer = PublicLiveMultiPathInputPreparer(
+        source_exchange=object(),
+        destination_exchange=object(),
+    )
+
+    assert (
+        preparer
+        ._network_identity_metadata_adapter_factory
+        is not None
+    )
