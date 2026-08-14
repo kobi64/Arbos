@@ -123,3 +123,78 @@ def test_custom_poloniex_provider_factory_is_used():
     ]
 
     assert adapter._provider is marker
+
+
+def test_mexc_builds_native_identity_adapter():
+    from exchanges.mexc_network_identity_metadata_adapter import (
+        MexcNetworkIdentityMetadataAdapter,
+    )
+
+    class MexcExchange:
+        id = "mexc"
+
+    marker = object()
+
+    factory = NetworkIdentityMetadataAdapterFactory(
+        mexc_provider_factory=(
+            lambda exchange: marker
+        ),
+    )
+
+    adapter = factory.build(
+        MexcExchange()
+    )
+
+    assert isinstance(
+        adapter,
+        MexcNetworkIdentityMetadataAdapter,
+    )
+
+    assert adapter._provider is marker
+
+
+def test_mexc_exchange_id_is_normalized():
+    from exchanges.mexc_network_identity_metadata_adapter import (
+        MexcNetworkIdentityMetadataAdapter,
+    )
+
+    class MexcExchange:
+        id = " MEXC "
+
+    marker = object()
+
+    factory = NetworkIdentityMetadataAdapterFactory(
+        mexc_provider_factory=(
+            lambda exchange: marker
+        ),
+    )
+
+    adapter = factory.build(
+        MexcExchange()
+    )
+
+    assert isinstance(
+        adapter,
+        MexcNetworkIdentityMetadataAdapter,
+    )
+
+
+def test_default_factory_builds_mexc_identity_adapter():
+    from exchanges.mexc_network_identity_metadata_adapter import (
+        MexcNetworkIdentityMetadataAdapter,
+    )
+
+    class MexcExchange:
+        id = "mexc"
+
+    adapter = (
+        NetworkIdentityMetadataAdapterFactory()
+        .build(
+            MexcExchange()
+        )
+    )
+
+    assert isinstance(
+        adapter,
+        MexcNetworkIdentityMetadataAdapter,
+    )

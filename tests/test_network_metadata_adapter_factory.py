@@ -191,3 +191,78 @@ def test_default_factory_builds_poloniex_network_adapter():
         adapter,
         PoloniexNetworkMetadataAdapter,
     )
+
+
+def test_mexc_builds_native_network_adapter():
+    from exchanges.mexc_network_metadata_adapter import (
+        MexcNetworkMetadataAdapter,
+    )
+
+    class MexcExchange:
+        id = "mexc"
+
+    marker = object()
+
+    factory = NetworkMetadataAdapterFactory(
+        mexc_provider_factory=(
+            lambda exchange: marker
+        ),
+    )
+
+    adapter = factory.build(
+        MexcExchange()
+    )
+
+    assert isinstance(
+        adapter,
+        MexcNetworkMetadataAdapter,
+    )
+
+    assert adapter._provider is marker
+
+
+def test_mexc_exchange_id_is_normalized():
+    from exchanges.mexc_network_metadata_adapter import (
+        MexcNetworkMetadataAdapter,
+    )
+
+    class MexcExchange:
+        id = " MEXC "
+
+    marker = object()
+
+    factory = NetworkMetadataAdapterFactory(
+        mexc_provider_factory=(
+            lambda exchange: marker
+        ),
+    )
+
+    adapter = factory.build(
+        MexcExchange()
+    )
+
+    assert isinstance(
+        adapter,
+        MexcNetworkMetadataAdapter,
+    )
+
+
+def test_default_factory_builds_mexc_network_adapter():
+    from exchanges.mexc_network_metadata_adapter import (
+        MexcNetworkMetadataAdapter,
+    )
+
+    class MexcExchange:
+        id = "mexc"
+
+    adapter = (
+        NetworkMetadataAdapterFactory()
+        .build(
+            MexcExchange()
+        )
+    )
+
+    assert isinstance(
+        adapter,
+        MexcNetworkMetadataAdapter,
+    )

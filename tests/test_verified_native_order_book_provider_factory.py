@@ -270,3 +270,45 @@ def test_poloniex_exchange_id_is_normalized():
         provider,
         PoloniexNativeOrderBookProvider,
     )
+
+
+def test_builds_mexc_native_provider():
+    from exchanges.mexc_native_order_book_provider import (
+        MexcNativeOrderBookProvider,
+    )
+
+    class MexcExchange:
+        id = "mexc"
+
+    provider = (
+        VerifiedNativeOrderBookProviderFactory()
+        .build(
+            MexcExchange()
+        )
+    )
+
+    assert isinstance(
+        provider,
+        MexcNativeOrderBookProvider,
+    )
+
+
+def test_mexc_exchange_id_is_normalized():
+    from exchanges.mexc_native_order_book_provider import (
+        MexcNativeOrderBookProvider,
+    )
+
+    class MexcExchange:
+        id = " MEXC "
+
+    provider = (
+        VerifiedNativeOrderBookProviderFactory()
+        .build(
+            MexcExchange()
+        )
+    )
+
+    assert isinstance(
+        provider,
+        MexcNativeOrderBookProvider,
+    )

@@ -49,12 +49,26 @@ from exchanges.poloniex_verification_provider import (
     PoloniexVerificationProvider,
 )
 
+from exchanges.mexc_network_metadata_adapter import (
+    MexcNetworkMetadataAdapter,
+)
+from exchanges.mexc_wallet_metadata_client import (
+    MexcWalletMetadataClient,
+)
+from exchanges.mexc_network_normalizer import (
+    MexcNetworkNormalizer,
+)
+from exchanges.mexc_verification_provider import (
+    MexcVerificationProvider,
+)
+
 
 class NetworkMetadataAdapterFactory:
     def __init__(
         self,
         weex_provider_factory=None,
         poloniex_provider_factory=None,
+        mexc_provider_factory=None,
     ):
         if weex_provider_factory is None:
             weex_provider_factory = (
@@ -72,6 +86,15 @@ class NetworkMetadataAdapterFactory:
 
         self._poloniex_provider_factory = (
             poloniex_provider_factory
+        )
+
+        if mexc_provider_factory is None:
+            mexc_provider_factory = (
+                self._build_default_mexc_provider
+            )
+
+        self._mexc_provider_factory = (
+            mexc_provider_factory
         )
 
     def build(
@@ -118,6 +141,19 @@ class NetworkMetadataAdapterFactory:
                 )
             )
 
+        if exchange_id == "mexc":
+            provider = (
+                self._mexc_provider_factory(
+                    exchange
+                )
+            )
+
+            return (
+                MexcNetworkMetadataAdapter(
+                    provider=provider,
+                )
+            )
+
         return CCXTNetworkMetadataAdapter(
             exchange
         )
@@ -144,4 +180,16 @@ class NetworkMetadataAdapterFactory:
             normalizer=(
                 PoloniexNetworkNormalizer()
             ),
+        )
+
+    @staticmethod
+    def _build_default_mexc_provider(
+        exchange,
+    ):
+        return MexcVerificationProvider(
+            client=MexcWalletMetadataClient(
+                api_key=None,
+                api_secret=None,
+            ),
+            normalizer=MexcNetworkNormalizer(),
         )
