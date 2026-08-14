@@ -312,3 +312,45 @@ def test_mexc_exchange_id_is_normalized():
         provider,
         MexcNativeOrderBookProvider,
     )
+
+
+def test_builds_ourbit_native_provider():
+    from exchanges.ourbit_native_order_book_provider import (
+        OurbitNativeOrderBookProvider,
+    )
+
+    class OurbitExchange:
+        id = "ourbit"
+
+    provider = (
+        VerifiedNativeOrderBookProviderFactory()
+        .build(
+            OurbitExchange()
+        )
+    )
+
+    assert isinstance(
+        provider,
+        OurbitNativeOrderBookProvider,
+    )
+
+
+def test_ourbit_exchange_id_is_normalized():
+    from exchanges.ourbit_native_order_book_provider import (
+        OurbitNativeOrderBookProvider,
+    )
+
+    class OurbitExchange:
+        id = " OURBIT "
+
+    provider = (
+        VerifiedNativeOrderBookProviderFactory()
+        .build(
+            OurbitExchange()
+        )
+    )
+
+    assert isinstance(
+        provider,
+        OurbitNativeOrderBookProvider,
+    )

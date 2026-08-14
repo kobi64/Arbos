@@ -62,6 +62,13 @@ from exchanges.mexc_verification_provider import (
     MexcVerificationProvider,
 )
 
+from exchanges.ourbit_network_metadata_adapter import (
+    OurbitNetworkMetadataAdapter,
+)
+from exchanges.ourbit_wallet_metadata_client import (
+    OurbitWalletMetadataClient,
+)
+
 
 class NetworkMetadataAdapterFactory:
     def __init__(
@@ -69,6 +76,7 @@ class NetworkMetadataAdapterFactory:
         weex_provider_factory=None,
         poloniex_provider_factory=None,
         mexc_provider_factory=None,
+        ourbit_client_factory=None,
     ):
         if weex_provider_factory is None:
             weex_provider_factory = (
@@ -95,6 +103,15 @@ class NetworkMetadataAdapterFactory:
 
         self._mexc_provider_factory = (
             mexc_provider_factory
+        )
+
+        if ourbit_client_factory is None:
+            ourbit_client_factory = (
+                self._build_default_ourbit_client
+            )
+
+        self._ourbit_client_factory = (
+            ourbit_client_factory
         )
 
     def build(
@@ -154,6 +171,19 @@ class NetworkMetadataAdapterFactory:
                 )
             )
 
+        if exchange_id == "ourbit":
+            client = (
+                self._ourbit_client_factory(
+                    exchange
+                )
+            )
+
+            return (
+                OurbitNetworkMetadataAdapter(
+                    client=client,
+                )
+            )
+
         return CCXTNetworkMetadataAdapter(
             exchange
         )
@@ -192,4 +222,13 @@ class NetworkMetadataAdapterFactory:
                 api_secret=None,
             ),
             normalizer=MexcNetworkNormalizer(),
+        )
+
+    @staticmethod
+    def _build_default_ourbit_client(
+        exchange,
+    ):
+        return OurbitWalletMetadataClient(
+            api_key=None,
+            api_secret=None,
         )
