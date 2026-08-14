@@ -266,3 +266,78 @@ def test_default_factory_builds_mexc_network_adapter():
         adapter,
         MexcNetworkMetadataAdapter,
     )
+
+
+def test_ourbit_builds_native_network_adapter():
+    from exchanges.ourbit_network_metadata_adapter import (
+        OurbitNetworkMetadataAdapter,
+    )
+
+    class OurbitExchange:
+        id = "ourbit"
+
+    marker = object()
+
+    factory = NetworkMetadataAdapterFactory(
+        ourbit_client_factory=(
+            lambda exchange: marker
+        ),
+    )
+
+    adapter = factory.build(
+        OurbitExchange()
+    )
+
+    assert isinstance(
+        adapter,
+        OurbitNetworkMetadataAdapter,
+    )
+
+    assert adapter._client is marker
+
+
+def test_ourbit_exchange_id_is_normalized():
+    from exchanges.ourbit_network_metadata_adapter import (
+        OurbitNetworkMetadataAdapter,
+    )
+
+    class OurbitExchange:
+        id = " OURBIT "
+
+    marker = object()
+
+    factory = NetworkMetadataAdapterFactory(
+        ourbit_client_factory=(
+            lambda exchange: marker
+        ),
+    )
+
+    adapter = factory.build(
+        OurbitExchange()
+    )
+
+    assert isinstance(
+        adapter,
+        OurbitNetworkMetadataAdapter,
+    )
+
+
+def test_default_factory_builds_ourbit_network_adapter():
+    from exchanges.ourbit_network_metadata_adapter import (
+        OurbitNetworkMetadataAdapter,
+    )
+
+    class OurbitExchange:
+        id = "ourbit"
+
+    adapter = (
+        NetworkMetadataAdapterFactory()
+        .build(
+            OurbitExchange()
+        )
+    )
+
+    assert isinstance(
+        adapter,
+        OurbitNetworkMetadataAdapter,
+    )

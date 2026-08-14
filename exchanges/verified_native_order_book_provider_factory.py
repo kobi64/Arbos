@@ -64,6 +64,16 @@ from exchanges.mexc_native_order_book_provider import (
     MexcNativeOrderBookProvider,
 )
 
+from exchanges.ourbit_public_spot_client import (
+    OurbitPublicSpotClient,
+)
+from exchanges.ourbit_verification_adapter import (
+    OurbitVerificationAdapter,
+)
+from exchanges.ourbit_native_order_book_provider import (
+    OurbitNativeOrderBookProvider,
+)
+
 
 class VerifiedNativeOrderBookProviderFactory:
     def __init__(
@@ -138,6 +148,20 @@ class VerifiedNativeOrderBookProviderFactory:
                         ),
                         adapter=(
                             MexcVerificationAdapter()
+                        ),
+                    )
+                ),
+            )
+
+            registry.register(
+                "ourbit",
+                lambda exchange: (
+                    OurbitNativeOrderBookProvider(
+                        client=(
+                            OurbitPublicSpotClient()
+                        ),
+                        adapter=(
+                            OurbitVerificationAdapter()
                         ),
                     )
                 ),
