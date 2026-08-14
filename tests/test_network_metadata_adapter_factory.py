@@ -116,3 +116,78 @@ def test_custom_weex_provider_factory_is_used():
     ]
 
     assert adapter._provider is marker
+
+
+def test_poloniex_builds_native_network_adapter():
+    from exchanges.poloniex_network_metadata_adapter import (
+        PoloniexNetworkMetadataAdapter,
+    )
+
+    class PoloniexExchange:
+        id = "poloniex"
+
+    marker = object()
+
+    factory = NetworkMetadataAdapterFactory(
+        poloniex_provider_factory=(
+            lambda exchange: marker
+        ),
+    )
+
+    adapter = factory.build(
+        PoloniexExchange()
+    )
+
+    assert isinstance(
+        adapter,
+        PoloniexNetworkMetadataAdapter,
+    )
+
+    assert adapter._provider is marker
+
+
+def test_poloniex_exchange_id_is_normalized():
+    from exchanges.poloniex_network_metadata_adapter import (
+        PoloniexNetworkMetadataAdapter,
+    )
+
+    class PoloniexExchange:
+        id = " POLONIEX "
+
+    marker = object()
+
+    factory = NetworkMetadataAdapterFactory(
+        poloniex_provider_factory=(
+            lambda exchange: marker
+        ),
+    )
+
+    adapter = factory.build(
+        PoloniexExchange()
+    )
+
+    assert isinstance(
+        adapter,
+        PoloniexNetworkMetadataAdapter,
+    )
+
+
+def test_default_factory_builds_poloniex_network_adapter():
+    from exchanges.poloniex_network_metadata_adapter import (
+        PoloniexNetworkMetadataAdapter,
+    )
+
+    class PoloniexExchange:
+        id = "poloniex"
+
+    adapter = (
+        NetworkMetadataAdapterFactory()
+        .build(
+            PoloniexExchange()
+        )
+    )
+
+    assert isinstance(
+        adapter,
+        PoloniexNetworkMetadataAdapter,
+    )

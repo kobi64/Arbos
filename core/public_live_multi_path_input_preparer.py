@@ -19,6 +19,9 @@ from exchanges.network_metadata_adapter_factory import (
 from exchanges.ccxt_network_identity_metadata_adapter import (
     CCXTNetworkIdentityMetadataAdapter,
 )
+from exchanges.network_identity_metadata_adapter_factory import (
+    NetworkIdentityMetadataAdapterFactory,
+)
 from exchanges.live_order_book_snapshot_engine import (
     LiveOrderBookSnapshotEngine,
 )
@@ -34,6 +37,7 @@ class PublicLiveMultiPathInputPreparer:
         destination_exchange,
         source_buy_quote=None,
         network_metadata_adapter_factory=None,
+        network_identity_metadata_adapter_factory=None,
     ):
         self._source_exchange = source_exchange
         self._destination_exchange = destination_exchange
@@ -46,6 +50,18 @@ class PublicLiveMultiPathInputPreparer:
 
         self._network_metadata_adapter_factory = (
             network_metadata_adapter_factory
+        )
+
+        if (
+            network_identity_metadata_adapter_factory
+            is None
+        ):
+            network_identity_metadata_adapter_factory = (
+                NetworkIdentityMetadataAdapterFactory()
+            )
+
+        self._network_identity_metadata_adapter_factory = (
+            network_identity_metadata_adapter_factory
         )
 
     @staticmethod
@@ -250,13 +266,17 @@ class PublicLiveMultiPathInputPreparer:
         )
 
         source_identity_adapter = (
-            CCXTNetworkIdentityMetadataAdapter(
+            self
+            ._network_identity_metadata_adapter_factory
+            .build(
                 self._source_exchange
             )
         )
 
         destination_identity_adapter = (
-            CCXTNetworkIdentityMetadataAdapter(
+            self
+            ._network_identity_metadata_adapter_factory
+            .build(
                 self._destination_exchange
             )
         )

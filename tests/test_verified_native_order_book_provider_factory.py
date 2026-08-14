@@ -228,3 +228,45 @@ def test_default_factory_builds_weex_provider():
         provider,
         WeexNativeOrderBookProvider,
     )
+
+
+def test_builds_poloniex_native_provider():
+    from exchanges.poloniex_native_order_book_provider import (
+        PoloniexNativeOrderBookProvider,
+    )
+
+    class PoloniexExchange:
+        id = "poloniex"
+
+    provider = (
+        VerifiedNativeOrderBookProviderFactory()
+        .build(
+            PoloniexExchange()
+        )
+    )
+
+    assert isinstance(
+        provider,
+        PoloniexNativeOrderBookProvider,
+    )
+
+
+def test_poloniex_exchange_id_is_normalized():
+    from exchanges.poloniex_native_order_book_provider import (
+        PoloniexNativeOrderBookProvider,
+    )
+
+    class PoloniexExchange:
+        id = " POLONIEX "
+
+    provider = (
+        VerifiedNativeOrderBookProviderFactory()
+        .build(
+            PoloniexExchange()
+        )
+    )
+
+    assert isinstance(
+        provider,
+        PoloniexNativeOrderBookProvider,
+    )

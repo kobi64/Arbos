@@ -36,11 +36,25 @@ from exchanges.weex_verification_provider import (
     WeexVerificationProvider,
 )
 
+from exchanges.poloniex_network_metadata_adapter import (
+    PoloniexNetworkMetadataAdapter,
+)
+from exchanges.poloniex_public_spot_client import (
+    PoloniexPublicSpotClient,
+)
+from exchanges.poloniex_network_normalizer import (
+    PoloniexNetworkNormalizer,
+)
+from exchanges.poloniex_verification_provider import (
+    PoloniexVerificationProvider,
+)
+
 
 class NetworkMetadataAdapterFactory:
     def __init__(
         self,
         weex_provider_factory=None,
+        poloniex_provider_factory=None,
     ):
         if weex_provider_factory is None:
             weex_provider_factory = (
@@ -49,6 +63,15 @@ class NetworkMetadataAdapterFactory:
 
         self._weex_provider_factory = (
             weex_provider_factory
+        )
+
+        if poloniex_provider_factory is None:
+            poloniex_provider_factory = (
+                self._build_default_poloniex_provider
+            )
+
+        self._poloniex_provider_factory = (
+            poloniex_provider_factory
         )
 
     def build(
@@ -82,6 +105,19 @@ class NetworkMetadataAdapterFactory:
                 )
             )
 
+        if exchange_id == "poloniex":
+            provider = (
+                self._poloniex_provider_factory(
+                    exchange
+                )
+            )
+
+            return (
+                PoloniexNetworkMetadataAdapter(
+                    provider=provider,
+                )
+            )
+
         return CCXTNetworkMetadataAdapter(
             exchange
         )
@@ -96,5 +132,16 @@ class NetworkMetadataAdapterFactory:
                 network_normalizer=(
                     WeexNetworkNormalizer()
                 )
+            ),
+        )
+
+    @staticmethod
+    def _build_default_poloniex_provider(
+        exchange,
+    ):
+        return PoloniexVerificationProvider(
+            client=PoloniexPublicSpotClient(),
+            normalizer=(
+                PoloniexNetworkNormalizer()
             ),
         )
