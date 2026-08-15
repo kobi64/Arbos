@@ -82,6 +82,13 @@ from exchanges.lbank_verification_provider import (
     LBankVerificationProvider,
 )
 
+from exchanges.bingx_network_metadata_adapter import (
+    BingXNetworkMetadataAdapter,
+)
+from exchanges.bingx_wallet_metadata_client import (
+    BingXWalletMetadataClient,
+)
+
 
 class NetworkMetadataAdapterFactory:
     def __init__(
@@ -91,6 +98,7 @@ class NetworkMetadataAdapterFactory:
         mexc_provider_factory=None,
         ourbit_client_factory=None,
         lbank_provider_factory=None,
+        bingx_client_factory=None,
     ):
         if weex_provider_factory is None:
             weex_provider_factory = (
@@ -135,6 +143,15 @@ class NetworkMetadataAdapterFactory:
 
         self._lbank_provider_factory = (
             lbank_provider_factory
+        )
+
+        if bingx_client_factory is None:
+            bingx_client_factory = (
+                self._build_default_bingx_client
+            )
+
+        self._bingx_client_factory = (
+            bingx_client_factory
         )
 
     def build(
@@ -220,6 +237,19 @@ class NetworkMetadataAdapterFactory:
                 )
             )
 
+        if exchange_id == "bingx":
+            client = (
+                self._bingx_client_factory(
+                    exchange
+                )
+            )
+
+            return (
+                BingXNetworkMetadataAdapter(
+                    client=client,
+                )
+            )
+
         return CCXTNetworkMetadataAdapter(
             exchange
         )
@@ -276,4 +306,13 @@ class NetworkMetadataAdapterFactory:
         return LBankVerificationProvider(
             client=LBankNetworkMetadataClient(),
             normalizer=LBankNetworkNormalizer(),
+        )
+
+    @staticmethod
+    def _build_default_bingx_client(
+        exchange,
+    ):
+        return BingXWalletMetadataClient(
+            api_key=None,
+            api_secret=None,
         )

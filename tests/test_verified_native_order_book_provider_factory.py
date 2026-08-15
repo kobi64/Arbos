@@ -396,3 +396,87 @@ def test_lbank_exchange_id_is_normalized():
         provider,
         LBankNativeOrderBookProvider,
     )
+
+
+def test_builds_bingx_native_provider():
+    from exchanges.bingx_native_order_book_provider import (
+        BingXNativeOrderBookProvider,
+    )
+
+    class BingXExchange:
+        id = "bingx"
+
+    provider = (
+        VerifiedNativeOrderBookProviderFactory()
+        .build(
+            BingXExchange()
+        )
+    )
+
+    assert isinstance(
+        provider,
+        BingXNativeOrderBookProvider,
+    )
+
+
+def test_bingx_exchange_id_is_normalized():
+    from exchanges.bingx_native_order_book_provider import (
+        BingXNativeOrderBookProvider,
+    )
+
+    class BingXExchange:
+        id = " BINGX "
+
+    provider = (
+        VerifiedNativeOrderBookProviderFactory()
+        .build(
+            BingXExchange()
+        )
+    )
+
+    assert isinstance(
+        provider,
+        BingXNativeOrderBookProvider,
+    )
+
+
+def test_builds_bingx_native_provider():
+    from exchanges.bingx_native_order_book_provider import (
+        BingXNativeOrderBookProvider,
+    )
+
+    class BingXExchange:
+        id = "bingx"
+
+    provider = (
+        VerifiedNativeOrderBookProviderFactory()
+        .build(
+            BingXExchange()
+        )
+    )
+
+    assert isinstance(
+        provider,
+        BingXNativeOrderBookProvider,
+    )
+
+
+def test_bingx_exchange_id_is_normalized():
+    from exchanges.bingx_native_order_book_provider import (
+        BingXNativeOrderBookProvider,
+    )
+
+    class BingXExchange:
+        id = " BINGX "
+
+    provider = (
+        VerifiedNativeOrderBookProviderFactory()
+        .build(
+            BingXExchange()
+        )
+    )
+
+    assert isinstance(
+        provider,
+        BingXNativeOrderBookProvider,
+    )

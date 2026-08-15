@@ -84,6 +84,16 @@ from exchanges.lbank_native_order_book_provider import (
     LBankNativeOrderBookProvider,
 )
 
+from exchanges.bingx_public_spot_client import (
+    BingXPublicSpotClient,
+)
+from exchanges.bingx_verification_adapter import (
+    BingXVerificationAdapter,
+)
+from exchanges.bingx_native_order_book_provider import (
+    BingXNativeOrderBookProvider,
+)
+
 
 class VerifiedNativeOrderBookProviderFactory:
     def __init__(
@@ -186,6 +196,21 @@ class VerifiedNativeOrderBookProviderFactory:
                         ),
                         adapter=(
                             LBankVerificationAdapter()
+                        ),
+                    )
+                ),
+            )
+
+            registry.register(
+                "bingx",
+                lambda exchange: (
+                    BingXNativeOrderBookProvider(
+                        adapter=(
+                            BingXVerificationAdapter(
+                                client=(
+                                    BingXPublicSpotClient()
+                                )
+                            )
                         ),
                     )
                 ),

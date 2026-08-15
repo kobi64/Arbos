@@ -416,3 +416,78 @@ def test_default_factory_builds_lbank_network_adapter():
         adapter,
         LBankNetworkMetadataAdapter,
     )
+
+
+def test_bingx_builds_native_network_adapter():
+    from exchanges.bingx_network_metadata_adapter import (
+        BingXNetworkMetadataAdapter,
+    )
+
+    class BingXExchange:
+        id = "bingx"
+
+    marker = object()
+
+    factory = NetworkMetadataAdapterFactory(
+        bingx_client_factory=(
+            lambda exchange: marker
+        ),
+    )
+
+    adapter = factory.build(
+        BingXExchange()
+    )
+
+    assert isinstance(
+        adapter,
+        BingXNetworkMetadataAdapter,
+    )
+
+    assert adapter._client is marker
+
+
+def test_bingx_exchange_id_is_normalized():
+    from exchanges.bingx_network_metadata_adapter import (
+        BingXNetworkMetadataAdapter,
+    )
+
+    class BingXExchange:
+        id = " BINGX "
+
+    marker = object()
+
+    factory = NetworkMetadataAdapterFactory(
+        bingx_client_factory=(
+            lambda exchange: marker
+        ),
+    )
+
+    adapter = factory.build(
+        BingXExchange()
+    )
+
+    assert isinstance(
+        adapter,
+        BingXNetworkMetadataAdapter,
+    )
+
+
+def test_default_factory_builds_bingx_network_adapter():
+    from exchanges.bingx_network_metadata_adapter import (
+        BingXNetworkMetadataAdapter,
+    )
+
+    class BingXExchange:
+        id = "bingx"
+
+    adapter = (
+        NetworkMetadataAdapterFactory()
+        .build(
+            BingXExchange()
+        )
+    )
+
+    assert isinstance(
+        adapter,
+        BingXNetworkMetadataAdapter,
+    )
