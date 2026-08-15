@@ -126,6 +126,16 @@ from exchanges.htx_native_order_book_provider import (
     HTXNativeOrderBookProvider,
 )
 
+from exchanges.bitget_public_spot_client import (
+    BitgetPublicSpotClient,
+)
+from exchanges.bitget_verification_adapter import (
+    BitgetVerificationAdapter,
+)
+from exchanges.bitget_native_order_book_provider import (
+    BitgetNativeOrderBookProvider,
+)
+
 
 class VerifiedNativeOrderBookProviderFactory:
     def __init__(
@@ -287,6 +297,21 @@ class VerifiedNativeOrderBookProviderFactory:
                             HTXVerificationAdapter(
                                 client=(
                                     HTXPublicSpotClient()
+                                )
+                            )
+                        ),
+                    )
+                ),
+            )
+
+            registry.register(
+                "bitget",
+                lambda exchange: (
+                    BitgetNativeOrderBookProvider(
+                        adapter=(
+                            BitgetVerificationAdapter(
+                                client=(
+                                    BitgetPublicSpotClient()
                                 )
                             )
                         ),

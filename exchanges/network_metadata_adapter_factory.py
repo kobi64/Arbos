@@ -126,6 +126,13 @@ from exchanges.digifinex_wallet_metadata_client import (
     DigiFinexWalletMetadataClient,
 )
 
+from exchanges.bitget_network_metadata_adapter import (
+    BitgetNetworkMetadataAdapter,
+)
+from exchanges.bitget_network_metadata_client import (
+    BitgetNetworkMetadataClient,
+)
+
 
 class NetworkMetadataAdapterFactory:
     def __init__(
@@ -141,6 +148,7 @@ class NetworkMetadataAdapterFactory:
         kucoin_client_factory=None,
         htx_client_factory=None,
         digifinex_client_factory=None,
+        bitget_client_factory=None,
     ):
         if weex_provider_factory is None:
             weex_provider_factory = (
@@ -239,6 +247,15 @@ class NetworkMetadataAdapterFactory:
 
         self._digifinex_client_factory = (
             digifinex_client_factory
+        )
+
+        if bitget_client_factory is None:
+            bitget_client_factory = (
+                self._build_default_bitget_client
+            )
+
+        self._bitget_client_factory = (
+            bitget_client_factory
         )
 
     def build(
@@ -402,6 +419,19 @@ class NetworkMetadataAdapterFactory:
                 )
             )
 
+        if exchange_id == "bitget":
+            client = (
+                self._bitget_client_factory(
+                    exchange
+                )
+            )
+
+            return (
+                BitgetNetworkMetadataAdapter(
+                    client=client,
+                )
+            )
+
         return CCXTNetworkMetadataAdapter(
             exchange
         )
@@ -515,4 +545,10 @@ class NetworkMetadataAdapterFactory:
             api_key=None,
             api_secret=None,
         )
+
+    @staticmethod
+    def _build_default_bitget_client(
+        exchange,
+    ):
+        return BitgetNetworkMetadataClient()
 
