@@ -220,3 +220,64 @@ def test_invalid_depth_sample_size_is_rejected():
             "default_depth_sample_size "
             "must be positive"
         )
+
+
+def test_builds_hotcoin_native_market_entry():
+    from exchanges.hotcoin_native_market_source import (
+        HotcoinNativeMarketSource,
+    )
+
+    hotcoin = FakeExchange(
+        "hotcoin"
+    )
+
+    result = (
+        NativeCoverageEntryFactory()
+        .build({
+            "hotcoin": hotcoin,
+        })
+    )
+
+    assert result[
+        "entry_count"
+    ] == 1
+
+    entry = result[
+        "entries"
+    ][0]
+
+    assert entry[
+        "exchange"
+    ] is hotcoin
+
+    assert isinstance(
+        entry[
+            "native_market_source"
+        ],
+        HotcoinNativeMarketSource,
+    )
+
+
+def test_hotcoin_has_no_depth_provider_by_default():
+    result = (
+        NativeCoverageEntryFactory()
+        .build({
+            "hotcoin": FakeExchange(
+                "hotcoin"
+            ),
+        })
+    )
+
+    entry = result[
+        "entries"
+    ][0]
+
+    assert (
+        "order_book_provider"
+        not in entry
+    )
+
+    assert (
+        "depth_sample_size"
+        not in entry
+    )
