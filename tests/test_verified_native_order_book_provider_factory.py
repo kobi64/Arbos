@@ -564,3 +564,45 @@ def test_gateio_exchange_id_is_normalized():
         provider,
         GateIONativeOrderBookProvider,
     )
+
+
+def test_builds_htx_native_provider():
+    from exchanges.htx_native_order_book_provider import (
+        HTXNativeOrderBookProvider,
+    )
+
+    class HTXExchange:
+        id = "htx"
+
+    provider = (
+        VerifiedNativeOrderBookProviderFactory()
+        .build(
+            HTXExchange()
+        )
+    )
+
+    assert isinstance(
+        provider,
+        HTXNativeOrderBookProvider,
+    )
+
+
+def test_htx_exchange_id_is_normalized():
+    from exchanges.htx_native_order_book_provider import (
+        HTXNativeOrderBookProvider,
+    )
+
+    class HTXExchange:
+        id = " HTX "
+
+    provider = (
+        VerifiedNativeOrderBookProviderFactory()
+        .build(
+            HTXExchange()
+        )
+    )
+
+    assert isinstance(
+        provider,
+        HTXNativeOrderBookProvider,
+    )
