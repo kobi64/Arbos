@@ -44,12 +44,26 @@ from exchanges.mexc_verification_provider import (
     MexcVerificationProvider,
 )
 
+from exchanges.lbank_network_identity_metadata_adapter import (
+    LBankNetworkIdentityMetadataAdapter,
+)
+from exchanges.lbank_network_metadata_client import (
+    LBankNetworkMetadataClient,
+)
+from exchanges.lbank_network_normalizer import (
+    LBankNetworkNormalizer,
+)
+from exchanges.lbank_verification_provider import (
+    LBankVerificationProvider,
+)
+
 
 class NetworkIdentityMetadataAdapterFactory:
     def __init__(
         self,
         poloniex_provider_factory=None,
         mexc_provider_factory=None,
+        lbank_provider_factory=None,
     ):
         if poloniex_provider_factory is None:
             poloniex_provider_factory = (
@@ -67,6 +81,15 @@ class NetworkIdentityMetadataAdapterFactory:
 
         self._mexc_provider_factory = (
             mexc_provider_factory
+        )
+
+        if lbank_provider_factory is None:
+            lbank_provider_factory = (
+                self._build_default_lbank_provider
+            )
+
+        self._lbank_provider_factory = (
+            lbank_provider_factory
         )
 
     def build(
@@ -113,6 +136,19 @@ class NetworkIdentityMetadataAdapterFactory:
                 )
             )
 
+        if exchange_id == "lbank":
+            provider = (
+                self._lbank_provider_factory(
+                    exchange
+                )
+            )
+
+            return (
+                LBankNetworkIdentityMetadataAdapter(
+                    provider=provider,
+                )
+            )
+
         return (
             CCXTNetworkIdentityMetadataAdapter(
                 exchange
@@ -140,4 +176,13 @@ class NetworkIdentityMetadataAdapterFactory:
                 api_secret=None,
             ),
             normalizer=MexcNetworkNormalizer(),
+        )
+
+    @staticmethod
+    def _build_default_lbank_provider(
+        exchange,
+    ):
+        return LBankVerificationProvider(
+            client=LBankNetworkMetadataClient(),
+            normalizer=LBankNetworkNormalizer(),
         )

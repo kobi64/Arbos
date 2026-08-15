@@ -69,6 +69,19 @@ from exchanges.ourbit_wallet_metadata_client import (
     OurbitWalletMetadataClient,
 )
 
+from exchanges.lbank_network_metadata_adapter import (
+    LBankNetworkMetadataAdapter,
+)
+from exchanges.lbank_network_metadata_client import (
+    LBankNetworkMetadataClient,
+)
+from exchanges.lbank_network_normalizer import (
+    LBankNetworkNormalizer,
+)
+from exchanges.lbank_verification_provider import (
+    LBankVerificationProvider,
+)
+
 
 class NetworkMetadataAdapterFactory:
     def __init__(
@@ -77,6 +90,7 @@ class NetworkMetadataAdapterFactory:
         poloniex_provider_factory=None,
         mexc_provider_factory=None,
         ourbit_client_factory=None,
+        lbank_provider_factory=None,
     ):
         if weex_provider_factory is None:
             weex_provider_factory = (
@@ -112,6 +126,15 @@ class NetworkMetadataAdapterFactory:
 
         self._ourbit_client_factory = (
             ourbit_client_factory
+        )
+
+        if lbank_provider_factory is None:
+            lbank_provider_factory = (
+                self._build_default_lbank_provider
+            )
+
+        self._lbank_provider_factory = (
+            lbank_provider_factory
         )
 
     def build(
@@ -184,6 +207,19 @@ class NetworkMetadataAdapterFactory:
                 )
             )
 
+        if exchange_id == "lbank":
+            provider = (
+                self._lbank_provider_factory(
+                    exchange
+                )
+            )
+
+            return (
+                LBankNetworkMetadataAdapter(
+                    provider=provider,
+                )
+            )
+
         return CCXTNetworkMetadataAdapter(
             exchange
         )
@@ -231,4 +267,13 @@ class NetworkMetadataAdapterFactory:
         return OurbitWalletMetadataClient(
             api_key=None,
             api_secret=None,
+        )
+
+    @staticmethod
+    def _build_default_lbank_provider(
+        exchange,
+    ):
+        return LBankVerificationProvider(
+            client=LBankNetworkMetadataClient(),
+            normalizer=LBankNetworkNormalizer(),
         )

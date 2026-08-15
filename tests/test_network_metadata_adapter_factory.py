@@ -341,3 +341,78 @@ def test_default_factory_builds_ourbit_network_adapter():
         adapter,
         OurbitNetworkMetadataAdapter,
     )
+
+
+def test_lbank_builds_native_network_adapter():
+    from exchanges.lbank_network_metadata_adapter import (
+        LBankNetworkMetadataAdapter,
+    )
+
+    class LBankExchange:
+        id = "lbank"
+
+    marker = object()
+
+    factory = NetworkMetadataAdapterFactory(
+        lbank_provider_factory=(
+            lambda exchange: marker
+        ),
+    )
+
+    adapter = factory.build(
+        LBankExchange()
+    )
+
+    assert isinstance(
+        adapter,
+        LBankNetworkMetadataAdapter,
+    )
+
+    assert adapter._provider is marker
+
+
+def test_lbank_exchange_id_is_normalized():
+    from exchanges.lbank_network_metadata_adapter import (
+        LBankNetworkMetadataAdapter,
+    )
+
+    class LBankExchange:
+        id = " LBANK "
+
+    marker = object()
+
+    factory = NetworkMetadataAdapterFactory(
+        lbank_provider_factory=(
+            lambda exchange: marker
+        ),
+    )
+
+    adapter = factory.build(
+        LBankExchange()
+    )
+
+    assert isinstance(
+        adapter,
+        LBankNetworkMetadataAdapter,
+    )
+
+
+def test_default_factory_builds_lbank_network_adapter():
+    from exchanges.lbank_network_metadata_adapter import (
+        LBankNetworkMetadataAdapter,
+    )
+
+    class LBankExchange:
+        id = "lbank"
+
+    adapter = (
+        NetworkMetadataAdapterFactory()
+        .build(
+            LBankExchange()
+        )
+    )
+
+    assert isinstance(
+        adapter,
+        LBankNetworkMetadataAdapter,
+    )
