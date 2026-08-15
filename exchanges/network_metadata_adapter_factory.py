@@ -96,6 +96,13 @@ from exchanges.kraken_wallet_metadata_client import (
     KrakenWalletMetadataClient,
 )
 
+from exchanges.gateio_network_metadata_adapter import (
+    GateIONetworkMetadataAdapter,
+)
+from exchanges.gateio_wallet_metadata_client import (
+    GateIOWalletMetadataClient,
+)
+
 
 class NetworkMetadataAdapterFactory:
     def __init__(
@@ -107,6 +114,7 @@ class NetworkMetadataAdapterFactory:
         lbank_provider_factory=None,
         bingx_client_factory=None,
         kraken_client_factory=None,
+        gateio_client_factory=None,
     ):
         if weex_provider_factory is None:
             weex_provider_factory = (
@@ -169,6 +177,15 @@ class NetworkMetadataAdapterFactory:
 
         self._kraken_client_factory = (
             kraken_client_factory
+        )
+
+        if gateio_client_factory is None:
+            gateio_client_factory = (
+                self._build_default_gateio_client
+            )
+
+        self._gateio_client_factory = (
+            gateio_client_factory
         )
 
     def build(
@@ -280,6 +297,19 @@ class NetworkMetadataAdapterFactory:
                 )
             )
 
+        if exchange_id == "gateio":
+            client = (
+                self._gateio_client_factory(
+                    exchange
+                )
+            )
+
+            return (
+                GateIONetworkMetadataAdapter(
+                    client=client,
+                )
+            )
+
         return CCXTNetworkMetadataAdapter(
             exchange
         )
@@ -352,6 +382,15 @@ class NetworkMetadataAdapterFactory:
         exchange,
     ):
         return KrakenWalletMetadataClient(
+            api_key=None,
+            api_secret=None,
+        )
+
+    @staticmethod
+    def _build_default_gateio_client(
+        exchange,
+    ):
+        return GateIOWalletMetadataClient(
             api_key=None,
             api_secret=None,
         )

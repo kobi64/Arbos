@@ -522,3 +522,45 @@ def test_kraken_exchange_id_is_normalized():
         provider,
         KrakenNativeOrderBookProvider,
     )
+
+
+def test_builds_gateio_native_provider():
+    from exchanges.gateio_native_order_book_provider import (
+        GateIONativeOrderBookProvider,
+    )
+
+    class GateIOExchange:
+        id = "gateio"
+
+    provider = (
+        VerifiedNativeOrderBookProviderFactory()
+        .build(
+            GateIOExchange()
+        )
+    )
+
+    assert isinstance(
+        provider,
+        GateIONativeOrderBookProvider,
+    )
+
+
+def test_gateio_exchange_id_is_normalized():
+    from exchanges.gateio_native_order_book_provider import (
+        GateIONativeOrderBookProvider,
+    )
+
+    class GateIOExchange:
+        id = " GATEIO "
+
+    provider = (
+        VerifiedNativeOrderBookProviderFactory()
+        .build(
+            GateIOExchange()
+        )
+    )
+
+    assert isinstance(
+        provider,
+        GateIONativeOrderBookProvider,
+    )
