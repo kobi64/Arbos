@@ -119,6 +119,13 @@ from exchanges.htx_wallet_metadata_client import (
     HTXWalletMetadataClient,
 )
 
+from exchanges.digifinex_network_metadata_adapter import (
+    DigiFinexNetworkMetadataAdapter,
+)
+from exchanges.digifinex_wallet_metadata_client import (
+    DigiFinexWalletMetadataClient,
+)
+
 
 class NetworkMetadataAdapterFactory:
     def __init__(
@@ -133,6 +140,7 @@ class NetworkMetadataAdapterFactory:
         gateio_client_factory=None,
         kucoin_client_factory=None,
         htx_client_factory=None,
+        digifinex_client_factory=None,
     ):
         if weex_provider_factory is None:
             weex_provider_factory = (
@@ -222,6 +230,15 @@ class NetworkMetadataAdapterFactory:
 
         self._htx_client_factory = (
             htx_client_factory
+        )
+
+        if digifinex_client_factory is None:
+            digifinex_client_factory = (
+                self._build_default_digifinex_client
+            )
+
+        self._digifinex_client_factory = (
+            digifinex_client_factory
         )
 
     def build(
@@ -372,6 +389,19 @@ class NetworkMetadataAdapterFactory:
                 )
             )
 
+        if exchange_id == "digifinex":
+            client = (
+                self._digifinex_client_factory(
+                    exchange
+                )
+            )
+
+            return (
+                DigiFinexNetworkMetadataAdapter(
+                    client=client,
+                )
+            )
+
         return CCXTNetworkMetadataAdapter(
             exchange
         )
@@ -473,6 +503,15 @@ class NetworkMetadataAdapterFactory:
         exchange,
     ):
         return HTXWalletMetadataClient(
+            api_key=None,
+            api_secret=None,
+        )
+
+    @staticmethod
+    def _build_default_digifinex_client(
+        exchange,
+    ):
+        return DigiFinexWalletMetadataClient(
             api_key=None,
             api_secret=None,
         )

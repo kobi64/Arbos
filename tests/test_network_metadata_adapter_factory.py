@@ -866,3 +866,78 @@ def test_default_factory_builds_htx_network_adapter():
         adapter,
         HTXNetworkMetadataAdapter,
     )
+
+
+def test_digifinex_builds_native_network_adapter():
+    from exchanges.digifinex_network_metadata_adapter import (
+        DigiFinexNetworkMetadataAdapter,
+    )
+
+    class DigiFinexExchange:
+        id = "digifinex"
+
+    marker = object()
+
+    factory = NetworkMetadataAdapterFactory(
+        digifinex_client_factory=(
+            lambda exchange: marker
+        ),
+    )
+
+    adapter = factory.build(
+        DigiFinexExchange()
+    )
+
+    assert isinstance(
+        adapter,
+        DigiFinexNetworkMetadataAdapter,
+    )
+
+    assert adapter._client is marker
+
+
+def test_digifinex_exchange_id_is_normalized():
+    from exchanges.digifinex_network_metadata_adapter import (
+        DigiFinexNetworkMetadataAdapter,
+    )
+
+    class DigiFinexExchange:
+        id = " DIGIFINEX "
+
+    marker = object()
+
+    factory = NetworkMetadataAdapterFactory(
+        digifinex_client_factory=(
+            lambda exchange: marker
+        ),
+    )
+
+    adapter = factory.build(
+        DigiFinexExchange()
+    )
+
+    assert isinstance(
+        adapter,
+        DigiFinexNetworkMetadataAdapter,
+    )
+
+
+def test_default_factory_builds_digifinex_network_adapter():
+    from exchanges.digifinex_network_metadata_adapter import (
+        DigiFinexNetworkMetadataAdapter,
+    )
+
+    class DigiFinexExchange:
+        id = "digifinex"
+
+    adapter = (
+        NetworkMetadataAdapterFactory()
+        .build(
+            DigiFinexExchange()
+        )
+    )
+
+    assert isinstance(
+        adapter,
+        DigiFinexNetworkMetadataAdapter,
+    )
