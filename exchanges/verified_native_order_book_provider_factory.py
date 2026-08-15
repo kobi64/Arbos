@@ -74,6 +74,16 @@ from exchanges.ourbit_native_order_book_provider import (
     OurbitNativeOrderBookProvider,
 )
 
+from exchanges.lbank_public_spot_client import (
+    LBankPublicSpotClient,
+)
+from exchanges.lbank_verification_adapter import (
+    LBankVerificationAdapter,
+)
+from exchanges.lbank_native_order_book_provider import (
+    LBankNativeOrderBookProvider,
+)
+
 
 class VerifiedNativeOrderBookProviderFactory:
     def __init__(
@@ -162,6 +172,20 @@ class VerifiedNativeOrderBookProviderFactory:
                         ),
                         adapter=(
                             OurbitVerificationAdapter()
+                        ),
+                    )
+                ),
+            )
+
+            registry.register(
+                "lbank",
+                lambda exchange: (
+                    LBankNativeOrderBookProvider(
+                        client=(
+                            LBankPublicSpotClient()
+                        ),
+                        adapter=(
+                            LBankVerificationAdapter()
                         ),
                     )
                 ),

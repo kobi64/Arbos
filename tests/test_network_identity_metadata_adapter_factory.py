@@ -198,3 +198,78 @@ def test_default_factory_builds_mexc_identity_adapter():
         adapter,
         MexcNetworkIdentityMetadataAdapter,
     )
+
+
+def test_lbank_builds_native_identity_adapter():
+    from exchanges.lbank_network_identity_metadata_adapter import (
+        LBankNetworkIdentityMetadataAdapter,
+    )
+
+    class LBankExchange:
+        id = "lbank"
+
+    marker = object()
+
+    factory = NetworkIdentityMetadataAdapterFactory(
+        lbank_provider_factory=(
+            lambda exchange: marker
+        ),
+    )
+
+    adapter = factory.build(
+        LBankExchange()
+    )
+
+    assert isinstance(
+        adapter,
+        LBankNetworkIdentityMetadataAdapter,
+    )
+
+    assert adapter._provider is marker
+
+
+def test_lbank_exchange_id_is_normalized():
+    from exchanges.lbank_network_identity_metadata_adapter import (
+        LBankNetworkIdentityMetadataAdapter,
+    )
+
+    class LBankExchange:
+        id = " LBANK "
+
+    marker = object()
+
+    factory = NetworkIdentityMetadataAdapterFactory(
+        lbank_provider_factory=(
+            lambda exchange: marker
+        ),
+    )
+
+    adapter = factory.build(
+        LBankExchange()
+    )
+
+    assert isinstance(
+        adapter,
+        LBankNetworkIdentityMetadataAdapter,
+    )
+
+
+def test_default_factory_builds_lbank_identity_adapter():
+    from exchanges.lbank_network_identity_metadata_adapter import (
+        LBankNetworkIdentityMetadataAdapter,
+    )
+
+    class LBankExchange:
+        id = "lbank"
+
+    adapter = (
+        NetworkIdentityMetadataAdapterFactory()
+        .build(
+            LBankExchange()
+        )
+    )
+
+    assert isinstance(
+        adapter,
+        LBankNetworkIdentityMetadataAdapter,
+    )

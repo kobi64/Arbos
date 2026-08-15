@@ -354,3 +354,45 @@ def test_ourbit_exchange_id_is_normalized():
         provider,
         OurbitNativeOrderBookProvider,
     )
+
+
+def test_builds_lbank_native_provider():
+    from exchanges.lbank_native_order_book_provider import (
+        LBankNativeOrderBookProvider,
+    )
+
+    class LBankExchange:
+        id = "lbank"
+
+    provider = (
+        VerifiedNativeOrderBookProviderFactory()
+        .build(
+            LBankExchange()
+        )
+    )
+
+    assert isinstance(
+        provider,
+        LBankNativeOrderBookProvider,
+    )
+
+
+def test_lbank_exchange_id_is_normalized():
+    from exchanges.lbank_native_order_book_provider import (
+        LBankNativeOrderBookProvider,
+    )
+
+    class LBankExchange:
+        id = " LBANK "
+
+    provider = (
+        VerifiedNativeOrderBookProviderFactory()
+        .build(
+            LBankExchange()
+        )
+    )
+
+    assert isinstance(
+        provider,
+        LBankNativeOrderBookProvider,
+    )
