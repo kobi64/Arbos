@@ -480,3 +480,45 @@ def test_bingx_exchange_id_is_normalized():
         provider,
         BingXNativeOrderBookProvider,
     )
+
+
+def test_builds_kraken_native_provider():
+    from exchanges.kraken_native_order_book_provider import (
+        KrakenNativeOrderBookProvider,
+    )
+
+    class KrakenExchange:
+        id = "kraken"
+
+    provider = (
+        VerifiedNativeOrderBookProviderFactory()
+        .build(
+            KrakenExchange()
+        )
+    )
+
+    assert isinstance(
+        provider,
+        KrakenNativeOrderBookProvider,
+    )
+
+
+def test_kraken_exchange_id_is_normalized():
+    from exchanges.kraken_native_order_book_provider import (
+        KrakenNativeOrderBookProvider,
+    )
+
+    class KrakenExchange:
+        id = " KRAKEN "
+
+    provider = (
+        VerifiedNativeOrderBookProviderFactory()
+        .build(
+            KrakenExchange()
+        )
+    )
+
+    assert isinstance(
+        provider,
+        KrakenNativeOrderBookProvider,
+    )
