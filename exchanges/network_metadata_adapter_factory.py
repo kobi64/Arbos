@@ -133,6 +133,13 @@ from exchanges.bitget_network_metadata_client import (
     BitgetNetworkMetadataClient,
 )
 
+from exchanges.xt_network_metadata_adapter import (
+    XTNetworkMetadataAdapter,
+)
+from exchanges.xt_network_metadata_client import (
+    XTNetworkMetadataClient,
+)
+
 
 class NetworkMetadataAdapterFactory:
     def __init__(
@@ -149,6 +156,7 @@ class NetworkMetadataAdapterFactory:
         htx_client_factory=None,
         digifinex_client_factory=None,
         bitget_client_factory=None,
+        xt_client_factory=None,
     ):
         if weex_provider_factory is None:
             weex_provider_factory = (
@@ -256,6 +264,15 @@ class NetworkMetadataAdapterFactory:
 
         self._bitget_client_factory = (
             bitget_client_factory
+        )
+
+        if xt_client_factory is None:
+            xt_client_factory = (
+                self._build_default_xt_client
+            )
+
+        self._xt_client_factory = (
+            xt_client_factory
         )
 
     def build(
@@ -432,6 +449,19 @@ class NetworkMetadataAdapterFactory:
                 )
             )
 
+        if exchange_id == "xt":
+            client = (
+                self._xt_client_factory(
+                    exchange
+                )
+            )
+
+            return (
+                XTNetworkMetadataAdapter(
+                    client=client,
+                )
+            )
+
         return CCXTNetworkMetadataAdapter(
             exchange
         )
@@ -551,4 +581,10 @@ class NetworkMetadataAdapterFactory:
         exchange,
     ):
         return BitgetNetworkMetadataClient()
+
+    @staticmethod
+    def _build_default_xt_client(
+        exchange,
+    ):
+        return XTNetworkMetadataClient()
 

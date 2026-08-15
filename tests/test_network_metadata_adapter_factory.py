@@ -1016,3 +1016,78 @@ def test_default_factory_builds_bitget_network_adapter():
         adapter,
         BitgetNetworkMetadataAdapter,
     )
+
+
+def test_xt_builds_native_network_adapter():
+    from exchanges.xt_network_metadata_adapter import (
+        XTNetworkMetadataAdapter,
+    )
+
+    class XTExchange:
+        id = "xt"
+
+    marker = object()
+
+    factory = NetworkMetadataAdapterFactory(
+        xt_client_factory=(
+            lambda exchange: marker
+        ),
+    )
+
+    adapter = factory.build(
+        XTExchange()
+    )
+
+    assert isinstance(
+        adapter,
+        XTNetworkMetadataAdapter,
+    )
+
+    assert adapter._client is marker
+
+
+def test_xt_exchange_id_is_normalized():
+    from exchanges.xt_network_metadata_adapter import (
+        XTNetworkMetadataAdapter,
+    )
+
+    class XTExchange:
+        id = " XT "
+
+    marker = object()
+
+    factory = NetworkMetadataAdapterFactory(
+        xt_client_factory=(
+            lambda exchange: marker
+        ),
+    )
+
+    adapter = factory.build(
+        XTExchange()
+    )
+
+    assert isinstance(
+        adapter,
+        XTNetworkMetadataAdapter,
+    )
+
+
+def test_default_factory_builds_xt_network_adapter():
+    from exchanges.xt_network_metadata_adapter import (
+        XTNetworkMetadataAdapter,
+    )
+
+    class XTExchange:
+        id = "xt"
+
+    adapter = (
+        NetworkMetadataAdapterFactory()
+        .build(
+            XTExchange()
+        )
+    )
+
+    assert isinstance(
+        adapter,
+        XTNetworkMetadataAdapter,
+    )
