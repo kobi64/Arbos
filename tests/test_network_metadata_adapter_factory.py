@@ -941,3 +941,78 @@ def test_default_factory_builds_digifinex_network_adapter():
         adapter,
         DigiFinexNetworkMetadataAdapter,
     )
+
+
+def test_bitget_builds_native_network_adapter():
+    from exchanges.bitget_network_metadata_adapter import (
+        BitgetNetworkMetadataAdapter,
+    )
+
+    class BitgetExchange:
+        id = "bitget"
+
+    marker = object()
+
+    factory = NetworkMetadataAdapterFactory(
+        bitget_client_factory=(
+            lambda exchange: marker
+        ),
+    )
+
+    adapter = factory.build(
+        BitgetExchange()
+    )
+
+    assert isinstance(
+        adapter,
+        BitgetNetworkMetadataAdapter,
+    )
+
+    assert adapter._client is marker
+
+
+def test_bitget_exchange_id_is_normalized():
+    from exchanges.bitget_network_metadata_adapter import (
+        BitgetNetworkMetadataAdapter,
+    )
+
+    class BitgetExchange:
+        id = " BITGET "
+
+    marker = object()
+
+    factory = NetworkMetadataAdapterFactory(
+        bitget_client_factory=(
+            lambda exchange: marker
+        ),
+    )
+
+    adapter = factory.build(
+        BitgetExchange()
+    )
+
+    assert isinstance(
+        adapter,
+        BitgetNetworkMetadataAdapter,
+    )
+
+
+def test_default_factory_builds_bitget_network_adapter():
+    from exchanges.bitget_network_metadata_adapter import (
+        BitgetNetworkMetadataAdapter,
+    )
+
+    class BitgetExchange:
+        id = "bitget"
+
+    adapter = (
+        NetworkMetadataAdapterFactory()
+        .build(
+            BitgetExchange()
+        )
+    )
+
+    assert isinstance(
+        adapter,
+        BitgetNetworkMetadataAdapter,
+    )

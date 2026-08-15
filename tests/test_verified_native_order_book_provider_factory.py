@@ -606,3 +606,45 @@ def test_htx_exchange_id_is_normalized():
         provider,
         HTXNativeOrderBookProvider,
     )
+
+
+def test_builds_bitget_native_provider():
+    from exchanges.bitget_native_order_book_provider import (
+        BitgetNativeOrderBookProvider,
+    )
+
+    class BitgetExchange:
+        id = "bitget"
+
+    provider = (
+        VerifiedNativeOrderBookProviderFactory()
+        .build(
+            BitgetExchange()
+        )
+    )
+
+    assert isinstance(
+        provider,
+        BitgetNativeOrderBookProvider,
+    )
+
+
+def test_bitget_exchange_id_is_normalized():
+    from exchanges.bitget_native_order_book_provider import (
+        BitgetNativeOrderBookProvider,
+    )
+
+    class BitgetExchange:
+        id = " BITGET "
+
+    provider = (
+        VerifiedNativeOrderBookProviderFactory()
+        .build(
+            BitgetExchange()
+        )
+    )
+
+    assert isinstance(
+        provider,
+        BitgetNativeOrderBookProvider,
+    )
