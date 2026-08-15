@@ -716,3 +716,153 @@ def test_default_factory_builds_kucoin_network_adapter():
         adapter,
         KuCoinNetworkMetadataAdapter,
     )
+
+
+def test_htx_builds_native_network_adapter():
+    from exchanges.htx_network_metadata_adapter import (
+        HTXNetworkMetadataAdapter,
+    )
+
+    class HTXExchange:
+        id = "htx"
+
+    marker = object()
+
+    factory = NetworkMetadataAdapterFactory(
+        htx_client_factory=(
+            lambda exchange: marker
+        ),
+    )
+
+    adapter = factory.build(
+        HTXExchange()
+    )
+
+    assert isinstance(
+        adapter,
+        HTXNetworkMetadataAdapter,
+    )
+
+    assert adapter._client is marker
+
+
+def test_htx_exchange_id_is_normalized():
+    from exchanges.htx_network_metadata_adapter import (
+        HTXNetworkMetadataAdapter,
+    )
+
+    class HTXExchange:
+        id = " HTX "
+
+    marker = object()
+
+    factory = NetworkMetadataAdapterFactory(
+        htx_client_factory=(
+            lambda exchange: marker
+        ),
+    )
+
+    adapter = factory.build(
+        HTXExchange()
+    )
+
+    assert isinstance(
+        adapter,
+        HTXNetworkMetadataAdapter,
+    )
+
+
+def test_default_factory_builds_htx_network_adapter():
+    from exchanges.htx_network_metadata_adapter import (
+        HTXNetworkMetadataAdapter,
+    )
+
+    class HTXExchange:
+        id = "htx"
+
+    adapter = (
+        NetworkMetadataAdapterFactory()
+        .build(
+            HTXExchange()
+        )
+    )
+
+    assert isinstance(
+        adapter,
+        HTXNetworkMetadataAdapter,
+    )
+
+
+def test_htx_builds_native_network_adapter():
+    from exchanges.htx_network_metadata_adapter import (
+        HTXNetworkMetadataAdapter,
+    )
+
+    class HTXExchange:
+        id = "htx"
+
+    marker = object()
+
+    factory = NetworkMetadataAdapterFactory(
+        htx_client_factory=(
+            lambda exchange: marker
+        ),
+    )
+
+    adapter = factory.build(
+        HTXExchange()
+    )
+
+    assert isinstance(
+        adapter,
+        HTXNetworkMetadataAdapter,
+    )
+
+    assert adapter._client is marker
+
+
+def test_htx_exchange_id_is_normalized():
+    from exchanges.htx_network_metadata_adapter import (
+        HTXNetworkMetadataAdapter,
+    )
+
+    class HTXExchange:
+        id = " HTX "
+
+    marker = object()
+
+    factory = NetworkMetadataAdapterFactory(
+        htx_client_factory=(
+            lambda exchange: marker
+        ),
+    )
+
+    adapter = factory.build(
+        HTXExchange()
+    )
+
+    assert isinstance(
+        adapter,
+        HTXNetworkMetadataAdapter,
+    )
+
+
+def test_default_factory_builds_htx_network_adapter():
+    from exchanges.htx_network_metadata_adapter import (
+        HTXNetworkMetadataAdapter,
+    )
+
+    class HTXExchange:
+        id = "htx"
+
+    adapter = (
+        NetworkMetadataAdapterFactory()
+        .build(
+            HTXExchange()
+        )
+    )
+
+    assert isinstance(
+        adapter,
+        HTXNetworkMetadataAdapter,
+    )

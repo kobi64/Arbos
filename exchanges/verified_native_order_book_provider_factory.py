@@ -115,6 +115,18 @@ from exchanges.gateio_native_order_book_provider import (
 )
 
 
+
+from exchanges.htx_public_spot_client import (
+    HTXPublicSpotClient,
+)
+from exchanges.htx_verification_adapter import (
+    HTXVerificationAdapter,
+)
+from exchanges.htx_native_order_book_provider import (
+    HTXNativeOrderBookProvider,
+)
+
+
 class VerifiedNativeOrderBookProviderFactory:
     def __init__(
         self,
@@ -259,6 +271,22 @@ class VerifiedNativeOrderBookProviderFactory:
                             GateIOVerificationAdapter(
                                 client=(
                                     GateIOPublicSpotClient()
+                                )
+                            )
+                        ),
+                    )
+                ),
+            )
+
+
+            registry.register(
+                "htx",
+                lambda exchange: (
+                    HTXNativeOrderBookProvider(
+                        adapter=(
+                            HTXVerificationAdapter(
+                                client=(
+                                    HTXPublicSpotClient()
                                 )
                             )
                         ),
