@@ -89,6 +89,13 @@ from exchanges.bingx_wallet_metadata_client import (
     BingXWalletMetadataClient,
 )
 
+from exchanges.kraken_network_metadata_adapter import (
+    KrakenNetworkMetadataAdapter,
+)
+from exchanges.kraken_wallet_metadata_client import (
+    KrakenWalletMetadataClient,
+)
+
 
 class NetworkMetadataAdapterFactory:
     def __init__(
@@ -99,6 +106,7 @@ class NetworkMetadataAdapterFactory:
         ourbit_client_factory=None,
         lbank_provider_factory=None,
         bingx_client_factory=None,
+        kraken_client_factory=None,
     ):
         if weex_provider_factory is None:
             weex_provider_factory = (
@@ -152,6 +160,15 @@ class NetworkMetadataAdapterFactory:
 
         self._bingx_client_factory = (
             bingx_client_factory
+        )
+
+        if kraken_client_factory is None:
+            kraken_client_factory = (
+                self._build_default_kraken_client
+            )
+
+        self._kraken_client_factory = (
+            kraken_client_factory
         )
 
     def build(
@@ -250,6 +267,19 @@ class NetworkMetadataAdapterFactory:
                 )
             )
 
+        if exchange_id == "kraken":
+            client = (
+                self._kraken_client_factory(
+                    exchange
+                )
+            )
+
+            return (
+                KrakenNetworkMetadataAdapter(
+                    client=client,
+                )
+            )
+
         return CCXTNetworkMetadataAdapter(
             exchange
         )
@@ -313,6 +343,15 @@ class NetworkMetadataAdapterFactory:
         exchange,
     ):
         return BingXWalletMetadataClient(
+            api_key=None,
+            api_secret=None,
+        )
+
+    @staticmethod
+    def _build_default_kraken_client(
+        exchange,
+    ):
+        return KrakenWalletMetadataClient(
             api_key=None,
             api_secret=None,
         )

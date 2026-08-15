@@ -491,3 +491,78 @@ def test_default_factory_builds_bingx_network_adapter():
         adapter,
         BingXNetworkMetadataAdapter,
     )
+
+
+def test_kraken_builds_native_network_adapter():
+    from exchanges.kraken_network_metadata_adapter import (
+        KrakenNetworkMetadataAdapter,
+    )
+
+    class KrakenExchange:
+        id = "kraken"
+
+    marker = object()
+
+    factory = NetworkMetadataAdapterFactory(
+        kraken_client_factory=(
+            lambda exchange: marker
+        ),
+    )
+
+    adapter = factory.build(
+        KrakenExchange()
+    )
+
+    assert isinstance(
+        adapter,
+        KrakenNetworkMetadataAdapter,
+    )
+
+    assert adapter._client is marker
+
+
+def test_kraken_exchange_id_is_normalized():
+    from exchanges.kraken_network_metadata_adapter import (
+        KrakenNetworkMetadataAdapter,
+    )
+
+    class KrakenExchange:
+        id = " KRAKEN "
+
+    marker = object()
+
+    factory = NetworkMetadataAdapterFactory(
+        kraken_client_factory=(
+            lambda exchange: marker
+        ),
+    )
+
+    adapter = factory.build(
+        KrakenExchange()
+    )
+
+    assert isinstance(
+        adapter,
+        KrakenNetworkMetadataAdapter,
+    )
+
+
+def test_default_factory_builds_kraken_network_adapter():
+    from exchanges.kraken_network_metadata_adapter import (
+        KrakenNetworkMetadataAdapter,
+    )
+
+    class KrakenExchange:
+        id = "kraken"
+
+    adapter = (
+        NetworkMetadataAdapterFactory()
+        .build(
+            KrakenExchange()
+        )
+    )
+
+    assert isinstance(
+        adapter,
+        KrakenNetworkMetadataAdapter,
+    )

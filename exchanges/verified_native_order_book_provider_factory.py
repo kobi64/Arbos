@@ -94,6 +94,16 @@ from exchanges.bingx_native_order_book_provider import (
     BingXNativeOrderBookProvider,
 )
 
+from exchanges.kraken_public_spot_client import (
+    KrakenPublicSpotClient,
+)
+from exchanges.kraken_verification_adapter import (
+    KrakenVerificationAdapter,
+)
+from exchanges.kraken_native_order_book_provider import (
+    KrakenNativeOrderBookProvider,
+)
+
 
 class VerifiedNativeOrderBookProviderFactory:
     def __init__(
@@ -209,6 +219,21 @@ class VerifiedNativeOrderBookProviderFactory:
                             BingXVerificationAdapter(
                                 client=(
                                     BingXPublicSpotClient()
+                                )
+                            )
+                        ),
+                    )
+                ),
+            )
+
+            registry.register(
+                "kraken",
+                lambda exchange: (
+                    KrakenNativeOrderBookProvider(
+                        adapter=(
+                            KrakenVerificationAdapter(
+                                client=(
+                                    KrakenPublicSpotClient()
                                 )
                             )
                         ),
