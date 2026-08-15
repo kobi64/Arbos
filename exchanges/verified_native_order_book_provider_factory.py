@@ -104,6 +104,16 @@ from exchanges.kraken_native_order_book_provider import (
     KrakenNativeOrderBookProvider,
 )
 
+from exchanges.gateio_public_spot_client import (
+    GateIOPublicSpotClient,
+)
+from exchanges.gateio_verification_adapter import (
+    GateIOVerificationAdapter,
+)
+from exchanges.gateio_native_order_book_provider import (
+    GateIONativeOrderBookProvider,
+)
+
 
 class VerifiedNativeOrderBookProviderFactory:
     def __init__(
@@ -234,6 +244,21 @@ class VerifiedNativeOrderBookProviderFactory:
                             KrakenVerificationAdapter(
                                 client=(
                                     KrakenPublicSpotClient()
+                                )
+                            )
+                        ),
+                    )
+                ),
+            )
+
+            registry.register(
+                "gateio",
+                lambda exchange: (
+                    GateIONativeOrderBookProvider(
+                        adapter=(
+                            GateIOVerificationAdapter(
+                                client=(
+                                    GateIOPublicSpotClient()
                                 )
                             )
                         ),

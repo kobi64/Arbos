@@ -566,3 +566,78 @@ def test_default_factory_builds_kraken_network_adapter():
         adapter,
         KrakenNetworkMetadataAdapter,
     )
+
+
+def test_gateio_builds_native_network_adapter():
+    from exchanges.gateio_network_metadata_adapter import (
+        GateIONetworkMetadataAdapter,
+    )
+
+    class GateIOExchange:
+        id = "gateio"
+
+    marker = object()
+
+    factory = NetworkMetadataAdapterFactory(
+        gateio_client_factory=(
+            lambda exchange: marker
+        ),
+    )
+
+    adapter = factory.build(
+        GateIOExchange()
+    )
+
+    assert isinstance(
+        adapter,
+        GateIONetworkMetadataAdapter,
+    )
+
+    assert adapter._client is marker
+
+
+def test_gateio_exchange_id_is_normalized():
+    from exchanges.gateio_network_metadata_adapter import (
+        GateIONetworkMetadataAdapter,
+    )
+
+    class GateIOExchange:
+        id = " GATEIO "
+
+    marker = object()
+
+    factory = NetworkMetadataAdapterFactory(
+        gateio_client_factory=(
+            lambda exchange: marker
+        ),
+    )
+
+    adapter = factory.build(
+        GateIOExchange()
+    )
+
+    assert isinstance(
+        adapter,
+        GateIONetworkMetadataAdapter,
+    )
+
+
+def test_default_factory_builds_gateio_network_adapter():
+    from exchanges.gateio_network_metadata_adapter import (
+        GateIONetworkMetadataAdapter,
+    )
+
+    class GateIOExchange:
+        id = "gateio"
+
+    adapter = (
+        NetworkMetadataAdapterFactory()
+        .build(
+            GateIOExchange()
+        )
+    )
+
+    assert isinstance(
+        adapter,
+        GateIONetworkMetadataAdapter,
+    )
