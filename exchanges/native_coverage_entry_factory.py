@@ -24,6 +24,9 @@ from exchanges.gate_native_market_source import (
 from exchanges.htx_native_market_source import (
     HTXNativeMarketSource,
 )
+from exchanges.hotcoin_native_market_source import (
+    HotcoinNativeMarketSource,
+)
 from exchanges.kucoin_native_market_source import (
     KuCoinNativeMarketSource,
 )
@@ -62,6 +65,7 @@ class NativeCoverageEntryFactory:
             ),
             "gate": GateNativeMarketSource,
             "htx": HTXNativeMarketSource,
+            "hotcoin": HotcoinNativeMarketSource,
             "kucoin": KuCoinNativeMarketSource,
             "xt": XTNativeMarketSource,
         }
