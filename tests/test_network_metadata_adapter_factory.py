@@ -38,11 +38,11 @@ def test_weex_builds_weex_network_adapter():
     )
 
 
-def test_non_weex_exchange_uses_ccxt_adapter():
+def test_unregistered_exchange_uses_ccxt_adapter():
     factory = NetworkMetadataAdapterFactory()
 
     adapter = factory.build(
-        FakeExchange("kucoin")
+        FakeExchange("coinbase")
     )
 
     assert isinstance(
@@ -640,4 +640,79 @@ def test_default_factory_builds_gateio_network_adapter():
     assert isinstance(
         adapter,
         GateIONetworkMetadataAdapter,
+    )
+
+
+def test_kucoin_builds_native_network_adapter():
+    from exchanges.kucoin_network_metadata_adapter import (
+        KuCoinNetworkMetadataAdapter,
+    )
+
+    class KuCoinExchange:
+        id = "kucoin"
+
+    marker = object()
+
+    factory = NetworkMetadataAdapterFactory(
+        kucoin_client_factory=(
+            lambda exchange: marker
+        ),
+    )
+
+    adapter = factory.build(
+        KuCoinExchange()
+    )
+
+    assert isinstance(
+        adapter,
+        KuCoinNetworkMetadataAdapter,
+    )
+
+    assert adapter._client is marker
+
+
+def test_kucoin_exchange_id_is_normalized():
+    from exchanges.kucoin_network_metadata_adapter import (
+        KuCoinNetworkMetadataAdapter,
+    )
+
+    class KuCoinExchange:
+        id = " KUCOIN "
+
+    marker = object()
+
+    factory = NetworkMetadataAdapterFactory(
+        kucoin_client_factory=(
+            lambda exchange: marker
+        ),
+    )
+
+    adapter = factory.build(
+        KuCoinExchange()
+    )
+
+    assert isinstance(
+        adapter,
+        KuCoinNetworkMetadataAdapter,
+    )
+
+
+def test_default_factory_builds_kucoin_network_adapter():
+    from exchanges.kucoin_network_metadata_adapter import (
+        KuCoinNetworkMetadataAdapter,
+    )
+
+    class KuCoinExchange:
+        id = "kucoin"
+
+    adapter = (
+        NetworkMetadataAdapterFactory()
+        .build(
+            KuCoinExchange()
+        )
+    )
+
+    assert isinstance(
+        adapter,
+        KuCoinNetworkMetadataAdapter,
     )

@@ -96,6 +96,13 @@ from exchanges.kraken_wallet_metadata_client import (
     KrakenWalletMetadataClient,
 )
 
+from exchanges.kucoin_network_metadata_adapter import (
+    KuCoinNetworkMetadataAdapter,
+)
+from exchanges.kucoin_wallet_metadata_client import (
+    KuCoinWalletMetadataClient,
+)
+
 from exchanges.gateio_network_metadata_adapter import (
     GateIONetworkMetadataAdapter,
 )
@@ -115,6 +122,7 @@ class NetworkMetadataAdapterFactory:
         bingx_client_factory=None,
         kraken_client_factory=None,
         gateio_client_factory=None,
+        kucoin_client_factory=None,
     ):
         if weex_provider_factory is None:
             weex_provider_factory = (
@@ -186,6 +194,15 @@ class NetworkMetadataAdapterFactory:
 
         self._gateio_client_factory = (
             gateio_client_factory
+        )
+
+        if kucoin_client_factory is None:
+            kucoin_client_factory = (
+                self._build_default_kucoin_client
+            )
+
+        self._kucoin_client_factory = (
+            kucoin_client_factory
         )
 
     def build(
@@ -310,6 +327,19 @@ class NetworkMetadataAdapterFactory:
                 )
             )
 
+        if exchange_id == "kucoin":
+            client = (
+                self._kucoin_client_factory(
+                    exchange
+                )
+            )
+
+            return (
+                KuCoinNetworkMetadataAdapter(
+                    client=client,
+                )
+            )
+
         return CCXTNetworkMetadataAdapter(
             exchange
         )
@@ -393,4 +423,14 @@ class NetworkMetadataAdapterFactory:
         return GateIOWalletMetadataClient(
             api_key=None,
             api_secret=None,
+        )
+
+    @staticmethod
+    def _build_default_kucoin_client(
+        exchange,
+    ):
+        return KuCoinWalletMetadataClient(
+            api_key=None,
+            api_secret=None,
+            api_passphrase=None,
         )
