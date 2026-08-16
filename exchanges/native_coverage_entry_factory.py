@@ -45,6 +45,9 @@ from exchanges.okx_native_market_source import (
 from exchanges.binance_native_market_source import (
     BinanceNativeMarketSource,
 )
+from exchanges.coinbase_native_market_source import (
+    CoinbaseNativeMarketSource,
+)
 
 
 class NativeCoverageEntryFactory:
@@ -84,6 +87,7 @@ class NativeCoverageEntryFactory:
             "phemex": PhemexNativeMarketSource,
             "okx": OKXNativeMarketSource,
             "binance": BinanceNativeMarketSource,
+            "coinbase": CoinbaseNativeMarketSource,
         }
 
         self._provider_factories = dict(

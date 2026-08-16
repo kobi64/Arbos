@@ -150,6 +150,13 @@ from exchanges.coinex_network_metadata_client import (
 from exchanges.phemex_network_metadata_adapter import (
     PhemexNetworkMetadataAdapter,
 )
+
+from exchanges.coinbase_public_spot_client import (
+    CoinbasePublicSpotClient,
+)
+from exchanges.coinbase_network_metadata_adapter import (
+    CoinbaseNetworkMetadataAdapter,
+)
 from exchanges.phemex_network_metadata_client import (
     PhemexNetworkMetadataClient,
 )
@@ -520,6 +527,11 @@ class NetworkMetadataAdapterFactory:
                 PhemexNetworkMetadataAdapter(
                     client=client,
                 )
+            )
+
+        if exchange_id == "coinbase":
+            return CoinbaseNetworkMetadataAdapter(
+                client=CoinbasePublicSpotClient(),
             )
 
         return CCXTNetworkMetadataAdapter(

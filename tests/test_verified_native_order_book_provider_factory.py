@@ -816,3 +816,45 @@ def test_binance_exchange_id_is_normalized():
         provider,
         BinanceNativeOrderBookProvider,
     )
+
+
+def test_builds_coinbase_native_provider():
+    from exchanges.coinbase_native_order_book_provider import (
+        CoinbaseNativeOrderBookProvider,
+    )
+
+    class CoinbaseExchange:
+        id = "coinbase"
+
+    provider = (
+        VerifiedNativeOrderBookProviderFactory()
+        .build(
+            CoinbaseExchange()
+        )
+    )
+
+    assert isinstance(
+        provider,
+        CoinbaseNativeOrderBookProvider,
+    )
+
+
+def test_coinbase_provider_exchange_id_is_normalized():
+    from exchanges.coinbase_native_order_book_provider import (
+        CoinbaseNativeOrderBookProvider,
+    )
+
+    class CoinbaseExchange:
+        id = " COINBASE "
+
+    provider = (
+        VerifiedNativeOrderBookProviderFactory()
+        .build(
+            CoinbaseExchange()
+        )
+    )
+
+    assert isinstance(
+        provider,
+        CoinbaseNativeOrderBookProvider,
+    )

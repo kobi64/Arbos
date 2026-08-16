@@ -42,7 +42,7 @@ def test_unregistered_exchange_uses_ccxt_adapter():
     factory = NetworkMetadataAdapterFactory()
 
     adapter = factory.build(
-        FakeExchange("coinbase")
+        FakeExchange("unregistered_exchange")
     )
 
     assert isinstance(
@@ -1288,4 +1288,46 @@ def test_binance_does_not_claim_native_public_network_metadata():
     assert isinstance(
         adapter,
         CCXTNetworkMetadataAdapter,
+    )
+
+
+def test_builds_coinbase_native_network_adapter():
+    from exchanges.coinbase_network_metadata_adapter import (
+        CoinbaseNetworkMetadataAdapter,
+    )
+
+    class CoinbaseExchange:
+        id = "coinbase"
+
+    adapter = (
+        NetworkMetadataAdapterFactory()
+        .build(
+            CoinbaseExchange()
+        )
+    )
+
+    assert isinstance(
+        adapter,
+        CoinbaseNetworkMetadataAdapter,
+    )
+
+
+def test_coinbase_network_exchange_id_is_normalized():
+    from exchanges.coinbase_network_metadata_adapter import (
+        CoinbaseNetworkMetadataAdapter,
+    )
+
+    class CoinbaseExchange:
+        id = " COINBASE "
+
+    adapter = (
+        NetworkMetadataAdapterFactory()
+        .build(
+            CoinbaseExchange()
+        )
+    )
+
+    assert isinstance(
+        adapter,
+        CoinbaseNetworkMetadataAdapter,
     )
