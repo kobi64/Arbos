@@ -281,3 +281,41 @@ def test_hotcoin_has_no_depth_provider_by_default():
         "depth_sample_size"
         not in entry
     )
+
+
+def test_builds_coinex_native_market_source():
+    from exchanges.coinex_native_market_source import (
+        CoinExNativeMarketSource,
+    )
+
+    result = NativeCoverageEntryFactory().build({
+        "coinex": FakeExchange("coinex"),
+    })
+
+    assert result["entry_count"] == 1
+
+    entry = result["entries"][0]
+
+    assert isinstance(
+        entry["native_market_source"],
+        CoinExNativeMarketSource,
+    )
+
+
+def test_coinex_exchange_id_is_normalized():
+    from exchanges.coinex_native_market_source import (
+        CoinExNativeMarketSource,
+    )
+
+    result = NativeCoverageEntryFactory().build({
+        "wrong-key": FakeExchange(" COINEX "),
+    })
+
+    assert result["entry_count"] == 1
+
+    assert isinstance(
+        result["entries"][0][
+            "native_market_source"
+        ],
+        CoinExNativeMarketSource,
+    )

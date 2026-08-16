@@ -648,3 +648,45 @@ def test_bitget_exchange_id_is_normalized():
         provider,
         BitgetNativeOrderBookProvider,
     )
+
+
+def test_builds_coinex_native_provider():
+    from exchanges.coinex_native_order_book_provider import (
+        CoinExNativeOrderBookProvider,
+    )
+
+    class CoinExExchange:
+        id = "coinex"
+
+    provider = (
+        VerifiedNativeOrderBookProviderFactory()
+        .build(
+            CoinExExchange()
+        )
+    )
+
+    assert isinstance(
+        provider,
+        CoinExNativeOrderBookProvider,
+    )
+
+
+def test_coinex_exchange_id_is_normalized():
+    from exchanges.coinex_native_order_book_provider import (
+        CoinExNativeOrderBookProvider,
+    )
+
+    class CoinExExchange:
+        id = " COINEX "
+
+    provider = (
+        VerifiedNativeOrderBookProviderFactory()
+        .build(
+            CoinExExchange()
+        )
+    )
+
+    assert isinstance(
+        provider,
+        CoinExNativeOrderBookProvider,
+    )

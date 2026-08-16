@@ -137,6 +137,17 @@ from exchanges.bitget_native_order_book_provider import (
 )
 
 
+from exchanges.coinex_public_spot_client import (
+    CoinExPublicSpotClient,
+)
+from exchanges.coinex_verification_adapter import (
+    CoinExVerificationAdapter,
+)
+from exchanges.coinex_native_order_book_provider import (
+    CoinExNativeOrderBookProvider,
+)
+
+
 class VerifiedNativeOrderBookProviderFactory:
     def __init__(
         self,
@@ -318,6 +329,21 @@ class VerifiedNativeOrderBookProviderFactory:
                     )
                 ),
             )
+
+        registry.register(
+            "coinex",
+            lambda exchange: (
+                CoinExNativeOrderBookProvider(
+                    adapter=(
+                        CoinExVerificationAdapter(
+                            client=(
+                                CoinExPublicSpotClient()
+                            )
+                        )
+                    ),
+                )
+            ),
+        )
 
         self._registry = registry
 

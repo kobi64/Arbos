@@ -1091,3 +1091,78 @@ def test_default_factory_builds_xt_network_adapter():
         adapter,
         XTNetworkMetadataAdapter,
     )
+
+
+def test_coinex_builds_native_network_adapter():
+    from exchanges.coinex_network_metadata_adapter import (
+        CoinExNetworkMetadataAdapter,
+    )
+
+    class CoinExExchange:
+        id = "coinex"
+
+    marker = object()
+
+    factory = NetworkMetadataAdapterFactory(
+        coinex_client_factory=(
+            lambda exchange: marker
+        ),
+    )
+
+    adapter = factory.build(
+        CoinExExchange()
+    )
+
+    assert isinstance(
+        adapter,
+        CoinExNetworkMetadataAdapter,
+    )
+
+    assert adapter._client is marker
+
+
+def test_coinex_exchange_id_is_normalized():
+    from exchanges.coinex_network_metadata_adapter import (
+        CoinExNetworkMetadataAdapter,
+    )
+
+    class CoinExExchange:
+        id = " COINEX "
+
+    marker = object()
+
+    factory = NetworkMetadataAdapterFactory(
+        coinex_client_factory=(
+            lambda exchange: marker
+        ),
+    )
+
+    adapter = factory.build(
+        CoinExExchange()
+    )
+
+    assert isinstance(
+        adapter,
+        CoinExNetworkMetadataAdapter,
+    )
+
+
+def test_default_factory_builds_coinex_network_adapter():
+    from exchanges.coinex_network_metadata_adapter import (
+        CoinExNetworkMetadataAdapter,
+    )
+
+    class CoinExExchange:
+        id = "coinex"
+
+    adapter = (
+        NetworkMetadataAdapterFactory()
+        .build(
+            CoinExExchange()
+        )
+    )
+
+    assert isinstance(
+        adapter,
+        CoinExNetworkMetadataAdapter,
+    )

@@ -33,6 +33,9 @@ from exchanges.kucoin_native_market_source import (
 from exchanges.xt_native_market_source import (
     XTNativeMarketSource,
 )
+from exchanges.coinex_native_market_source import (
+    CoinExNativeMarketSource,
+)
 
 
 class NativeCoverageEntryFactory:
@@ -68,6 +71,7 @@ class NativeCoverageEntryFactory:
             "hotcoin": HotcoinNativeMarketSource,
             "kucoin": KuCoinNativeMarketSource,
             "xt": XTNativeMarketSource,
+            "coinex": CoinExNativeMarketSource,
         }
 
         self._provider_factories = dict(
