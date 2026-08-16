@@ -774,3 +774,45 @@ def test_okx_exchange_id_is_normalized():
         provider,
         OKXNativeOrderBookProvider,
     )
+
+
+def test_builds_binance_native_provider():
+    from exchanges.binance_native_order_book_provider import (
+        BinanceNativeOrderBookProvider,
+    )
+
+    class BinanceExchange:
+        id = "binance"
+
+    provider = (
+        VerifiedNativeOrderBookProviderFactory()
+        .build(
+            BinanceExchange()
+        )
+    )
+
+    assert isinstance(
+        provider,
+        BinanceNativeOrderBookProvider,
+    )
+
+
+def test_binance_exchange_id_is_normalized():
+    from exchanges.binance_native_order_book_provider import (
+        BinanceNativeOrderBookProvider,
+    )
+
+    class BinanceExchange:
+        id = " BINANCE "
+
+    provider = (
+        VerifiedNativeOrderBookProviderFactory()
+        .build(
+            BinanceExchange()
+        )
+    )
+
+    assert isinstance(
+        provider,
+        BinanceNativeOrderBookProvider,
+    )
