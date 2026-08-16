@@ -41,8 +41,21 @@ class RouteValidator:
                 withdraw_fee=0.0,
             )
 
+        known_fee_networks = [
+            network
+            for network in compatible
+            if network.withdraw_fee is not None
+        ]
+
+        if not known_fee_networks:
+            return RouteValidationResult(
+                executable=False,
+                network=None,
+                withdraw_fee=0.0,
+            )
+
         best_network = min(
-            compatible,
+            known_fee_networks,
             key=lambda network: network.withdraw_fee,
         )
 

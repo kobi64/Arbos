@@ -106,3 +106,23 @@ def test_rejects_fee_that_consumes_transfer():
     assert result.acceptable is False
     assert result.net_amount == 0.0
     assert result.reason == "fee_consumes_amount"
+
+
+def test_unknown_withdraw_fee_is_not_acceptable():
+    network = NetworkInfo(
+        coin="USDT",
+        network="TRC20",
+        withdraw_fee=None,
+        min_withdraw=1.0,
+    )
+
+    result = TransferCostAnalysis.evaluate(
+        amount=100.0,
+        network=network,
+        max_cost_percent=5.0,
+    )
+
+    assert result.acceptable is False
+    assert result.withdraw_fee is None
+    assert result.net_amount == 0.0
+    assert result.reason == "withdrawal_fee_unknown"

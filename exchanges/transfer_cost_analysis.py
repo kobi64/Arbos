@@ -38,6 +38,14 @@ class TransferCostAnalysis:
                 reason="invalid_amount",
             )
 
+        if network.withdraw_fee is None:
+            return TransferCostAnalysisResult(
+                acceptable=False,
+                withdraw_fee=None,
+                net_amount=0.0,
+                reason="withdrawal_fee_unknown",
+            )
+
         net_amount = amount - network.withdraw_fee
         cost_percent = (
             network.withdraw_fee / amount

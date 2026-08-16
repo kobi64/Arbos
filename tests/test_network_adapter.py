@@ -36,7 +36,7 @@ def test_normalize_network_defaults():
     assert network.deposit_enabled is False
     assert network.withdraw_enabled is False
     assert network.maintenance is False
-    assert network.withdraw_fee == 0.0
+    assert network.withdraw_fee is None
     assert network.min_withdraw is None
     assert network.confirmations == 0
 
@@ -82,3 +82,48 @@ def test_explicit_unknown_minimum_withdrawal_is_preserved():
     )
 
     assert network.min_withdraw is None
+
+
+
+def test_missing_withdraw_fee_is_preserved_as_unknown():
+    network = ExchangeNetworkAdapter.normalize_network(
+        "USDT",
+        {
+            "network": "trc20",
+            "deposit_enabled": True,
+            "withdraw_enabled": True,
+            "min_withdraw": 10.0,
+        },
+    )
+
+    assert network.withdraw_fee is None
+
+
+def test_none_withdraw_fee_is_preserved_as_unknown():
+    network = ExchangeNetworkAdapter.normalize_network(
+        "USDT",
+        {
+            "network": "trc20",
+            "deposit_enabled": True,
+            "withdraw_enabled": True,
+            "withdraw_fee": None,
+            "min_withdraw": 10.0,
+        },
+    )
+
+    assert network.withdraw_fee is None
+
+
+def test_explicit_zero_withdraw_fee_is_preserved():
+    network = ExchangeNetworkAdapter.normalize_network(
+        "USDT",
+        {
+            "network": "trc20",
+            "deposit_enabled": True,
+            "withdraw_enabled": True,
+            "withdraw_fee": 0.0,
+            "min_withdraw": 10.0,
+        },
+    )
+
+    assert network.withdraw_fee == 0.0

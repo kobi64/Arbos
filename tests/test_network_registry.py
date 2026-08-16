@@ -60,3 +60,22 @@ def test_network_info_unknown_minimum_defaults_to_none():
     )
 
     assert network.min_withdraw is None
+
+
+def test_network_info_unknown_withdraw_fee_defaults_to_none():
+    network = NetworkInfo(
+        "USDT",
+        "TRC20",
+    )
+
+    assert network.withdraw_fee is None
+
+
+def test_network_info_explicit_zero_withdraw_fee_is_preserved():
+    network = NetworkInfo(
+        "USDT",
+        "TRC20",
+        withdraw_fee=0.0,
+    )
+
+    assert network.withdraw_fee == 0.0
