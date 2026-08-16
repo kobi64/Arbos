@@ -273,3 +273,21 @@ def test_default_factory_builds_lbank_identity_adapter():
         adapter,
         LBankNetworkIdentityMetadataAdapter,
     )
+
+
+def test_ourbit_native_only_exchange_fails_closed_for_identity():
+    class OurbitExchange:
+        id = "ourbit"
+
+    adapter = (
+        NetworkIdentityMetadataAdapterFactory()
+        .build(
+            OurbitExchange()
+        )
+    )
+
+    records = adapter.get_records(
+        "USDT"
+    )
+
+    assert records == []

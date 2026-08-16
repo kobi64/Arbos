@@ -50,7 +50,17 @@ class CCXTNetworkIdentityMetadataAdapter:
             except Exception:
                 pass
 
-        self._exchange.load_markets()
+        load_markets = getattr(
+            self._exchange,
+            "load_markets",
+            None,
+        )
+
+        if callable(load_markets):
+            try:
+                load_markets()
+            except Exception:
+                pass
 
         return (
             getattr(
