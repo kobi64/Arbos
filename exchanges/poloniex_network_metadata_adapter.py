@@ -104,10 +104,10 @@ class PoloniexNetworkMetadataAdapter:
                         if fee is not None
                         else None
                     ),
-                    min_withdraw=float(
-                        minimum
+                    min_withdraw=(
+                        float(minimum)
                         if minimum is not None
-                        else 0.0
+                        else None
                     ),
                 )
             )

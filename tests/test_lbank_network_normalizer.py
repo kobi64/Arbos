@@ -155,3 +155,26 @@ def test_ton_and_toncoin_remain_distinct():
         )
         == "TONCOIN"
     )
+
+
+def test_unknown_minimum_withdrawal_is_preserved():
+    normalizer = build_normalizer()
+
+    result = normalizer.normalize_record(
+        {
+            "assetCode": "usdt",
+            "chainName": "trc20",
+            "canDeposit": True,
+            "canDraw": True,
+            "assetFee": {
+                "feeAmt": "1",
+                "minDepositAmt": "0",
+            },
+        }
+    )
+
+    assert result is not None
+    assert result["min_withdraw"] is None
+
+    # Deposit semantics are deliberately unchanged.
+    assert result["min_deposit"] == 0.0

@@ -190,11 +190,13 @@ class WeexNetworkMetadataAdapter:
                         is not None
                         else None
                     ),
-                    min_withdraw=float(
-                        withdraw_min
+                    min_withdraw=(
+                        float(
+                            withdraw_min
+                        )
                         if withdraw_min
                         is not None
-                        else 0.0
+                        else None
                     ),
                 )
             )
