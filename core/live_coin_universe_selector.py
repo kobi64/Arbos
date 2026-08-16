@@ -97,6 +97,12 @@ class LiveCoinUniverseSelector:
                 filtered_instrument_count += 1
                 continue
 
+            if self._is_leveraged_token(
+                base=base,
+            ):
+                filtered_instrument_count += 1
+                continue
+
             ticker = tickers.get(
                 symbol,
                 {},
@@ -157,6 +163,24 @@ class LiveCoinUniverseSelector:
             "paper_only": True,
             "live_order_submitted": False,
         }
+
+    @staticmethod
+    def _is_leveraged_token(
+        base,
+    ):
+        base = str(
+            base
+            or ""
+        ).strip().upper()
+
+        return base.endswith(
+            (
+                "3L",
+                "3S",
+                "5L",
+                "5S",
+            )
+        )
 
     @staticmethod
     def _is_filtered_instrument(

@@ -253,3 +253,97 @@ def test_limit_must_be_positive():
             tickers={},
             limit=0,
         )
+
+
+@pytest.mark.parametrize(
+    "base",
+    [
+        "BTC3L",
+        "BTC3S",
+        "BTC5L",
+        "BTC5S",
+        "ETH3L",
+        "ETH3S",
+        "ETH5L",
+        "ETH5S",
+        "SOL3L",
+        "SOL3S",
+        "SOL5L",
+        "SOL5S",
+        "AVAX3L",
+        "AVAX3S",
+        "AVAX5L",
+        "AVAX5S",
+        "SKHYNIX3L",
+        "SNDK3S",
+    ],
+)
+def test_leveraged_token_suffixes_are_filtered(
+    base,
+):
+    selector = LiveCoinUniverseSelector()
+
+    result = selector.select(
+        exchange_id="gate",
+        markets={
+            f"{base}/USDT": market(base),
+            "BTC/USDT": market("BTC"),
+        },
+        tickers={
+            f"{base}/USDT": {
+                "quoteVolume": 1000000.0,
+            },
+            "BTC/USDT": {
+                "quoteVolume": 1000.0,
+            },
+        },
+        limit=20,
+    )
+
+    assert result["coin_assets"] == [
+        "BTC",
+    ]
+
+    assert result[
+        "filtered_instrument_count"
+    ] == 1
+
+
+@pytest.mark.parametrize(
+    "base",
+    [
+        "2U2",
+        "USD1",
+        "ETHFI",
+        "RAY",
+        "SIREN",
+        "VANRY",
+        "XLM",
+        "ZEC",
+    ],
+)
+def test_legitimate_assets_are_not_filtered_by_suffix_rule(
+    base,
+):
+    selector = LiveCoinUniverseSelector()
+
+    result = selector.select(
+        exchange_id="gate",
+        markets={
+            f"{base}/USDT": market(base),
+        },
+        tickers={
+            f"{base}/USDT": {
+                "quoteVolume": 1000.0,
+            },
+        },
+        limit=20,
+    )
+
+    assert result["coin_assets"] == [
+        base,
+    ]
+
+    assert result[
+        "filtered_instrument_count"
+    ] == 0
