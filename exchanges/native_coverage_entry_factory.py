@@ -63,6 +63,9 @@ from exchanges.weex_native_market_source import (
 from exchanges.poloniex_native_market_source import (
     PoloniexNativeMarketSource,
 )
+from exchanges.lbank_native_market_source import (
+    LBankNativeMarketSource,
+)
 
 
 class NativeCoverageEntryFactory:
@@ -109,6 +112,7 @@ class NativeCoverageEntryFactory:
             "bingx": BingXNativeMarketSource,
             "weex": WeexNativeMarketSource,
             "poloniex": PoloniexNativeMarketSource,
+            "lbank": LBankNativeMarketSource,
         }
 
         self._provider_factories = dict(
