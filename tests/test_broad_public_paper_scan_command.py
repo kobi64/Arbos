@@ -214,3 +214,77 @@ def test_parser_defaults_to_100_coin_scan():
     assert parsed.max_slippage == 0.5
     assert parsed.fee_rate == 0.001
     assert len(parsed.exchanges) >= 2
+
+
+def test_parser_defaults_to_summary_output():
+    parser = command.build_parser()
+
+    parsed = parser.parse_args([])
+
+    assert parsed.output == "summary"
+    assert parsed.top == 10
+
+
+def test_parser_accepts_raw_json_output():
+    parser = command.build_parser()
+
+    parsed = parser.parse_args([
+        "--output",
+        "json",
+    ])
+
+    assert parsed.output == "json"
+
+
+def test_main_prints_summary_by_default(
+    monkeypatch,
+    capsys,
+):
+    monkeypatch.setattr(
+        command,
+        "run_from_args",
+        lambda args: {
+            "ranked_routes": [],
+            "route_count": 0,
+            "paper_only": True,
+            "live_order_submitted": False,
+        },
+    )
+
+    exit_code = command.main([])
+
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert '"route_count": 0' in captured.out
+    assert '"profitable_route_count": 0' in captured.out
+    assert '"paper_only": true' in captured.out
+
+
+def test_main_can_print_raw_json(
+    monkeypatch,
+    capsys,
+):
+    monkeypatch.setattr(
+        command,
+        "run_from_args",
+        lambda args: {
+            "raw_marker": "RAW",
+            "paper_only": True,
+            "live_order_submitted": False,
+        },
+    )
+
+    exit_code = command.main([
+        "--output",
+        "json",
+    ])
+
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert '"raw_marker": "RAW"' in captured.out
+    assert (
+        '"profitable_route_count"'
+        not in captured.out
+    )
