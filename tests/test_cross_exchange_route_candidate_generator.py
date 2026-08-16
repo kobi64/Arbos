@@ -290,3 +290,156 @@ def test_verified_empty_networks_keep_no_compatible_network_semantics():
     assert candidates[0][
         "reason"
     ] == "no_compatible_network"
+
+
+def test_unavailable_transfer_verification_does_not_invent_zero_fee():
+    generator = CrossExchangeRouteCandidateGenerator(
+        transfer_evaluator=FakeTransferEvaluator(),
+    )
+
+    candidates = generator.generate(
+        source_exchange="weex",
+        destination_exchange="gateio",
+        coin_asset="FIR",
+        coin_amount=100000.0,
+        source_networks={
+            "FIR": [],
+        },
+        destination_networks={
+            "FIR": [
+                {"asset": "FIR"},
+            ],
+        },
+        bridge_quotes={},
+        source_network_metadata={
+            "FIR": {
+                "network_metadata_available": False,
+                "network_metadata_reason": (
+                    "empty_network_list"
+                ),
+                "transfer_verification_available": False,
+            },
+        },
+        destination_network_metadata={
+            "FIR": {
+                "network_metadata_available": True,
+                "network_metadata_reason": None,
+                "transfer_verification_available": True,
+            },
+        },
+    )
+
+    assert len(candidates) == 1
+
+    candidate = candidates[0]
+
+    assert candidate["executable"] is False
+    assert candidate["network"] is None
+    assert candidate["withdraw_fee"] is None
+    assert candidate["reason"] == (
+        "transfer_verification_unavailable"
+    )
+
+
+def test_missing_evaluator_withdraw_fee_is_not_invented_as_zero():
+    class MissingFeeEvaluator:
+        @staticmethod
+        def evaluate(
+            amount,
+            source_networks,
+            destination_networks,
+        ):
+            return {
+                "executable": False,
+                "network": None,
+                "net_amount": 0.0,
+                "reason": "withdrawal_fee_unknown",
+            }
+
+    generator = CrossExchangeRouteCandidateGenerator(
+        transfer_evaluator=MissingFeeEvaluator(),
+    )
+
+    candidates = generator.generate(
+        source_exchange="exchange-a",
+        destination_exchange="exchange-b",
+        coin_asset="COINX",
+        coin_amount=100.0,
+        source_networks={
+            "COINX": [
+                {"asset": "COINX"},
+            ],
+        },
+        destination_networks={
+            "COINX": [
+                {"asset": "COINX"},
+            ],
+        },
+        bridge_quotes={},
+    )
+
+    assert len(candidates) == 1
+
+    candidate = candidates[0]
+
+    assert candidate["executable"] is False
+    assert candidate["withdraw_fee"] is None
+    assert candidate["reason"] == (
+        "withdrawal_fee_unknown"
+    )
+
+
+def test_bridge_missing_evaluator_withdraw_fee_is_not_invented_as_zero():
+    class MissingBridgeFeeEvaluator:
+        @staticmethod
+        def evaluate(
+            amount,
+            source_networks,
+            destination_networks,
+        ):
+            return {
+                "executable": False,
+                "network": None,
+                "net_amount": 0.0,
+                "reason": "withdrawal_fee_unknown",
+            }
+
+    generator = CrossExchangeRouteCandidateGenerator(
+        transfer_evaluator=MissingBridgeFeeEvaluator(),
+    )
+
+    candidates = generator.generate(
+        source_exchange="exchange-a",
+        destination_exchange="exchange-b",
+        coin_asset="COINX",
+        coin_amount=100.0,
+        source_networks={
+            "BTC": [
+                {"asset": "BTC"},
+            ],
+        },
+        destination_networks={
+            "BTC": [
+                {"asset": "BTC"},
+            ],
+        },
+        bridge_quotes={
+            "BTC": {
+                "output_amount": 0.0025,
+                "method": "spot",
+            },
+        },
+    )
+
+    assert len(candidates) == 1
+
+    candidate = candidates[0]
+
+    assert candidate["route_type"] == (
+        "bridge_cross_exchange"
+    )
+    assert candidate["executable"] is False
+    assert candidate["withdraw_fee"] is None
+    assert candidate["reason"] == (
+        "withdrawal_fee_unknown"
+    )

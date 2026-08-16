@@ -143,7 +143,7 @@ class CrossExchangeRouteCandidateGenerator:
                 "conversion_asset": None,
                 "conversion_method": None,
                 "network": None,
-                "withdraw_fee": 0.0,
+                "withdraw_fee": None,
                 "transfer_amount": 0.0,
                 "pre_transfer_amount": float(
                     coin_amount
@@ -241,8 +241,7 @@ class CrossExchangeRouteCandidateGenerator:
                     "network"
                 ),
                 "withdraw_fee": direct_result.get(
-                    "withdraw_fee",
-                    0.0,
+                    "withdraw_fee"
                 ),
                 "transfer_amount": direct_result.get(
                     "net_amount",
@@ -378,8 +377,7 @@ class CrossExchangeRouteCandidateGenerator:
                     "network"
                 ),
                 "withdraw_fee": transfer_result.get(
-                    "withdraw_fee",
-                    0.0,
+                    "withdraw_fee"
                 ),
                 "transfer_amount": transfer_result.get(
                     "net_amount",
