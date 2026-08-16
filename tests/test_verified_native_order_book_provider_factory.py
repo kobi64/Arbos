@@ -35,7 +35,11 @@ def test_builds_digifinex_verified_provider():
     )
 
 
-def test_unregistered_exchange_uses_normal_ccxt_provider():
+def test_gate_alias_uses_gateio_native_provider():
+    from exchanges.gateio_native_order_book_provider import (
+        GateIONativeOrderBookProvider,
+    )
+
     exchange = GateExchange()
 
     provider = (
@@ -45,7 +49,7 @@ def test_unregistered_exchange_uses_normal_ccxt_provider():
 
     assert isinstance(
         provider,
-        LiveOrderBookSnapshotEngine,
+        GateIONativeOrderBookProvider,
     )
 
 

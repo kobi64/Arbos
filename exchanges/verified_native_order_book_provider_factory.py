@@ -22,6 +22,9 @@ from exchanges.live_order_book_snapshot_engine import (
 from exchanges.native_fallback_exchange_registry import (
     NativeFallbackExchangeRegistry,
 )
+from core.external_venue_alias_registry import (
+    ExternalVenueAliasRegistry,
+)
 from exchanges.verified_digifinex_order_book_provider import (
     VerifiedDigiFinexOrderBookProvider,
 )
@@ -482,6 +485,24 @@ class VerifiedNativeOrderBookProviderFactory:
             exchange_id,
             exchange,
         )
+
+        if (
+            provider is None
+            and exchange_id
+        ):
+            canonical_exchange_id = (
+                ExternalVenueAliasRegistry()
+                .canonicalize(exchange_id)
+            )
+
+            if (
+                canonical_exchange_id
+                != exchange_id
+            ):
+                provider = self._registry.build(
+                    canonical_exchange_id,
+                    exchange,
+                )
 
         if provider is not None:
             return provider
