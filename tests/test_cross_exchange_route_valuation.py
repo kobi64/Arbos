@@ -485,3 +485,301 @@ def test_blocked_candidate_with_unknown_pre_transfer_amount_is_not_valued():
     )
 
     assert scanner.calls == []
+
+
+def test_executable_filled_result_with_unknown_final_value_fails_closed():
+    class UnknownFinalValueScanner:
+        def scan_route(
+            self,
+            route,
+            starting_value,
+            fee_rate,
+            max_slippage_percent,
+        ):
+            return {
+                "route_id": route["route_id"],
+                "filled": True,
+                "net_final_value": None,
+                "paper_only": True,
+                "live_order_submitted": False,
+            }
+
+    valuation = CrossExchangeRouteValuation(
+        destination_scanner=UnknownFinalValueScanner(),
+    )
+
+    candidate = {
+        "route_id": "DIRECT-UNKNOWN-FINAL",
+        "route_type": "direct_cross_exchange",
+        "transfer_asset": "COINX",
+        "transfer_amount": 98.0,
+        "executable": True,
+    }
+
+    result = valuation.evaluate(
+        candidate=candidate,
+        starting_usdt_value=100.0,
+        destination_fee_rate=0.001,
+        max_slippage_percent=0.5,
+    )
+
+    assert result["executable"] is False
+    assert result["reason"] == (
+        "destination_valuation_invalid"
+    )
+    assert result["destination_result"] is not None
+    assert result["destination_result"]["filled"] is True
+    assert (
+        result["destination_result"]["net_final_value"]
+        is None
+    )
+    assert result["paper_only"] is True
+    assert result["live_order_submitted"] is False
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {},
+        {"net_final_value": "not-a-number"},
+        {"net_final_value": float("nan")},
+        {"net_final_value": float("inf")},
+        {"net_final_value": float("-inf")},
+    ],
+)
+def test_executable_filled_result_with_invalid_final_value_fails_closed(
+    payload,
+):
+    class InvalidFinalValueScanner:
+        def scan_route(
+            self,
+            route,
+            starting_value,
+            fee_rate,
+            max_slippage_percent,
+        ):
+            return {
+                "route_id": route["route_id"],
+                "filled": True,
+                "paper_only": True,
+                "live_order_submitted": False,
+                **payload,
+            }
+
+    valuation = CrossExchangeRouteValuation(
+        destination_scanner=InvalidFinalValueScanner(),
+    )
+
+    candidate = {
+        "route_id": "DIRECT-INVALID-FINAL",
+        "route_type": "direct_cross_exchange",
+        "transfer_asset": "COINX",
+        "transfer_amount": 98.0,
+        "executable": True,
+    }
+
+    result = valuation.evaluate(
+        candidate=candidate,
+        starting_usdt_value=100.0,
+        destination_fee_rate=0.001,
+        max_slippage_percent=0.5,
+    )
+
+    assert result["executable"] is False
+    assert result["reason"] == (
+        "destination_valuation_invalid"
+    )
+    assert result["paper_only"] is True
+    assert result["live_order_submitted"] is False
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {},
+        {"net_final_value": None},
+        {"net_final_value": "not-a-number"},
+        {"net_final_value": float("nan")},
+        {"net_final_value": float("inf")},
+        {"net_final_value": float("-inf")},
+    ],
+)
+def test_research_filled_result_with_invalid_final_value_fails_closed(
+    payload,
+):
+    class InvalidResearchFinalValueScanner:
+        def scan_route(
+            self,
+            route,
+            starting_value,
+            fee_rate,
+            max_slippage_percent,
+        ):
+            return {
+                "route_id": route["route_id"],
+                "filled": True,
+                "paper_only": True,
+                "live_order_submitted": False,
+                **payload,
+            }
+
+    valuation = CrossExchangeRouteValuation(
+        destination_scanner=(
+            InvalidResearchFinalValueScanner()
+        ),
+    )
+
+    candidate = {
+        "route_id": "RESEARCH-INVALID-FINAL",
+        "route_type": "direct_cross_exchange",
+        "transfer_asset": "COINX",
+        "pre_transfer_amount": 98.0,
+        "transfer_amount": 0.0,
+        "executable": False,
+        "reason": "transfer_not_verified",
+    }
+
+    result = valuation.evaluate(
+        candidate=candidate,
+        starting_usdt_value=100.0,
+        destination_fee_rate=0.001,
+        max_slippage_percent=0.5,
+    )
+
+    assert result["executable"] is False
+    assert result["reason"] == (
+        "transfer_not_verified"
+    )
+    assert result["valuation_only"] is True
+    assert (
+        result["paper_market_value_available"]
+        is False
+    )
+    assert (
+        result["hypothetical_destination_result"]
+        is not None
+    )
+
+
+@pytest.mark.parametrize(
+    "net_final_value",
+    [
+        0.0,
+        -1.0,
+    ],
+)
+def test_executable_filled_result_with_non_positive_final_value_fails_closed(
+    net_final_value,
+):
+    class NonPositiveFinalValueScanner:
+        def scan_route(
+            self,
+            route,
+            starting_value,
+            fee_rate,
+            max_slippage_percent,
+        ):
+            return {
+                "route_id": route["route_id"],
+                "filled": True,
+                "net_final_value": net_final_value,
+                "paper_only": True,
+                "live_order_submitted": False,
+            }
+
+    valuation = CrossExchangeRouteValuation(
+        destination_scanner=NonPositiveFinalValueScanner(),
+    )
+
+    candidate = {
+        "route_id": "DIRECT-NON-POSITIVE-FINAL",
+        "route_type": "direct_cross_exchange",
+        "transfer_asset": "COINX",
+        "transfer_amount": 98.0,
+        "executable": True,
+    }
+
+    result = valuation.evaluate(
+        candidate=candidate,
+        starting_usdt_value=100.0,
+        destination_fee_rate=0.001,
+        max_slippage_percent=0.5,
+    )
+
+    assert result["executable"] is False
+    assert result["reason"] == (
+        "destination_valuation_invalid"
+    )
+    assert result["destination_result"]["filled"] is True
+    assert (
+        result["destination_result"]["net_final_value"]
+        == net_final_value
+    )
+    assert result["paper_only"] is True
+    assert result["live_order_submitted"] is False
+
+
+@pytest.mark.parametrize(
+    "net_final_value",
+    [
+        0.0,
+        -1.0,
+    ],
+)
+def test_research_filled_result_with_non_positive_final_value_fails_closed(
+    net_final_value,
+):
+    class NonPositiveResearchFinalValueScanner:
+        def scan_route(
+            self,
+            route,
+            starting_value,
+            fee_rate,
+            max_slippage_percent,
+        ):
+            return {
+                "route_id": route["route_id"],
+                "filled": True,
+                "net_final_value": net_final_value,
+                "paper_only": True,
+                "live_order_submitted": False,
+            }
+
+    valuation = CrossExchangeRouteValuation(
+        destination_scanner=(
+            NonPositiveResearchFinalValueScanner()
+        ),
+    )
+
+    candidate = {
+        "route_id": "RESEARCH-NON-POSITIVE-FINAL",
+        "route_type": "direct_cross_exchange",
+        "transfer_asset": "COINX",
+        "pre_transfer_amount": 98.0,
+        "transfer_amount": 0.0,
+        "executable": False,
+        "reason": "transfer_not_verified",
+    }
+
+    result = valuation.evaluate(
+        candidate=candidate,
+        starting_usdt_value=100.0,
+        destination_fee_rate=0.001,
+        max_slippage_percent=0.5,
+    )
+
+    assert result["executable"] is False
+    assert result["reason"] == (
+        "transfer_not_verified"
+    )
+    assert result["valuation_only"] is True
+    assert (
+        result["paper_market_value_available"]
+        is False
+    )
+    assert (
+        result["hypothetical_destination_result"][
+            "net_final_value"
+        ]
+        == net_final_value
+    )
