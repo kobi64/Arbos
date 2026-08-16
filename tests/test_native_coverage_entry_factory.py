@@ -680,3 +680,41 @@ def test_weex_exchange_id_is_normalized():
         ],
         WeexNativeMarketSource,
     )
+
+
+def test_builds_poloniex_native_market_source():
+    from exchanges.poloniex_native_market_source import (
+        PoloniexNativeMarketSource,
+    )
+
+    result = NativeCoverageEntryFactory().build({
+        "poloniex": FakeExchange("poloniex"),
+    })
+
+    assert result["entry_count"] == 1
+
+    assert isinstance(
+        result["entries"][0][
+            "native_market_source"
+        ],
+        PoloniexNativeMarketSource,
+    )
+
+
+def test_poloniex_exchange_id_is_normalized():
+    from exchanges.poloniex_native_market_source import (
+        PoloniexNativeMarketSource,
+    )
+
+    result = NativeCoverageEntryFactory().build({
+        "wrong-key": FakeExchange(" POLONIEX "),
+    })
+
+    assert result["entry_count"] == 1
+
+    assert isinstance(
+        result["entries"][0][
+            "native_market_source"
+        ],
+        PoloniexNativeMarketSource,
+    )
