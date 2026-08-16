@@ -23,11 +23,24 @@ class CrossExchangeRouteValuation:
             raise ValueError("starting_usdt_value must be positive")
 
         if candidate.get("executable") is not True:
+            raw_pre_transfer_amount = candidate.get(
+                "pre_transfer_amount"
+            )
+
+            if raw_pre_transfer_amount is None:
+                return {
+                    **candidate,
+                    "executable": False,
+                    "reason": candidate.get(
+                        "reason",
+                        "candidate_not_executable",
+                    ),
+                    "valuation_only": False,
+                    "paper_market_value_available": False,
+                }
+
             pre_transfer_amount = float(
-                candidate.get(
-                    "pre_transfer_amount",
-                    0.0,
-                )
+                raw_pre_transfer_amount
             )
 
             if pre_transfer_amount <= 0:

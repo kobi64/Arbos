@@ -448,3 +448,40 @@ def test_executable_candidate_with_unknown_transfer_amount_fails_closed():
         )
 
     assert scanner.calls == []
+
+
+def test_blocked_candidate_with_unknown_pre_transfer_amount_is_not_valued():
+    scanner = FakeDestinationScanner()
+
+    valuation = CrossExchangeRouteValuation(
+        destination_scanner=scanner,
+    )
+
+    candidate = {
+        "route_id": "BLOCKED-UNKNOWN-AMOUNT",
+        "route_type": "direct_cross_exchange",
+        "transfer_asset": "COINX",
+        "pre_transfer_amount": None,
+        "transfer_amount": None,
+        "executable": False,
+        "reason": "transfer_amount_unknown",
+    }
+
+    result = valuation.evaluate(
+        candidate=candidate,
+        starting_usdt_value=100.0,
+        destination_fee_rate=0.001,
+        max_slippage_percent=0.5,
+    )
+
+    assert result["executable"] is False
+    assert result["reason"] == (
+        "transfer_amount_unknown"
+    )
+    assert result["valuation_only"] is False
+    assert (
+        result["paper_market_value_available"]
+        is False
+    )
+
+    assert scanner.calls == []
