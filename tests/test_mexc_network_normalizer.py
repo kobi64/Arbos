@@ -100,7 +100,7 @@ def test_missing_optional_values_are_safe():
 
     assert result[
         "min_withdraw"
-    ] == 0.0
+    ] is None
 
     assert result[
         "confirmations"

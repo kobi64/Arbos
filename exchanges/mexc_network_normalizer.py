@@ -123,7 +123,7 @@ class MexcNetworkNormalizer:
                     None,
                     "",
                 )
-                else 0.0
+                else None
             ),
             "confirmations": (
                 int(

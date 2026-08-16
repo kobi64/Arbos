@@ -51,3 +51,12 @@ def test_executable_networks_requires_deposit_and_withdrawal():
 
     assert len(executable) == 1
     assert executable[0].network == "BEP20"
+
+
+def test_network_info_unknown_minimum_defaults_to_none():
+    network = NetworkInfo(
+        "USDT",
+        "TRC20",
+    )
+
+    assert network.min_withdraw is None

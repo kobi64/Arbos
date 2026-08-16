@@ -215,3 +215,37 @@ def test_missing_transfer_states_fail_closed():
 
     assert network.deposit_enabled is False
     assert network.withdraw_enabled is False
+
+
+def test_unknown_minimum_withdrawal_is_preserved_as_unknown():
+    class FakeUnknownMinimumExchange:
+        def load_currencies(self):
+            return {
+                "USDT": {
+                    "deposit": True,
+                    "withdraw": True,
+                    "networks": {
+                        "TRC20": {
+                            "deposit": True,
+                            "withdraw": True,
+                            "fee": 1.0,
+                            "limits": {
+                                "withdraw": {
+                                    "min": None,
+                                },
+                            },
+                        },
+                    },
+                },
+            }
+
+    adapter = CCXTNetworkMetadataAdapter(
+        FakeUnknownMinimumExchange()
+    )
+
+    networks = adapter.get_networks(
+        "USDT"
+    )
+
+    assert len(networks) == 1
+    assert networks[0].min_withdraw is None

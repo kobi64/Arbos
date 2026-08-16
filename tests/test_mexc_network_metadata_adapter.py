@@ -147,3 +147,39 @@ def test_provider_is_required():
         MexcNetworkMetadataAdapter(
             provider=None,
         )
+
+
+def test_unknown_minimum_withdrawal_is_preserved():
+    class UnknownMinimumProvider:
+        def get_coin(
+            self,
+            coin,
+        ):
+            return {
+                "exchange": "mexc",
+                "coin": coin,
+                "available": True,
+                "network_metadata_available": True,
+                "transfer_verification_available": True,
+                "networks": [
+                    {
+                        "network": "TRC20",
+                        "raw_network": "TRX",
+                        "deposit_enabled": True,
+                        "withdraw_enabled": True,
+                        "withdraw_fee": 1.0,
+                        "min_withdraw": None,
+                    },
+                ],
+            }
+
+    adapter = MexcNetworkMetadataAdapter(
+        provider=UnknownMinimumProvider(),
+    )
+
+    networks = adapter.get_networks(
+        "USDT"
+    )
+
+    assert len(networks) == 1
+    assert networks[0].min_withdraw is None

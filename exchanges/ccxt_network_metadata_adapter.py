@@ -97,10 +97,10 @@ class CCXTNetworkMetadataAdapter:
                         if fee is not None
                         else None
                     ),
-                    min_withdraw=float(
-                        min_withdraw
+                    min_withdraw=(
+                        float(min_withdraw)
                         if min_withdraw is not None
-                        else 0.0
+                        else None
                     ),
                 )
             )

@@ -180,7 +180,7 @@ class LBankNetworkNormalizer:
                 )
             ),
             "min_withdraw": (
-                self._float_or_zero(
+                self._float_or_none(
                     fee.get(
                         "minAmt"
                     )

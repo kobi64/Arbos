@@ -26,7 +26,11 @@ class ExchangeNetworkAdapter:
             withdraw_enabled=bool(raw.get("withdraw_enabled", False)),
             maintenance=bool(raw.get("maintenance", False)),
             withdraw_fee=float(raw.get("withdraw_fee", 0.0) or 0.0),
-            min_withdraw=float(raw.get("min_withdraw", 0.0) or 0.0),
+            min_withdraw=(
+                float(raw["min_withdraw"])
+                if raw.get("min_withdraw") is not None
+                else None
+            ),
             confirmations=int(raw.get("confirmations", 0) or 0),
         )
 

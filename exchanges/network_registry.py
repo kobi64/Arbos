@@ -21,7 +21,7 @@ class NetworkInfo:
     maintenance: bool = False
 
     withdraw_fee: Optional[float] = 0.0
-    min_withdraw: float = 0.0
+    min_withdraw: Optional[float] = None
 
     confirmations: int = 0
 

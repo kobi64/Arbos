@@ -226,3 +226,38 @@ def test_describe_networks_preserves_normal_networks():
     assert len(
         result["networks"]
     ) == 2
+
+
+def test_unknown_minimum_withdrawal_is_preserved():
+    class UnknownMinimumProvider:
+        def get_coin(
+            self,
+            coin,
+        ):
+            return {
+                "exchange": "weex",
+                "coin": coin,
+                "available": True,
+                "networks": [
+                    {
+                        "network": "TRC20",
+                        "deposit_enabled": True,
+                        "withdraw_enabled": True,
+                        "withdraw_fee": 1.0,
+                        "withdraw_min": None,
+                    },
+                ],
+                "paper_only": True,
+                "live_order_submitted": False,
+            }
+
+    adapter = WeexNetworkMetadataAdapter(
+        provider=UnknownMinimumProvider(),
+    )
+
+    networks = adapter.get_networks(
+        "USDT"
+    )
+
+    assert len(networks) == 1
+    assert networks[0].min_withdraw is None

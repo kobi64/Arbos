@@ -37,7 +37,7 @@ def test_normalize_network_defaults():
     assert network.withdraw_enabled is False
     assert network.maintenance is False
     assert network.withdraw_fee == 0.0
-    assert network.min_withdraw == 0.0
+    assert network.min_withdraw is None
     assert network.confirmations == 0
 
 
@@ -66,3 +66,19 @@ def test_normalize_multiple_networks():
     assert networks[0].deposit_enabled is True
     assert networks[1].deposit_enabled is False
         
+
+
+
+def test_explicit_unknown_minimum_withdrawal_is_preserved():
+    network = ExchangeNetworkAdapter.normalize_network(
+        "USDT",
+        {
+            "network": "trc20",
+            "deposit_enabled": True,
+            "withdraw_enabled": True,
+            "withdraw_fee": 1.0,
+            "min_withdraw": None,
+        },
+    )
+
+    assert network.min_withdraw is None

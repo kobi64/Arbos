@@ -79,3 +79,23 @@ def test_transfer_rejected_when_withdrawals_disabled():
     )
 
     assert result.feasible is False
+
+
+def test_transfer_rejected_when_minimum_withdrawal_unknown():
+    network = NetworkInfo(
+        "USDT",
+        "TRC20",
+        withdraw_fee=1.0,
+        min_withdraw=None,
+    )
+
+    result = TransferFeasibility.evaluate(
+        amount=100.0,
+        network=network,
+    )
+
+    assert result.feasible is False
+    assert result.net_amount == 0.0
+    assert result.reason == (
+        "minimum_withdrawal_unknown"
+    )

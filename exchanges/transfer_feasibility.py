@@ -42,6 +42,13 @@ class TransferFeasibility:
                 reason="withdrawals_disabled",
             )
 
+        if network.min_withdraw is None:
+            return TransferFeasibilityResult(
+                feasible=False,
+                net_amount=0.0,
+                reason="minimum_withdrawal_unknown",
+            )
+
         if amount < network.min_withdraw:
             return TransferFeasibilityResult(
                 feasible=False,
