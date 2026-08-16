@@ -24,12 +24,24 @@ from core.configurable_cex_venue_registry import (
 
 class NativeCoverageExchangeSetRegistry:
     DEFAULT_EXCHANGE_IDS = (
-        "gate",
+        "binance",
+        "bingx",
         "bitget",
-        "htx",
-        "xt",
-        "kucoin",
+        "coinbase",
+        "coinex",
         "digifinex",
+        "gate",
+        "htx",
+        "kraken",
+        "kucoin",
+        "lbank",
+        "mexc",
+        "okx",
+        "ourbit",
+        "phemex",
+        "poloniex",
+        "weex",
+        "xt",
     )
 
     def __init__(
