@@ -161,6 +161,16 @@ from exchanges.phemex_spot_scale_resolver import (
     PhemexSpotScaleResolver,
 )
 
+from exchanges.okx_public_spot_client import (
+    OKXPublicSpotClient,
+)
+from exchanges.okx_verification_adapter import (
+    OKXVerificationAdapter,
+)
+from exchanges.okx_native_order_book_provider import (
+    OKXNativeOrderBookProvider,
+)
+
 
 class VerifiedNativeOrderBookProviderFactory:
     def __init__(
@@ -363,6 +373,21 @@ class VerifiedNativeOrderBookProviderFactory:
             "phemex",
             lambda exchange: (
                 self._build_phemex_provider()
+            ),
+        )
+
+        registry.register(
+            "okx",
+            lambda exchange: (
+                OKXNativeOrderBookProvider(
+                    adapter=(
+                        OKXVerificationAdapter(
+                            client=(
+                                OKXPublicSpotClient()
+                            )
+                        )
+                    ),
+                )
             ),
         )
 

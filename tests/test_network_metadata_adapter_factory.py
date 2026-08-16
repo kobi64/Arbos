@@ -1241,3 +1241,27 @@ def test_default_factory_builds_phemex_network_adapter():
         adapter,
         PhemexNetworkMetadataAdapter,
     )
+
+
+def test_okx_does_not_claim_native_public_network_metadata():
+    from exchanges.ccxt_network_metadata_adapter import (
+        CCXTNetworkMetadataAdapter,
+    )
+
+    class OKXExchange:
+        id = "okx"
+
+        def load_currencies(self):
+            return {}
+
+    adapter = (
+        NetworkMetadataAdapterFactory()
+        .build(
+            OKXExchange()
+        )
+    )
+
+    assert isinstance(
+        adapter,
+        CCXTNetworkMetadataAdapter,
+    )

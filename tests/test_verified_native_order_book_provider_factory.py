@@ -732,3 +732,45 @@ def test_phemex_exchange_id_is_normalized():
         provider,
         PhemexNativeOrderBookProvider,
     )
+
+
+def test_builds_okx_native_provider():
+    from exchanges.okx_native_order_book_provider import (
+        OKXNativeOrderBookProvider,
+    )
+
+    class OKXExchange:
+        id = "okx"
+
+    provider = (
+        VerifiedNativeOrderBookProviderFactory()
+        .build(
+            OKXExchange()
+        )
+    )
+
+    assert isinstance(
+        provider,
+        OKXNativeOrderBookProvider,
+    )
+
+
+def test_okx_exchange_id_is_normalized():
+    from exchanges.okx_native_order_book_provider import (
+        OKXNativeOrderBookProvider,
+    )
+
+    class OKXExchange:
+        id = " OKX "
+
+    provider = (
+        VerifiedNativeOrderBookProviderFactory()
+        .build(
+            OKXExchange()
+        )
+    )
+
+    assert isinstance(
+        provider,
+        OKXNativeOrderBookProvider,
+    )
