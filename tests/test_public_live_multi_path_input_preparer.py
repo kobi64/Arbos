@@ -611,3 +611,88 @@ def test_network_identity_metadata_factory_defaults_when_not_supplied():
         ._network_identity_metadata_adapter_factory
         is not None
     )
+
+
+def test_native_only_source_can_supply_markets_and_order_book():
+    class NativeOnlyExchange:
+        id = "ourbit"
+
+    class FakeMarketSource:
+        def list_markets(self):
+            return [
+                {
+                    "symbol": "COINX/USDT",
+                    "base": "COINX",
+                    "quote": "USDT",
+                    "active": True,
+                },
+                {
+                    "symbol": "COINX/BTC",
+                    "base": "COINX",
+                    "quote": "BTC",
+                    "active": True,
+                },
+                {
+                    "symbol": "BTC/USDT",
+                    "base": "BTC",
+                    "quote": "USDT",
+                    "active": True,
+                },
+            ]
+
+    class FakeOrderBookProvider:
+        def snapshot(self, symbol, limit=None):
+            books = {
+                "COINX/USDT": {
+                    "best_bid": 0.99,
+                    "best_ask": 1.00,
+                    "bids": [[0.99, 10000.0]],
+                    "asks": [[1.00, 10000.0]],
+                },
+                "COINX/BTC": {
+                    "best_bid": 0.00002,
+                    "best_ask": 0.000021,
+                    "bids": [[0.00002, 10000.0]],
+                    "asks": [[0.000021, 10000.0]],
+                },
+                "BTC/USDT": {
+                    "best_bid": 50000.0,
+                    "best_ask": 50010.0,
+                    "bids": [[50000.0, 10.0]],
+                    "asks": [[50010.0, 10.0]],
+                },
+            }
+
+            return {
+                "exchange": "ourbit",
+                "symbol": symbol,
+                "timestamp": None,
+                **books[symbol],
+                "paper_only": True,
+                "live_order_submitted": False,
+            }
+
+    preparer = PublicLiveMultiPathInputPreparer(
+        source_exchange=NativeOnlyExchange(),
+        destination_exchange=FakeExchange(
+            destination=True
+        ),
+        source_market_source=FakeMarketSource(),
+        source_order_book_provider=(
+            FakeOrderBookProvider()
+        ),
+    )
+
+    result = preparer.prepare(
+        source_exchange_id="ourbit",
+        destination_exchange_id="destination",
+        coin_asset="COINX",
+        starting_usdt_value=100.0,
+        source_fee_rate=0.001,
+    )
+
+    assert result["prepare_complete"] is True
+    assert result["coin_asset"] == "COINX"
+    assert result["coin_amount"] > 0
+    assert result["paper_only"] is True
+    assert result["live_order_submitted"] is False

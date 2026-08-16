@@ -38,10 +38,16 @@ class PublicLiveMultiPathInputPreparer:
         source_buy_quote=None,
         network_metadata_adapter_factory=None,
         network_identity_metadata_adapter_factory=None,
+        source_market_source=None,
+        source_order_book_provider=None,
     ):
         self._source_exchange = source_exchange
         self._destination_exchange = destination_exchange
         self._source_buy_quote = source_buy_quote
+        self._source_market_source = source_market_source
+        self._source_order_book_provider = (
+            source_order_book_provider
+        )
 
         if network_metadata_adapter_factory is None:
             network_metadata_adapter_factory = (
@@ -162,15 +168,50 @@ class PublicLiveMultiPathInputPreparer:
                 "coin_asset is required"
             )
 
-        markets = self._source_exchange.load_markets()
+        if self._source_market_source is not None:
+            native_markets = (
+                self._source_market_source.list_markets()
+            )
+
+            markets = {}
+
+            for market in native_markets:
+                if not isinstance(
+                    market,
+                    dict,
+                ):
+                    continue
+
+                symbol = str(
+                    market.get(
+                        "symbol",
+                        "",
+                    )
+                    or ""
+                ).strip().upper()
+
+                if not symbol:
+                    continue
+
+                markets[symbol] = {
+                    **market,
+                    "spot": True,
+                }
+        else:
+            markets = (
+                self._source_exchange.load_markets()
+            )
 
         coin_symbol = f"{coin_asset}/USDT"
 
-        source_snapshot = (
-            LiveOrderBookSnapshotEngine(
-                self._source_exchange
+        if self._source_order_book_provider is None:
+            source_snapshot = (
+                LiveOrderBookSnapshotEngine(
+                    self._source_exchange
+                )
             )
-        )
+        else:
+            source_snapshot = None
 
         source_buy_result = None
         source_buy_depth_aware = False
@@ -232,9 +273,16 @@ class PublicLiveMultiPathInputPreparer:
             )
 
         else:
-            coin_book = source_snapshot.snapshot(
-                coin_symbol
-            )
+            if self._source_order_book_provider is not None:
+                coin_book = (
+                    self._source_order_book_provider.snapshot(
+                        coin_symbol
+                    )
+                )
+            else:
+                coin_book = source_snapshot.snapshot(
+                    coin_symbol
+                )
 
             ask_price = float(
                 coin_book["asks"][0][0]
@@ -361,11 +409,18 @@ class PublicLiveMultiPathInputPreparer:
             )
         }
 
-        order_book_provider = (
-            LiveOrderBookProviderAdapter(
-                source_snapshot
+        if self._source_order_book_provider is not None:
+            order_book_provider = (
+                LiveOrderBookProviderAdapter(
+                    self._source_order_book_provider
+                )
             )
-        )
+        else:
+            order_book_provider = (
+                LiveOrderBookProviderAdapter(
+                    source_snapshot
+                )
+            )
 
         spot_provider = (
             OrderBookSpotConversionQuoteProvider(
@@ -546,12 +601,6 @@ class PublicLiveMultiPathInputPreparer:
             "destination_network_metadata": (
                 destination_network_metadata
             ),
-            "source_network_metadata": (
-                source_network_metadata
-            ),
-            "destination_network_metadata": (
-                destination_network_metadata
-            ),
             "source_network_identity_records": (
                 source_network_identity_records
             ),
@@ -560,4 +609,6 @@ class PublicLiveMultiPathInputPreparer:
             ),
             "bridge_quotes": bridge_quotes,
             "markets": markets,
+            "paper_only": True,
+            "live_order_submitted": False,
         }
