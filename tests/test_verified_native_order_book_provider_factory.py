@@ -690,3 +690,45 @@ def test_coinex_exchange_id_is_normalized():
         provider,
         CoinExNativeOrderBookProvider,
     )
+
+
+def test_builds_phemex_native_provider():
+    from exchanges.phemex_native_order_book_provider import (
+        PhemexNativeOrderBookProvider,
+    )
+
+    class PhemexExchange:
+        id = "phemex"
+
+    provider = (
+        VerifiedNativeOrderBookProviderFactory()
+        .build(
+            PhemexExchange()
+        )
+    )
+
+    assert isinstance(
+        provider,
+        PhemexNativeOrderBookProvider,
+    )
+
+
+def test_phemex_exchange_id_is_normalized():
+    from exchanges.phemex_native_order_book_provider import (
+        PhemexNativeOrderBookProvider,
+    )
+
+    class PhemexExchange:
+        id = " PHEMEX "
+
+    provider = (
+        VerifiedNativeOrderBookProviderFactory()
+        .build(
+            PhemexExchange()
+        )
+    )
+
+    assert isinstance(
+        provider,
+        PhemexNativeOrderBookProvider,
+    )

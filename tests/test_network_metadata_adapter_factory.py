@@ -1166,3 +1166,78 @@ def test_default_factory_builds_coinex_network_adapter():
         adapter,
         CoinExNetworkMetadataAdapter,
     )
+
+
+def test_phemex_builds_native_network_adapter():
+    from exchanges.phemex_network_metadata_adapter import (
+        PhemexNetworkMetadataAdapter,
+    )
+
+    class PhemexExchange:
+        id = "phemex"
+
+    marker = object()
+
+    factory = NetworkMetadataAdapterFactory(
+        phemex_client_factory=(
+            lambda exchange: marker
+        ),
+    )
+
+    adapter = factory.build(
+        PhemexExchange()
+    )
+
+    assert isinstance(
+        adapter,
+        PhemexNetworkMetadataAdapter,
+    )
+
+    assert adapter._client is marker
+
+
+def test_phemex_exchange_id_is_normalized():
+    from exchanges.phemex_network_metadata_adapter import (
+        PhemexNetworkMetadataAdapter,
+    )
+
+    class PhemexExchange:
+        id = " PHEMEX "
+
+    marker = object()
+
+    factory = NetworkMetadataAdapterFactory(
+        phemex_client_factory=(
+            lambda exchange: marker
+        ),
+    )
+
+    adapter = factory.build(
+        PhemexExchange()
+    )
+
+    assert isinstance(
+        adapter,
+        PhemexNetworkMetadataAdapter,
+    )
+
+
+def test_default_factory_builds_phemex_network_adapter():
+    from exchanges.phemex_network_metadata_adapter import (
+        PhemexNetworkMetadataAdapter,
+    )
+
+    class PhemexExchange:
+        id = "phemex"
+
+    adapter = (
+        NetworkMetadataAdapterFactory()
+        .build(
+            PhemexExchange()
+        )
+    )
+
+    assert isinstance(
+        adapter,
+        PhemexNetworkMetadataAdapter,
+    )
