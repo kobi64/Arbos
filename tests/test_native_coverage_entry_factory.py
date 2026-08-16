@@ -357,3 +357,41 @@ def test_phemex_exchange_id_is_normalized():
         ],
         PhemexNativeMarketSource,
     )
+
+
+def test_builds_okx_native_market_source():
+    from exchanges.okx_native_market_source import (
+        OKXNativeMarketSource,
+    )
+
+    result = NativeCoverageEntryFactory().build({
+        "okx": FakeExchange("okx"),
+    })
+
+    assert result["entry_count"] == 1
+
+    entry = result["entries"][0]
+
+    assert isinstance(
+        entry["native_market_source"],
+        OKXNativeMarketSource,
+    )
+
+
+def test_okx_exchange_id_is_normalized():
+    from exchanges.okx_native_market_source import (
+        OKXNativeMarketSource,
+    )
+
+    result = NativeCoverageEntryFactory().build({
+        "wrong-key": FakeExchange(" OKX "),
+    })
+
+    assert result["entry_count"] == 1
+
+    assert isinstance(
+        result["entries"][0][
+            "native_market_source"
+        ],
+        OKXNativeMarketSource,
+    )
