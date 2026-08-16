@@ -243,6 +243,19 @@ class BroadPublicPaperScanCoordinator:
             for coin in coins
         })
 
+        scanner_failures = list(
+            scanner_result.get(
+                "failures",
+                [],
+            )
+            or []
+        )
+
+        combined_failures = (
+            list(discovery_failures)
+            + scanner_failures
+        )
+
         return {
             **scanner_result,
             "exchange_coin_assets": (
@@ -266,8 +279,17 @@ class BroadPublicPaperScanCoordinator:
             "failed_exchange_count": len(
                 discovery_failures
             ),
-            "failures": list(
-                discovery_failures
+            "scanner_failures": (
+                scanner_failures
+            ),
+            "scanner_failure_count": len(
+                scanner_failures
+            ),
+            "failures": (
+                combined_failures
+            ),
+            "failure_count": len(
+                combined_failures
             ),
             "exchange_count": len(
                 normalized_exchange_ids

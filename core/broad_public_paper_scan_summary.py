@@ -12,6 +12,10 @@ No transfers.
 No live orders.
 """
 
+from core.broad_public_paper_scan_failure_diagnostics import (
+    BroadPublicPaperScanFailureDiagnostics,
+)
+
 
 class BroadPublicPaperScanSummary:
     def build(
@@ -107,7 +111,15 @@ class BroadPublicPaperScanSummary:
             )
         )
 
+        diagnostics = (
+            BroadPublicPaperScanFailureDiagnostics()
+            .build(
+                scan_result
+            )
+        )
+
         return {
+            "diagnostics": diagnostics,
             "route_count": scan_result.get(
                 "route_count",
                 len(ranked_routes),

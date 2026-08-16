@@ -190,3 +190,78 @@ def test_top_limit_must_be_positive_integer(
             {},
             top_limit=top_limit,
         )
+
+
+def test_summary_includes_failure_diagnostics():
+    summary = BroadPublicPaperScanSummary()
+
+    result = summary.build({
+        "configured_exchange_count": 2,
+        "discovered_exchange_count": 2,
+        "ranked_routes": [],
+        "rejected_routes": [
+            {
+                "reason": (
+                    "transfer_verification_unavailable"
+                ),
+            },
+        ],
+        "discovery_failures": [],
+        "scanner_failures": [
+            {
+                "phase": "internal",
+                "exchange_id": "gate",
+                "coin_asset": "BTC",
+                "reason": (
+                    "internal_coin_scan_failed"
+                ),
+            },
+        ],
+    })
+
+    diagnostics = result[
+        "diagnostics"
+    ]
+
+    assert diagnostics[
+        "status"
+    ] == "degraded"
+
+    assert diagnostics[
+        "scanner_failure_count"
+    ] == 1
+
+    assert diagnostics[
+        "rejected_route_count"
+    ] == 1
+
+    assert diagnostics[
+        "failures_by_exchange"
+    ] == {
+        "gate": 1,
+    }
+
+    assert diagnostics[
+        "rejection_reasons"
+    ] == {
+        "transfer_verification_unavailable": 1,
+    }
+
+
+def test_summary_diagnostics_are_paper_only():
+    summary = BroadPublicPaperScanSummary()
+
+    result = summary.build({
+        "ranked_routes": [],
+    })
+
+    assert result[
+        "diagnostics"
+    ]["paper_only"] is True
+
+    assert (
+        result[
+            "diagnostics"
+        ]["live_order_submitted"]
+        is False
+    )
