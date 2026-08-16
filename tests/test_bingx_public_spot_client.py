@@ -234,3 +234,148 @@ def test_missing_data_fails_closed():
     assert result[
         "fetch_complete"
     ] is False
+
+
+def test_fetches_symbols():
+    session = FakeSession([
+        FakeResponse({
+            "code": 0,
+            "msg": "",
+            "data": {
+                "symbols": [
+                    {
+                        "symbol": "BTC-USDT",
+                        "minQty": 0.00001,
+                        "maxQty": 1000,
+                        "minNotional": 1,
+                        "maxNotional": 1000000,
+                        "status": 1,
+                        "tickSize": 0.01,
+                        "stepSize": 0.00001,
+                    }
+                ]
+            },
+        }),
+    ])
+
+    client = BingXPublicSpotClient(
+        session=session,
+    )
+
+    result = client.fetch_symbols()
+
+    assert result[
+        "fetch_complete"
+    ] is True
+
+    assert len(
+        result["symbols"]
+    ) == 1
+
+    assert result["symbols"][0][
+        "symbol"
+    ] == "BTC-USDT"
+
+    assert session.calls[0][
+        "url"
+    ] == (
+        "https://open-api.bingx.com"
+        "/openApi/spot/v1/common/symbols"
+    )
+
+    assert session.calls[0][
+        "params"
+    ] is None
+
+    assert result[
+        "paper_only"
+    ] is True
+
+    assert result[
+        "live_order_submitted"
+    ] is False
+
+
+def test_symbols_http_failure_is_fail_closed():
+    session = FakeSession([
+        FakeResponse(
+            {},
+            status_code=500,
+        ),
+    ])
+
+    client = BingXPublicSpotClient(
+        session=session,
+    )
+
+    result = client.fetch_symbols()
+
+    assert result[
+        "fetch_complete"
+    ] is False
+
+    assert result[
+        "symbols"
+    ] == []
+
+    assert result[
+        "paper_only"
+    ] is True
+
+    assert result[
+        "live_order_submitted"
+    ] is False
+
+    assert result["reason"]
+
+
+def test_symbols_exchange_error_is_fail_closed():
+    session = FakeSession([
+        FakeResponse({
+            "code": 100400,
+            "msg": "Invalid request",
+        }),
+    ])
+
+    client = BingXPublicSpotClient(
+        session=session,
+    )
+
+    result = client.fetch_symbols()
+
+    assert result[
+        "fetch_complete"
+    ] is False
+
+    assert result[
+        "symbols"
+    ] == []
+
+    assert result["reason"]
+
+
+def test_symbols_payload_must_contain_list():
+    session = FakeSession([
+        FakeResponse({
+            "code": 0,
+            "data": {
+                "symbols": {},
+            },
+        }),
+    ])
+
+    client = BingXPublicSpotClient(
+        session=session,
+    )
+
+    result = client.fetch_symbols()
+
+    assert result[
+        "fetch_complete"
+    ] is False
+
+    assert result[
+        "symbols"
+    ] == []
+
+    assert result["reason"]

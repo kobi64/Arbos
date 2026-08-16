@@ -54,6 +54,9 @@ from exchanges.kraken_native_market_source import (
 from exchanges.mexc_native_market_source import (
     MexcNativeMarketSource,
 )
+from exchanges.bingx_native_market_source import (
+    BingXNativeMarketSource,
+)
 
 
 class NativeCoverageEntryFactory:
@@ -97,6 +100,7 @@ class NativeCoverageEntryFactory:
             "coinbase": CoinbaseNativeMarketSource,
             "kraken": KrakenNativeMarketSource,
             "mexc": MexcNativeMarketSource,
+            "bingx": BingXNativeMarketSource,
         }
 
         self._provider_factories = dict(

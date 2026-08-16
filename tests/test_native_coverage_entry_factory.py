@@ -604,3 +604,41 @@ def test_mexc_exchange_id_is_normalized():
         ],
         MexcNativeMarketSource,
     )
+
+
+def test_builds_bingx_native_market_source():
+    from exchanges.bingx_native_market_source import (
+        BingXNativeMarketSource,
+    )
+
+    result = NativeCoverageEntryFactory().build({
+        "bingx": FakeExchange("bingx"),
+    })
+
+    assert result["entry_count"] == 1
+
+    assert isinstance(
+        result["entries"][0][
+            "native_market_source"
+        ],
+        BingXNativeMarketSource,
+    )
+
+
+def test_bingx_exchange_id_is_normalized():
+    from exchanges.bingx_native_market_source import (
+        BingXNativeMarketSource,
+    )
+
+    result = NativeCoverageEntryFactory().build({
+        "wrong-key": FakeExchange(" BINGX "),
+    })
+
+    assert result["entry_count"] == 1
+
+    assert isinstance(
+        result["entries"][0][
+            "native_market_source"
+        ],
+        BingXNativeMarketSource,
+    )
