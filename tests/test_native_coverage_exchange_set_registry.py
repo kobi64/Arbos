@@ -9,12 +9,24 @@ class FakeExchange:
 
 
 class FakeCCXT:
-    gate = FakeExchange
+    binance = FakeExchange
+    bingx = FakeExchange
     bitget = FakeExchange
-    htx = FakeExchange
-    xt = FakeExchange
-    kucoin = FakeExchange
+    coinbase = FakeExchange
+    coinex = FakeExchange
     digifinex = FakeExchange
+    gate = FakeExchange
+    htx = FakeExchange
+    kraken = FakeExchange
+    kucoin = FakeExchange
+    lbank = FakeExchange
+    mexc = FakeExchange
+    okx = FakeExchange
+    ourbit = FakeExchange
+    phemex = FakeExchange
+    poloniex = FakeExchange
+    weex = FakeExchange
+    xt = FakeExchange
 
 
 def test_registers_default_native_coverage_exchange_set():
@@ -23,11 +35,23 @@ def test_registers_default_native_coverage_exchange_set():
     )
 
     assert registry.enabled_exchange_ids() == [
+        "binance",
+        "bingx",
         "bitget",
+        "coinbase",
+        "coinex",
         "digifinex",
         "gate",
         "htx",
+        "kraken",
         "kucoin",
+        "lbank",
+        "mexc",
+        "okx",
+        "ourbit",
+        "phemex",
+        "poloniex",
+        "weex",
         "xt",
     ]
 
@@ -40,11 +64,23 @@ def test_builds_exchange_map_for_enabled_set():
     exchanges = registry.build_exchange_map()
 
     assert sorted(exchanges) == [
+        "binance",
+        "bingx",
         "bitget",
+        "coinbase",
+        "coinex",
         "digifinex",
         "gate",
         "htx",
+        "kraken",
         "kucoin",
+        "lbank",
+        "mexc",
+        "okx",
+        "ourbit",
+        "phemex",
+        "poloniex",
+        "weex",
         "xt",
     ]
 
@@ -155,3 +191,51 @@ def test_registry_is_configuration_only():
 
     assert result == {}
     assert registry.live_order_submitted is False
+
+
+def test_default_set_includes_all_verified_native_coverage_venues():
+    expected = {
+        "binance",
+        "bingx",
+        "bitget",
+        "coinbase",
+        "coinex",
+        "digifinex",
+        "gate",
+        "htx",
+        "kraken",
+        "kucoin",
+        "lbank",
+        "mexc",
+        "okx",
+        "ourbit",
+        "phemex",
+        "poloniex",
+        "weex",
+        "xt",
+    }
+
+    assert set(
+        NativeCoverageExchangeSetRegistry
+        .DEFAULT_EXCHANGE_IDS
+    ) == expected
+
+
+def test_default_set_excludes_unverified_hotcoin():
+    assert (
+        "hotcoin"
+        not in
+        NativeCoverageExchangeSetRegistry
+        .DEFAULT_EXCHANGE_IDS
+    )
+
+
+def test_default_set_has_no_duplicate_exchange_ids():
+    exchange_ids = (
+        NativeCoverageExchangeSetRegistry
+        .DEFAULT_EXCHANGE_IDS
+    )
+
+    assert len(exchange_ids) == len(
+        set(exchange_ids)
+    )
