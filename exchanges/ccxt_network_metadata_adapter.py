@@ -45,12 +45,12 @@ class CCXTNetworkMetadataAdapter:
 
         currency_deposit = currency.get(
             "deposit",
-            True,
+            False,
         )
 
         currency_withdraw = currency.get(
             "withdraw",
-            True,
+            False,
         )
 
         networks = currency.get("networks") or {}
@@ -86,10 +86,10 @@ class CCXTNetworkMetadataAdapter:
                         network_name
                     ).strip().upper(),
                     deposit_enabled=(
-                        deposit_enabled is not False
+                        deposit_enabled is True
                     ),
                     withdraw_enabled=(
-                        withdraw_enabled is not False
+                        withdraw_enabled is True
                     ),
                     maintenance=False,
                     withdraw_fee=(
