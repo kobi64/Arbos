@@ -48,6 +48,9 @@ from exchanges.binance_native_market_source import (
 from exchanges.coinbase_native_market_source import (
     CoinbaseNativeMarketSource,
 )
+from exchanges.kraken_native_market_source import (
+    KrakenNativeMarketSource,
+)
 
 
 class NativeCoverageEntryFactory:
@@ -88,6 +91,7 @@ class NativeCoverageEntryFactory:
             "okx": OKXNativeMarketSource,
             "binance": BinanceNativeMarketSource,
             "coinbase": CoinbaseNativeMarketSource,
+            "kraken": KrakenNativeMarketSource,
         }
 
         self._provider_factories = dict(

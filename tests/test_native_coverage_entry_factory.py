@@ -471,3 +471,41 @@ def test_coinbase_exchange_id_is_normalized():
         ],
         CoinbaseNativeMarketSource,
     )
+
+
+def test_builds_kraken_native_market_source():
+    from exchanges.kraken_native_market_source import (
+        KrakenNativeMarketSource,
+    )
+
+    result = NativeCoverageEntryFactory().build({
+        "kraken": FakeExchange("kraken"),
+    })
+
+    assert result["entry_count"] == 1
+
+    assert isinstance(
+        result["entries"][0][
+            "native_market_source"
+        ],
+        KrakenNativeMarketSource,
+    )
+
+
+def test_kraken_exchange_id_is_normalized():
+    from exchanges.kraken_native_market_source import (
+        KrakenNativeMarketSource,
+    )
+
+    result = NativeCoverageEntryFactory().build({
+        "wrong-key": FakeExchange(" KRAKEN "),
+    })
+
+    assert result["entry_count"] == 1
+
+    assert isinstance(
+        result["entries"][0][
+            "native_market_source"
+        ],
+        KrakenNativeMarketSource,
+    )
