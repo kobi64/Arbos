@@ -433,3 +433,41 @@ def test_binance_exchange_id_is_normalized():
         ],
         BinanceNativeMarketSource,
     )
+
+
+def test_builds_coinbase_native_market_source():
+    from exchanges.coinbase_native_market_source import (
+        CoinbaseNativeMarketSource,
+    )
+
+    result = NativeCoverageEntryFactory().build({
+        "coinbase": FakeExchange("coinbase"),
+    })
+
+    assert result["entry_count"] == 1
+
+    assert isinstance(
+        result["entries"][0][
+            "native_market_source"
+        ],
+        CoinbaseNativeMarketSource,
+    )
+
+
+def test_coinbase_exchange_id_is_normalized():
+    from exchanges.coinbase_native_market_source import (
+        CoinbaseNativeMarketSource,
+    )
+
+    result = NativeCoverageEntryFactory().build({
+        "wrong-key": FakeExchange(" COINBASE "),
+    })
+
+    assert result["entry_count"] == 1
+
+    assert isinstance(
+        result["entries"][0][
+            "native_market_source"
+        ],
+        CoinbaseNativeMarketSource,
+    )

@@ -181,6 +181,16 @@ from exchanges.binance_native_order_book_provider import (
     BinanceNativeOrderBookProvider,
 )
 
+from exchanges.coinbase_public_spot_client import (
+    CoinbasePublicSpotClient,
+)
+from exchanges.coinbase_verification_adapter import (
+    CoinbaseVerificationAdapter,
+)
+from exchanges.coinbase_native_order_book_provider import (
+    CoinbaseNativeOrderBookProvider,
+)
+
 
 class VerifiedNativeOrderBookProviderFactory:
     def __init__(
@@ -409,6 +419,21 @@ class VerifiedNativeOrderBookProviderFactory:
                         BinanceVerificationAdapter(
                             client=(
                                 BinancePublicSpotClient()
+                            )
+                        )
+                    ),
+                )
+            ),
+        )
+
+        registry.register(
+            "coinbase",
+            lambda exchange: (
+                CoinbaseNativeOrderBookProvider(
+                    adapter=(
+                        CoinbaseVerificationAdapter(
+                            client=(
+                                CoinbasePublicSpotClient()
                             )
                         )
                     ),
