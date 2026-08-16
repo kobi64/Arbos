@@ -80,6 +80,84 @@ class BingXPublicSpotClient:
             "-",
         )
 
+    def fetch_symbols(
+        self,
+    ):
+        try:
+            response = self._session.get(
+                (
+                    f"{self.base_url}"
+                    "/openApi/spot/v1/common/symbols"
+                ),
+                params=None,
+                timeout=self._timeout_seconds,
+            )
+
+            response.raise_for_status()
+
+            payload = response.json()
+
+            if not isinstance(
+                payload,
+                dict,
+            ):
+                raise ValueError(
+                    "unexpected symbols payload"
+                )
+
+            if payload.get(
+                "code"
+            ) != 0:
+                raise ValueError(
+                    payload.get(
+                        "msg",
+                        "exchange_error",
+                    )
+                )
+
+            data = payload.get(
+                "data"
+            )
+
+            if not isinstance(
+                data,
+                dict,
+            ):
+                raise ValueError(
+                    "missing symbols data"
+                )
+
+            symbols = data.get(
+                "symbols"
+            )
+
+            if not isinstance(
+                symbols,
+                list,
+            ):
+                raise ValueError(
+                    "unexpected symbols payload"
+                )
+
+            return {
+                "fetch_complete": True,
+                "symbols": symbols,
+                "reason": None,
+                "paper_only": True,
+                "live_order_submitted": False,
+            }
+
+        except Exception as exc:
+            return {
+                "fetch_complete": False,
+                "symbols": [],
+                "reason": (
+                    f"{type(exc).__name__}: {exc}"
+                ),
+                "paper_only": True,
+                "live_order_submitted": False,
+            }
+
     def fetch_order_book(
         self,
         symbol,
