@@ -1265,3 +1265,27 @@ def test_okx_does_not_claim_native_public_network_metadata():
         adapter,
         CCXTNetworkMetadataAdapter,
     )
+
+
+def test_binance_does_not_claim_native_public_network_metadata():
+    from exchanges.ccxt_network_metadata_adapter import (
+        CCXTNetworkMetadataAdapter,
+    )
+
+    class BinanceExchange:
+        id = "binance"
+
+        def load_currencies(self):
+            return {}
+
+    adapter = (
+        NetworkMetadataAdapterFactory()
+        .build(
+            BinanceExchange()
+        )
+    )
+
+    assert isinstance(
+        adapter,
+        CCXTNetworkMetadataAdapter,
+    )

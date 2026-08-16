@@ -171,6 +171,16 @@ from exchanges.okx_native_order_book_provider import (
     OKXNativeOrderBookProvider,
 )
 
+from exchanges.binance_public_spot_client import (
+    BinancePublicSpotClient,
+)
+from exchanges.binance_verification_adapter import (
+    BinanceVerificationAdapter,
+)
+from exchanges.binance_native_order_book_provider import (
+    BinanceNativeOrderBookProvider,
+)
+
 
 class VerifiedNativeOrderBookProviderFactory:
     def __init__(
@@ -384,6 +394,21 @@ class VerifiedNativeOrderBookProviderFactory:
                         OKXVerificationAdapter(
                             client=(
                                 OKXPublicSpotClient()
+                            )
+                        )
+                    ),
+                )
+            ),
+        )
+
+        registry.register(
+            "binance",
+            lambda exchange: (
+                BinanceNativeOrderBookProvider(
+                    adapter=(
+                        BinanceVerificationAdapter(
+                            client=(
+                                BinancePublicSpotClient()
                             )
                         )
                     ),
