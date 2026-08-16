@@ -71,6 +71,62 @@ class MexcPublicSpotClient:
             .replace("-", "")
         )
 
+    def fetch_exchange_info(
+        self,
+    ):
+        try:
+            response = self._session.get(
+                (
+                    f"{self.base_url}"
+                    "/api/v3/exchangeInfo"
+                ),
+                params=None,
+                timeout=self._timeout_seconds,
+            )
+
+            response.raise_for_status()
+
+            payload = response.json()
+
+            if not isinstance(
+                payload,
+                dict,
+            ):
+                raise ValueError(
+                    "unexpected exchange info payload"
+                )
+
+            symbols = payload.get(
+                "symbols"
+            )
+
+            if not isinstance(
+                symbols,
+                list,
+            ):
+                raise ValueError(
+                    "unexpected exchange info symbols"
+                )
+
+            return {
+                "fetch_complete": True,
+                "symbols": symbols,
+                "reason": None,
+                "paper_only": True,
+                "live_order_submitted": False,
+            }
+
+        except Exception as exc:
+            return {
+                "fetch_complete": False,
+                "symbols": [],
+                "reason": (
+                    f"{type(exc).__name__}: {exc}"
+                ),
+                "paper_only": True,
+                "live_order_submitted": False,
+            }
+
     def fetch_order_book(
         self,
         symbol,

@@ -205,3 +205,124 @@ def test_order_book_payload_must_be_dictionary():
     assert result[
         "fetch_complete"
     ] is False
+
+
+def test_fetches_exchange_info():
+    session = FakeSession([
+        FakeResponse({
+            "timezone": "UTC",
+            "symbols": [
+                {
+                    "symbol": "BTCUSDT",
+                    "status": "1",
+                    "baseAsset": "BTC",
+                    "quoteAsset": "USDT",
+                    "baseAssetPrecision": 8,
+                    "quoteAssetPrecision": 8,
+                    "quoteAmountPrecision": 8,
+                    "baseSizePrecision": "0.000001",
+                    "quoteAmountPrecisionMarket": "0.000001",
+                    "maxQuoteAmount": "1000000",
+                    "isSpotTradingAllowed": True,
+                    "orderTypes": [
+                        "LIMIT",
+                        "MARKET",
+                    ],
+                }
+            ],
+        }),
+    ])
+
+    client = MexcPublicSpotClient(
+        session=session,
+    )
+
+    result = client.fetch_exchange_info()
+
+    assert result[
+        "fetch_complete"
+    ] is True
+
+    assert len(
+        result["symbols"]
+    ) == 1
+
+    assert result["symbols"][0][
+        "symbol"
+    ] == "BTCUSDT"
+
+    assert session.calls[0][
+        "url"
+    ] == (
+        "https://api.mexc.com"
+        "/api/v3/exchangeInfo"
+    )
+
+    assert session.calls[0][
+        "params"
+    ] is None
+
+    assert result[
+        "paper_only"
+    ] is True
+
+    assert result[
+        "live_order_submitted"
+    ] is False
+
+
+def test_exchange_info_http_failure_is_fail_closed():
+    session = FakeSession([
+        FakeResponse(
+            {},
+            status_code=500,
+        ),
+    ])
+
+    client = MexcPublicSpotClient(
+        session=session,
+    )
+
+    result = client.fetch_exchange_info()
+
+    assert result[
+        "fetch_complete"
+    ] is False
+
+    assert result[
+        "symbols"
+    ] == []
+
+    assert result[
+        "paper_only"
+    ] is True
+
+    assert result[
+        "live_order_submitted"
+    ] is False
+
+    assert result["reason"]
+
+
+def test_exchange_info_symbols_must_be_list():
+    session = FakeSession([
+        FakeResponse({
+            "symbols": {},
+        }),
+    ])
+
+    client = MexcPublicSpotClient(
+        session=session,
+    )
+
+    result = client.fetch_exchange_info()
+
+    assert result[
+        "fetch_complete"
+    ] is False
+
+    assert result[
+        "symbols"
+    ] == []
+
+    assert result["reason"]

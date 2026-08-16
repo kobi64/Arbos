@@ -566,3 +566,41 @@ def test_legacy_gate_id_remains_supported():
         ],
         GateNativeMarketSource,
     )
+
+
+def test_builds_mexc_native_market_source():
+    from exchanges.mexc_native_market_source import (
+        MexcNativeMarketSource,
+    )
+
+    result = NativeCoverageEntryFactory().build({
+        "mexc": FakeExchange("mexc"),
+    })
+
+    assert result["entry_count"] == 1
+
+    assert isinstance(
+        result["entries"][0][
+            "native_market_source"
+        ],
+        MexcNativeMarketSource,
+    )
+
+
+def test_mexc_exchange_id_is_normalized():
+    from exchanges.mexc_native_market_source import (
+        MexcNativeMarketSource,
+    )
+
+    result = NativeCoverageEntryFactory().build({
+        "wrong-key": FakeExchange(" MEXC "),
+    })
+
+    assert result["entry_count"] == 1
+
+    assert isinstance(
+        result["entries"][0][
+            "native_market_source"
+        ],
+        MexcNativeMarketSource,
+    )
