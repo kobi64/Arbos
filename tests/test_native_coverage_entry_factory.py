@@ -509,3 +509,60 @@ def test_kraken_exchange_id_is_normalized():
         ],
         KrakenNativeMarketSource,
     )
+
+
+def test_builds_gate_native_market_source_from_canonical_gateio_id():
+    from exchanges.gate_native_market_source import (
+        GateNativeMarketSource,
+    )
+
+    result = NativeCoverageEntryFactory().build({
+        "gateio": FakeExchange("gateio"),
+    })
+
+    assert result["entry_count"] == 1
+
+    assert isinstance(
+        result["entries"][0][
+            "native_market_source"
+        ],
+        GateNativeMarketSource,
+    )
+
+
+def test_gateio_exchange_id_is_normalized():
+    from exchanges.gate_native_market_source import (
+        GateNativeMarketSource,
+    )
+
+    result = NativeCoverageEntryFactory().build({
+        "wrong-key": FakeExchange(" GATEIO "),
+    })
+
+    assert result["entry_count"] == 1
+
+    assert isinstance(
+        result["entries"][0][
+            "native_market_source"
+        ],
+        GateNativeMarketSource,
+    )
+
+
+def test_legacy_gate_id_remains_supported():
+    from exchanges.gate_native_market_source import (
+        GateNativeMarketSource,
+    )
+
+    result = NativeCoverageEntryFactory().build({
+        "gate": FakeExchange("gate"),
+    })
+
+    assert result["entry_count"] == 1
+
+    assert isinstance(
+        result["entries"][0][
+            "native_market_source"
+        ],
+        GateNativeMarketSource,
+    )

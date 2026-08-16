@@ -82,6 +82,7 @@ class NativeCoverageEntryFactory:
                 DigiFinexNativeMarketSource
             ),
             "gate": GateNativeMarketSource,
+            "gateio": GateNativeMarketSource,
             "htx": HTXNativeMarketSource,
             "hotcoin": HotcoinNativeMarketSource,
             "kucoin": KuCoinNativeMarketSource,
