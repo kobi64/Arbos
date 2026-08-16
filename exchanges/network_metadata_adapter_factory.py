@@ -140,6 +140,13 @@ from exchanges.xt_network_metadata_client import (
     XTNetworkMetadataClient,
 )
 
+from exchanges.coinex_network_metadata_adapter import (
+    CoinExNetworkMetadataAdapter,
+)
+from exchanges.coinex_network_metadata_client import (
+    CoinExNetworkMetadataClient,
+)
+
 
 class NetworkMetadataAdapterFactory:
     def __init__(
@@ -157,6 +164,7 @@ class NetworkMetadataAdapterFactory:
         digifinex_client_factory=None,
         bitget_client_factory=None,
         xt_client_factory=None,
+        coinex_client_factory=None,
     ):
         if weex_provider_factory is None:
             weex_provider_factory = (
@@ -273,6 +281,15 @@ class NetworkMetadataAdapterFactory:
 
         self._xt_client_factory = (
             xt_client_factory
+        )
+
+        if coinex_client_factory is None:
+            coinex_client_factory = (
+                self._build_default_coinex_client
+            )
+
+        self._coinex_client_factory = (
+            coinex_client_factory
         )
 
     def build(
@@ -462,6 +479,19 @@ class NetworkMetadataAdapterFactory:
                 )
             )
 
+        if exchange_id == "coinex":
+            client = (
+                self._coinex_client_factory(
+                    exchange
+                )
+            )
+
+            return (
+                CoinExNetworkMetadataAdapter(
+                    client=client,
+                )
+            )
+
         return CCXTNetworkMetadataAdapter(
             exchange
         )
@@ -587,4 +617,10 @@ class NetworkMetadataAdapterFactory:
         exchange,
     ):
         return XTNetworkMetadataClient()
+
+    @staticmethod
+    def _build_default_coinex_client(
+        exchange,
+    ):
+        return CoinExNetworkMetadataClient()
 
