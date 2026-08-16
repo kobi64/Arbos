@@ -142,3 +142,76 @@ def test_preserves_unknown_withdraw_fee_as_none():
 
     assert len(networks) == 1
     assert networks[0].withdraw_fee is None
+
+
+
+def test_unknown_currency_and_network_transfer_states_fail_closed():
+    class FakeUnknownTransferStateExchange:
+        def load_currencies(self):
+            return {
+                "USDT": {
+                    "deposit": None,
+                    "withdraw": None,
+                    "networks": {
+                        "TRC20": {
+                            "deposit": None,
+                            "withdraw": None,
+                            "fee": 1.0,
+                            "limits": {
+                                "withdraw": {
+                                    "min": 10.0,
+                                },
+                            },
+                        },
+                    },
+                },
+            }
+
+    adapter = CCXTNetworkMetadataAdapter(
+        FakeUnknownTransferStateExchange()
+    )
+
+    networks = adapter.get_networks(
+        "USDT"
+    )
+
+    assert len(networks) == 1
+
+    network = networks[0]
+
+    assert network.deposit_enabled is False
+    assert network.withdraw_enabled is False
+
+
+def test_missing_transfer_states_fail_closed():
+    class FakeMissingTransferStateExchange:
+        def load_currencies(self):
+            return {
+                "USDT": {
+                    "networks": {
+                        "ERC20": {
+                            "fee": 5.0,
+                            "limits": {
+                                "withdraw": {
+                                    "min": 20.0,
+                                },
+                            },
+                        },
+                    },
+                },
+            }
+
+    adapter = CCXTNetworkMetadataAdapter(
+        FakeMissingTransferStateExchange()
+    )
+
+    networks = adapter.get_networks(
+        "USDT"
+    )
+
+    assert len(networks) == 1
+
+    network = networks[0]
+
+    assert network.deposit_enabled is False
+    assert network.withdraw_enabled is False
