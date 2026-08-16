@@ -12,6 +12,7 @@ class FakeCCXT:
     binance = FakeExchange
     bingx = FakeExchange
     bitget = FakeExchange
+    bitrue = FakeExchange
     coinbase = FakeExchange
     coinex = FakeExchange
     digifinex = FakeExchange
@@ -25,7 +26,9 @@ class FakeCCXT:
     ourbit = FakeExchange
     phemex = FakeExchange
     poloniex = FakeExchange
+    toobit = FakeExchange
     weex = FakeExchange
+    whitebit = FakeExchange
     xt = FakeExchange
 
 
@@ -38,6 +41,7 @@ def test_registers_default_native_coverage_exchange_set():
         "binance",
         "bingx",
         "bitget",
+        "bitrue",
         "coinbase",
         "coinex",
         "digifinex",
@@ -51,7 +55,9 @@ def test_registers_default_native_coverage_exchange_set():
         "ourbit",
         "phemex",
         "poloniex",
+        "toobit",
         "weex",
+        "whitebit",
         "xt",
     ]
 
@@ -67,6 +73,7 @@ def test_builds_exchange_map_for_enabled_set():
         "binance",
         "bingx",
         "bitget",
+        "bitrue",
         "coinbase",
         "coinex",
         "digifinex",
@@ -80,7 +87,9 @@ def test_builds_exchange_map_for_enabled_set():
         "ourbit",
         "phemex",
         "poloniex",
+        "toobit",
         "weex",
+        "whitebit",
         "xt",
     ]
 
@@ -198,6 +207,7 @@ def test_default_set_includes_all_verified_native_coverage_venues():
         "binance",
         "bingx",
         "bitget",
+        "bitrue",
         "coinbase",
         "coinex",
         "digifinex",
@@ -211,7 +221,9 @@ def test_default_set_includes_all_verified_native_coverage_venues():
         "ourbit",
         "phemex",
         "poloniex",
+        "toobit",
         "weex",
+        "whitebit",
         "xt",
     }
 
@@ -239,3 +251,40 @@ def test_default_set_has_no_duplicate_exchange_ids():
     assert len(exchange_ids) == len(
         set(exchange_ids)
     )
+
+
+def test_default_set_can_include_verified_native_only_exchange():
+    class CCXTWithoutOurbit:
+        binance = FakeExchange
+        bingx = FakeExchange
+        bitget = FakeExchange
+        bitrue = FakeExchange
+        coinbase = FakeExchange
+        coinex = FakeExchange
+        digifinex = FakeExchange
+        gate = FakeExchange
+        htx = FakeExchange
+        kraken = FakeExchange
+        kucoin = FakeExchange
+        lbank = FakeExchange
+        mexc = FakeExchange
+        okx = FakeExchange
+        phemex = FakeExchange
+        poloniex = FakeExchange
+        toobit = FakeExchange
+        weex = FakeExchange
+        whitebit = FakeExchange
+        xt = FakeExchange
+
+    registry = NativeCoverageExchangeSetRegistry(
+        ccxt_module=CCXTWithoutOurbit,
+    )
+
+    assert "ourbit" in (
+        registry.enabled_exchange_ids()
+    )
+
+    exchanges = registry.build_exchange_map()
+
+    assert "ourbit" in exchanges
+    assert exchanges["ourbit"].id == "ourbit"

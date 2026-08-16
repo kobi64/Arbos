@@ -22,11 +22,26 @@ from core.configurable_cex_venue_registry import (
 )
 
 
+class _NativeOnlyExchangeIdentity:
+    def __init__(
+        self,
+        exchange_id,
+    ):
+        self.id = str(
+            exchange_id
+        ).strip().lower()
+
+
 class NativeCoverageExchangeSetRegistry:
+    NATIVE_ONLY_EXCHANGE_IDS = {
+        "ourbit",
+    }
+
     DEFAULT_EXCHANGE_IDS = (
         "binance",
         "bingx",
         "bitget",
+        "bitrue",
         "coinbase",
         "coinex",
         "digifinex",
@@ -40,7 +55,9 @@ class NativeCoverageExchangeSetRegistry:
         "ourbit",
         "phemex",
         "poloniex",
+        "toobit",
         "weex",
+        "whitebit",
         "xt",
     )
 
@@ -70,11 +87,44 @@ class NativeCoverageExchangeSetRegistry:
             )
         )
 
+        ccxt_exchange_ids = []
+        native_only_exchange_ids = []
+
+        for exchange_id in selected_ids:
+            normalized = str(
+                exchange_id
+            ).strip().lower()
+
+            if (
+                normalized
+                in self.NATIVE_ONLY_EXCHANGE_IDS
+            ):
+                native_only_exchange_ids.append(
+                    normalized
+                )
+            else:
+                ccxt_exchange_ids.append(
+                    normalized
+                )
+
         bootstrap.register_venues(
             registry=self._registry,
-            exchange_ids=selected_ids,
+            exchange_ids=ccxt_exchange_ids,
             enabled=True,
         )
+
+        for exchange_id in native_only_exchange_ids:
+            self._registry.register(
+                exchange_id=exchange_id,
+                factory=(
+                    lambda exchange_id=exchange_id: (
+                        _NativeOnlyExchangeIdentity(
+                            exchange_id
+                        )
+                    )
+                ),
+                enabled=True,
+            )
 
         self.live_order_submitted = False
 
