@@ -718,3 +718,41 @@ def test_poloniex_exchange_id_is_normalized():
         ],
         PoloniexNativeMarketSource,
     )
+
+
+def test_builds_lbank_native_market_source():
+    from exchanges.lbank_native_market_source import (
+        LBankNativeMarketSource,
+    )
+
+    result = NativeCoverageEntryFactory().build({
+        "lbank": FakeExchange("lbank"),
+    })
+
+    assert result["entry_count"] == 1
+
+    assert isinstance(
+        result["entries"][0][
+            "native_market_source"
+        ],
+        LBankNativeMarketSource,
+    )
+
+
+def test_lbank_exchange_id_is_normalized():
+    from exchanges.lbank_native_market_source import (
+        LBankNativeMarketSource,
+    )
+
+    result = NativeCoverageEntryFactory().build({
+        "wrong-key": FakeExchange(" LBANK "),
+    })
+
+    assert result["entry_count"] == 1
+
+    assert isinstance(
+        result["entries"][0][
+            "native_market_source"
+        ],
+        LBankNativeMarketSource,
+    )
