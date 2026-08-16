@@ -148,6 +148,20 @@ from exchanges.coinex_native_order_book_provider import (
 )
 
 
+from exchanges.phemex_public_spot_client import (
+    PhemexPublicSpotClient,
+)
+from exchanges.phemex_verification_adapter import (
+    PhemexVerificationAdapter,
+)
+from exchanges.phemex_native_order_book_provider import (
+    PhemexNativeOrderBookProvider,
+)
+from exchanges.phemex_spot_scale_resolver import (
+    PhemexSpotScaleResolver,
+)
+
+
 class VerifiedNativeOrderBookProviderFactory:
     def __init__(
         self,
@@ -345,7 +359,31 @@ class VerifiedNativeOrderBookProviderFactory:
             ),
         )
 
+        registry.register(
+            "phemex",
+            lambda exchange: (
+                self._build_phemex_provider()
+            ),
+        )
+
         self._registry = registry
+
+    @staticmethod
+    def _build_phemex_provider():
+        client = PhemexPublicSpotClient()
+
+        return PhemexNativeOrderBookProvider(
+            adapter=(
+                PhemexVerificationAdapter(
+                    client=client,
+                    scale_resolver=(
+                        PhemexSpotScaleResolver(
+                            client=client,
+                        )
+                    ),
+                )
+            ),
+        )
 
     def build(
         self,

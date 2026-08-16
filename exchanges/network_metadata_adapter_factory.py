@@ -147,6 +147,13 @@ from exchanges.coinex_network_metadata_client import (
     CoinExNetworkMetadataClient,
 )
 
+from exchanges.phemex_network_metadata_adapter import (
+    PhemexNetworkMetadataAdapter,
+)
+from exchanges.phemex_network_metadata_client import (
+    PhemexNetworkMetadataClient,
+)
+
 
 class NetworkMetadataAdapterFactory:
     def __init__(
@@ -165,6 +172,7 @@ class NetworkMetadataAdapterFactory:
         bitget_client_factory=None,
         xt_client_factory=None,
         coinex_client_factory=None,
+        phemex_client_factory=None,
     ):
         if weex_provider_factory is None:
             weex_provider_factory = (
@@ -290,6 +298,15 @@ class NetworkMetadataAdapterFactory:
 
         self._coinex_client_factory = (
             coinex_client_factory
+        )
+
+        if phemex_client_factory is None:
+            phemex_client_factory = (
+                self._build_default_phemex_client
+            )
+
+        self._phemex_client_factory = (
+            phemex_client_factory
         )
 
     def build(
@@ -492,6 +509,19 @@ class NetworkMetadataAdapterFactory:
                 )
             )
 
+        if exchange_id == "phemex":
+            client = (
+                self._phemex_client_factory(
+                    exchange
+                )
+            )
+
+            return (
+                PhemexNetworkMetadataAdapter(
+                    client=client,
+                )
+            )
+
         return CCXTNetworkMetadataAdapter(
             exchange
         )
@@ -623,4 +653,10 @@ class NetworkMetadataAdapterFactory:
         exchange,
     ):
         return CoinExNetworkMetadataClient()
+
+    @staticmethod
+    def _build_default_phemex_client(
+        exchange,
+    ):
+        return PhemexNetworkMetadataClient()
 
