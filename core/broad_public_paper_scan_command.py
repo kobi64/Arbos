@@ -20,6 +20,9 @@ import ccxt
 from core.broad_public_paper_scan_application import (
     BroadPublicPaperScanApplication,
 )
+from core.broad_public_paper_scan_summary import (
+    BroadPublicPaperScanSummary,
+)
 
 
 DEFAULT_EXCHANGES = [
@@ -83,6 +86,29 @@ def build_parser():
         help=(
             "Default paper taker fee rate "
             "for every exchange."
+        ),
+    )
+
+    parser.add_argument(
+        "--output",
+        choices=(
+            "summary",
+            "json",
+        ),
+        default="summary",
+        help=(
+            "Output format: concise summary "
+            "or full raw JSON."
+        ),
+    )
+
+    parser.add_argument(
+        "--top",
+        type=int,
+        default=10,
+        help=(
+            "Maximum number of profitable and "
+            "unprofitable routes in summary output."
         ),
     )
 
@@ -156,9 +182,20 @@ def main(argv=None):
 
     result = run_from_args(args)
 
+    if args.output == "json":
+        output = result
+    else:
+        output = (
+            BroadPublicPaperScanSummary()
+            .build(
+                result,
+                top_limit=args.top,
+            )
+        )
+
     print(
         json.dumps(
-            result,
+            output,
             indent=2,
             sort_keys=True,
             default=str,
