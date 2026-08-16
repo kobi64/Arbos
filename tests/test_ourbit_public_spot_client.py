@@ -209,3 +209,238 @@ def test_order_book_payload_must_be_dictionary():
     assert result[
         "fetch_complete"
     ] is False
+
+
+def test_fetches_exchange_info_markets():
+    session = FakeSession([
+        FakeResponse({
+            "timezone": "CST",
+            "serverTime": 1700000000000,
+            "rateLimits": [],
+            "exchangeFilters": [],
+            "symbols": [
+                {
+                    "symbol": "BTCUSDT",
+                    "status": "ENABLED",
+                    "baseAsset": "BTC",
+                    "baseAssetPrecision": 6,
+                    "quoteAsset": "USDT",
+                    "quotePrecision": 2,
+                    "quoteAssetPrecision": 2,
+                    "isSpotTradingAllowed": False,
+                    "permissions": ["SPOT"],
+                    "filters": [],
+                },
+                {
+                    "symbol": "ETHUSDT",
+                    "status": "ENABLED",
+                    "baseAsset": "ETH",
+                    "baseAssetPrecision": 5,
+                    "quoteAsset": "USDT",
+                    "quotePrecision": 2,
+                    "quoteAssetPrecision": 2,
+                    "isSpotTradingAllowed": False,
+                    "permissions": ["SPOT"],
+                    "filters": [],
+                },
+            ],
+        }),
+    ])
+
+    client = OurbitPublicSpotClient(
+        session=session,
+    )
+
+    result = client.fetch_markets()
+
+    assert result[
+        "fetch_complete"
+    ] is True
+
+    assert result[
+        "market_count"
+    ] == 2
+
+    assert result[
+        "markets"
+    ][0]["symbol"] == "BTCUSDT"
+
+    assert result[
+        "markets"
+    ][0]["baseAsset"] == "BTC"
+
+    assert result[
+        "markets"
+    ][0]["quoteAsset"] == "USDT"
+
+    assert result[
+        "markets"
+    ][0]["status"] == "ENABLED"
+
+    assert result[
+        "paper_only"
+    ] is True
+
+    assert result[
+        "live_order_submitted"
+    ] is False
+
+    assert session.calls[0][
+        "url"
+    ] == (
+        "https://api.ourbit.com"
+        "/api/v3/exchangeInfo"
+    )
+
+    assert session.calls[0][
+        "params"
+    ] is None
+
+
+def test_exchange_info_http_failure_is_fail_closed():
+    session = FakeSession([
+        FakeResponse(
+            {},
+            status_code=500,
+        ),
+    ])
+
+    client = OurbitPublicSpotClient(
+        session=session,
+    )
+
+    result = client.fetch_markets()
+
+    assert result[
+        "fetch_complete"
+    ] is False
+
+    assert result[
+        "markets"
+    ] == []
+
+    assert result[
+        "market_count"
+    ] == 0
+
+    assert result[
+        "paper_only"
+    ] is True
+
+    assert result[
+        "live_order_submitted"
+    ] is False
+
+
+def test_exchange_info_payload_must_be_dictionary():
+    session = FakeSession([
+        FakeResponse([]),
+    ])
+
+    client = OurbitPublicSpotClient(
+        session=session,
+    )
+
+    result = client.fetch_markets()
+
+    assert result[
+        "fetch_complete"
+    ] is False
+
+    assert result[
+        "markets"
+    ] == []
+
+
+def test_exchange_info_symbols_must_be_list():
+    session = FakeSession([
+        FakeResponse({
+            "timezone": "CST",
+            "symbols": {},
+        }),
+    ])
+
+    client = OurbitPublicSpotClient(
+        session=session,
+    )
+
+    result = client.fetch_markets()
+
+    assert result[
+        "fetch_complete"
+    ] is False
+
+    assert result[
+        "markets"
+    ] == []
+
+    assert result[
+        "market_count"
+    ] == 0
+
+
+def test_exchange_info_preserves_native_market_metadata():
+    market = {
+        "symbol": "QNTUSDT",
+        "status": "ENABLED",
+        "baseAsset": "QNT",
+        "baseAssetPrecision": 3,
+        "quoteAsset": "USDT",
+        "quotePrecision": 1,
+        "quoteAssetPrecision": 1,
+        "orderTypes": [
+            "LIMIT",
+            "MARKET",
+            "LIMIT_MAKER",
+        ],
+        "isSpotTradingAllowed": False,
+        "isMarginTradingAllowed": False,
+        "permissions": ["SPOT"],
+        "filters": [],
+    }
+
+    session = FakeSession([
+        FakeResponse({
+            "timezone": "CST",
+            "serverTime": 1700000000000,
+            "symbols": [market],
+        }),
+    ])
+
+    client = OurbitPublicSpotClient(
+        session=session,
+    )
+
+    result = client.fetch_markets()
+
+    assert result[
+        "markets"
+    ] == [market]
+
+
+def test_exchange_info_empty_catalogue_is_complete():
+    session = FakeSession([
+        FakeResponse({
+            "timezone": "CST",
+            "serverTime": 1700000000000,
+            "symbols": [],
+        }),
+    ])
+
+    client = OurbitPublicSpotClient(
+        session=session,
+    )
+
+    result = client.fetch_markets()
+
+    assert result[
+        "fetch_complete"
+    ] is True
+
+    assert result[
+        "markets"
+    ] == []
+
+    assert result[
+        "market_count"
+    ] == 0

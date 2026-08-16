@@ -74,6 +74,69 @@ class OurbitPublicSpotClient:
             .replace("-", "")
         )
 
+    def fetch_markets(
+        self,
+    ):
+        try:
+            response = self._session.get(
+                (
+                    f"{self.base_url}"
+                    "/api/v3/exchangeInfo"
+                ),
+                params=None,
+                timeout=self._timeout_seconds,
+            )
+
+            response.raise_for_status()
+
+            payload = response.json()
+
+            if not isinstance(
+                payload,
+                dict,
+            ):
+                raise ValueError(
+                    "unexpected markets payload"
+                )
+
+            markets = payload.get(
+                "symbols"
+            )
+
+            if not isinstance(
+                markets,
+                list,
+            ):
+                raise ValueError(
+                    "unexpected markets payload"
+                )
+
+            return {
+                "fetch_complete": True,
+                "markets": list(
+                    markets
+                ),
+                "market_count": len(
+                    markets
+                ),
+                "reason": None,
+                "paper_only": True,
+                "live_order_submitted": False,
+            }
+
+        except Exception as exc:
+            return {
+                "fetch_complete": False,
+                "markets": [],
+                "market_count": 0,
+                "reason": (
+                    f"{type(exc).__name__}: "
+                    f"{exc}"
+                ),
+                "paper_only": True,
+                "live_order_submitted": False,
+            }
+
     def fetch_order_book(
         self,
         symbol,

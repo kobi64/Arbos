@@ -756,3 +756,41 @@ def test_lbank_exchange_id_is_normalized():
         ],
         LBankNativeMarketSource,
     )
+
+
+def test_builds_ourbit_native_market_source():
+    from exchanges.ourbit_native_market_source import (
+        OurbitNativeMarketSource,
+    )
+
+    result = NativeCoverageEntryFactory().build({
+        "ourbit": FakeExchange("ourbit"),
+    })
+
+    assert result["entry_count"] == 1
+
+    assert isinstance(
+        result["entries"][0][
+            "native_market_source"
+        ],
+        OurbitNativeMarketSource,
+    )
+
+
+def test_ourbit_exchange_id_is_normalized():
+    from exchanges.ourbit_native_market_source import (
+        OurbitNativeMarketSource,
+    )
+
+    result = NativeCoverageEntryFactory().build({
+        "wrong-key": FakeExchange(" OURBIT "),
+    })
+
+    assert result["entry_count"] == 1
+
+    assert isinstance(
+        result["entries"][0][
+            "native_market_source"
+        ],
+        OurbitNativeMarketSource,
+    )
