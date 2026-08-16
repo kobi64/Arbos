@@ -167,8 +167,17 @@ class CrossExchangeRouteValuation:
             candidate.get("transfer_asset", "")
         ).strip().upper()
 
+        raw_transfer_amount = candidate.get(
+            "transfer_amount"
+        )
+
+        if raw_transfer_amount is None:
+            raise ValueError(
+                "transfer_amount is required"
+            )
+
         transfer_amount = float(
-            candidate.get("transfer_amount", 0.0)
+            raw_transfer_amount
         )
 
         if not transfer_asset:

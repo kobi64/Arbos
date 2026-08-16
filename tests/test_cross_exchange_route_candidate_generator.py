@@ -443,3 +443,107 @@ def test_bridge_missing_evaluator_withdraw_fee_is_not_invented_as_zero():
     assert candidate["reason"] == (
         "withdrawal_fee_unknown"
     )
+
+
+def test_direct_missing_net_amount_is_preserved_as_unknown():
+    class MissingNetAmountEvaluator:
+        @staticmethod
+        def evaluate(
+            amount,
+            source_networks,
+            destination_networks,
+        ):
+            return {
+                "executable": False,
+                "network": None,
+                "withdraw_fee": None,
+                "reason": "transfer_amount_unknown",
+            }
+
+    generator = CrossExchangeRouteCandidateGenerator(
+        transfer_evaluator=MissingNetAmountEvaluator(),
+    )
+
+    candidates = generator.generate(
+        source_exchange="exchange-a",
+        destination_exchange="exchange-b",
+        coin_asset="COINX",
+        coin_amount=100.0,
+        source_networks={
+            "COINX": [
+                {"asset": "COINX"},
+            ],
+        },
+        destination_networks={
+            "COINX": [
+                {"asset": "COINX"},
+            ],
+        },
+        bridge_quotes={},
+    )
+
+    assert len(candidates) == 1
+
+    candidate = candidates[0]
+
+    assert candidate["executable"] is False
+    assert candidate["transfer_amount"] is None
+    assert candidate["reason"] == (
+        "transfer_amount_unknown"
+    )
+
+
+def test_bridge_missing_net_amount_is_preserved_as_unknown():
+    class MissingNetAmountEvaluator:
+        @staticmethod
+        def evaluate(
+            amount,
+            source_networks,
+            destination_networks,
+        ):
+            return {
+                "executable": False,
+                "network": None,
+                "withdraw_fee": None,
+                "reason": "transfer_amount_unknown",
+            }
+
+    generator = CrossExchangeRouteCandidateGenerator(
+        transfer_evaluator=MissingNetAmountEvaluator(),
+    )
+
+    candidates = generator.generate(
+        source_exchange="exchange-a",
+        destination_exchange="exchange-b",
+        coin_asset="COINX",
+        coin_amount=100.0,
+        source_networks={
+            "BTC": [
+                {"asset": "BTC"},
+            ],
+        },
+        destination_networks={
+            "BTC": [
+                {"asset": "BTC"},
+            ],
+        },
+        bridge_quotes={
+            "BTC": {
+                "output_amount": 0.0025,
+                "method": "spot",
+            },
+        },
+    )
+
+    assert len(candidates) == 1
+
+    candidate = candidates[0]
+
+    assert candidate["route_type"] == (
+        "bridge_cross_exchange"
+    )
+    assert candidate["executable"] is False
+    assert candidate["transfer_amount"] is None
+    assert candidate["reason"] == (
+        "transfer_amount_unknown"
+    )

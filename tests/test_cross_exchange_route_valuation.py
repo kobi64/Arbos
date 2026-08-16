@@ -124,7 +124,7 @@ def test_rejects_candidate_that_is_already_non_executable():
     assert result["reason"] == "no_compatible_network"
 
 
-def test_destination_result_does_not_expose_mixed_unit_pnl():
+def test_direct_destination_result_does_not_expose_mixed_unit_pnl():
     class MixedUnitDestinationScanner:
         def scan_route(
             self,
@@ -175,7 +175,7 @@ def test_destination_result_does_not_expose_mixed_unit_pnl():
     assert destination["pnl_comparable"] is False
 
 
-def test_destination_result_does_not_expose_mixed_unit_pnl():
+def test_destination_result_strips_scanner_mixed_unit_pnl():
     class MixedUnitDestinationScanner:
         def scan_route(
             self,
@@ -419,3 +419,32 @@ def test_destination_market_exception_does_not_break_research_valuation():
         result["live_order_submitted"]
         is False
     )
+
+
+def test_executable_candidate_with_unknown_transfer_amount_fails_closed():
+    scanner = FakeDestinationScanner()
+
+    valuation = CrossExchangeRouteValuation(
+        destination_scanner=scanner,
+    )
+
+    candidate = {
+        "route_id": "DIRECT-A-COINX-B",
+        "route_type": "direct_cross_exchange",
+        "transfer_asset": "COINX",
+        "transfer_amount": None,
+        "executable": True,
+    }
+
+    with pytest.raises(
+        ValueError,
+        match="transfer_amount is required",
+    ):
+        valuation.evaluate(
+            candidate=candidate,
+            starting_usdt_value=100.0,
+            destination_fee_rate=0.001,
+            max_slippage_percent=0.5,
+        )
+
+    assert scanner.calls == []
