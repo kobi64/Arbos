@@ -4,12 +4,24 @@ from exchanges.route_validator import RouteValidator
 
 def test_route_is_executable_with_shared_network():
     source = [
-        NetworkInfo("USDT", "TRC20"),
-        NetworkInfo("USDT", "ERC20"),
+        NetworkInfo(
+            "USDT",
+            "TRC20",
+            withdraw_fee=1.0,
+        ),
+        NetworkInfo(
+            "USDT",
+            "ERC20",
+            withdraw_fee=2.0,
+        ),
     ]
 
     destination = [
-        NetworkInfo("USDT", "TRC20"),
+        NetworkInfo(
+            "USDT",
+            "TRC20",
+            withdraw_fee=0.0,
+        ),
     ]
 
     result = RouteValidator.validate_transfer_route(
@@ -108,3 +120,71 @@ def test_route_returns_lowest_fee_compatible_network():
     assert result.executable is True
     assert result.network == "TRC20"
     assert result.withdraw_fee == 1.0
+
+
+def test_unknown_withdraw_fee_is_not_selected():
+    source_networks = [
+        NetworkInfo(
+            coin="USDT",
+            network="TRC20",
+            withdraw_fee=None,
+            min_withdraw=1.0,
+        ),
+        NetworkInfo(
+            coin="USDT",
+            network="ERC20",
+            withdraw_fee=2.0,
+            min_withdraw=1.0,
+        ),
+    ]
+
+    destination_networks = [
+        NetworkInfo(
+            coin="USDT",
+            network="TRC20",
+            withdraw_fee=0.0,
+            min_withdraw=0.0,
+        ),
+        NetworkInfo(
+            coin="USDT",
+            network="ERC20",
+            withdraw_fee=0.0,
+            min_withdraw=0.0,
+        ),
+    ]
+
+    result = RouteValidator.validate_transfer_route(
+        source_networks,
+        destination_networks,
+    )
+
+    assert result.executable is True
+    assert result.network == "ERC20"
+    assert result.withdraw_fee == 2.0
+
+
+def test_only_unknown_withdraw_fee_is_not_executable():
+    source_networks = [
+        NetworkInfo(
+            coin="USDT",
+            network="TRC20",
+            withdraw_fee=None,
+            min_withdraw=1.0,
+        ),
+    ]
+
+    destination_networks = [
+        NetworkInfo(
+            coin="USDT",
+            network="TRC20",
+            withdraw_fee=0.0,
+            min_withdraw=0.0,
+        ),
+    ]
+
+    result = RouteValidator.validate_transfer_route(
+        source_networks,
+        destination_networks,
+    )
+
+    assert result.executable is False
