@@ -642,3 +642,41 @@ def test_bingx_exchange_id_is_normalized():
         ],
         BingXNativeMarketSource,
     )
+
+
+def test_builds_weex_native_market_source():
+    from exchanges.weex_native_market_source import (
+        WeexNativeMarketSource,
+    )
+
+    result = NativeCoverageEntryFactory().build({
+        "weex": FakeExchange("weex"),
+    })
+
+    assert result["entry_count"] == 1
+
+    assert isinstance(
+        result["entries"][0][
+            "native_market_source"
+        ],
+        WeexNativeMarketSource,
+    )
+
+
+def test_weex_exchange_id_is_normalized():
+    from exchanges.weex_native_market_source import (
+        WeexNativeMarketSource,
+    )
+
+    result = NativeCoverageEntryFactory().build({
+        "wrong-key": FakeExchange(" WEEX "),
+    })
+
+    assert result["entry_count"] == 1
+
+    assert isinstance(
+        result["entries"][0][
+            "native_market_source"
+        ],
+        WeexNativeMarketSource,
+    )
