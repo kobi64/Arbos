@@ -4,6 +4,8 @@ EX-137
 Cross-Exchange Route Valuation
 """
 
+import math
+
 
 class CrossExchangeRouteValuation:
     def __init__(self, destination_scanner):
@@ -135,9 +137,52 @@ class CrossExchangeRouteValuation:
                     ),
                 }
 
-            hypothetical_final_value = float(
-                scanned["net_final_value"]
+            raw_hypothetical_final_value = scanned.get(
+                "net_final_value"
             )
+
+            try:
+                hypothetical_final_value = float(
+                    raw_hypothetical_final_value
+                )
+            except (TypeError, ValueError):
+                return {
+                    **candidate,
+                    "executable": False,
+                    "reason": candidate.get(
+                        "reason",
+                        "candidate_not_executable",
+                    ),
+                    "valuation_only": True,
+                    "paper_market_value_available": False,
+                    "hypothetical_destination_result": (
+                        scanned
+                    ),
+                    "paper_only": True,
+                    "live_order_submitted": False,
+                }
+
+            if (
+                not math.isfinite(
+                    hypothetical_final_value
+                )
+                or hypothetical_final_value <= 0
+            ):
+                return {
+                    **candidate,
+                    "executable": False,
+                    "reason": candidate.get(
+                        "reason",
+                        "candidate_not_executable",
+                    ),
+                    "valuation_only": True,
+                    "paper_market_value_available": False,
+                    "hypothetical_destination_result": (
+                        scanned
+                    ),
+                    "paper_only": True,
+                    "live_order_submitted": False,
+                }
 
             hypothetical_profit = (
                 hypothetical_final_value
@@ -246,9 +291,42 @@ class CrossExchangeRouteValuation:
                 "destination_result": scanned,
             }
 
-        net_final_value = float(
-            scanned["net_final_value"]
+        raw_net_final_value = scanned.get(
+            "net_final_value"
         )
+
+        try:
+            net_final_value = float(
+                raw_net_final_value
+            )
+        except (TypeError, ValueError):
+            return {
+                **candidate,
+                "executable": False,
+                "reason": (
+                    "destination_valuation_invalid"
+                ),
+                "destination_result": scanned,
+                "paper_only": True,
+                "live_order_submitted": False,
+            }
+
+        if (
+            not math.isfinite(
+                net_final_value
+            )
+            or net_final_value <= 0
+        ):
+            return {
+                **candidate,
+                "executable": False,
+                "reason": (
+                    "destination_valuation_invalid"
+                ),
+                "destination_result": scanned,
+                "paper_only": True,
+                "live_order_submitted": False,
+            }
 
         destination_result = dict(scanned)
 
