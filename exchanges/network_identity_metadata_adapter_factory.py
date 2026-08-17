@@ -57,6 +57,20 @@ from exchanges.lbank_verification_provider import (
     LBankVerificationProvider,
 )
 
+from exchanges.gateio_network_identity_metadata_adapter import (
+    GateIONetworkIdentityMetadataAdapter,
+)
+from exchanges.gateio_wallet_metadata_client import (
+    GateIOWalletMetadataClient,
+)
+
+from exchanges.kucoin_network_identity_metadata_adapter import (
+    KuCoinNetworkIdentityMetadataAdapter,
+)
+from exchanges.kucoin_wallet_metadata_client import (
+    KuCoinWalletMetadataClient,
+)
+
 
 class NetworkIdentityMetadataAdapterFactory:
     def __init__(
@@ -64,6 +78,8 @@ class NetworkIdentityMetadataAdapterFactory:
         poloniex_provider_factory=None,
         mexc_provider_factory=None,
         lbank_provider_factory=None,
+        gateio_client_factory=None,
+        kucoin_client_factory=None,
     ):
         if poloniex_provider_factory is None:
             poloniex_provider_factory = (
@@ -90,6 +106,24 @@ class NetworkIdentityMetadataAdapterFactory:
 
         self._lbank_provider_factory = (
             lbank_provider_factory
+        )
+
+        if gateio_client_factory is None:
+            gateio_client_factory = (
+                self._build_default_gateio_client
+            )
+
+        self._gateio_client_factory = (
+            gateio_client_factory
+        )
+
+        if kucoin_client_factory is None:
+            kucoin_client_factory = (
+                self._build_default_kucoin_client
+            )
+
+        self._kucoin_client_factory = (
+            kucoin_client_factory
         )
 
     def build(
@@ -149,6 +183,35 @@ class NetworkIdentityMetadataAdapterFactory:
                 )
             )
 
+        if exchange_id in {
+            "gate",
+            "gateio",
+        }:
+            client = (
+                self._gateio_client_factory(
+                    exchange
+                )
+            )
+
+            return (
+                GateIONetworkIdentityMetadataAdapter(
+                    client=client,
+                )
+            )
+
+        if exchange_id == "kucoin":
+            client = (
+                self._kucoin_client_factory(
+                    exchange
+                )
+            )
+
+            return (
+                KuCoinNetworkIdentityMetadataAdapter(
+                    client=client,
+                )
+            )
+
         return (
             CCXTNetworkIdentityMetadataAdapter(
                 exchange
@@ -185,4 +248,24 @@ class NetworkIdentityMetadataAdapterFactory:
         return LBankVerificationProvider(
             client=LBankNetworkMetadataClient(),
             normalizer=LBankNetworkNormalizer(),
+        )
+
+
+    @staticmethod
+    def _build_default_gateio_client(
+        exchange,
+    ):
+        return GateIOWalletMetadataClient(
+            api_key=None,
+            api_secret=None,
+        )
+
+    @staticmethod
+    def _build_default_kucoin_client(
+        exchange,
+    ):
+        return KuCoinWalletMetadataClient(
+            api_key=None,
+            api_secret=None,
+            api_passphrase=None,
         )
