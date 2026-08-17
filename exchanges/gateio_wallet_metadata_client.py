@@ -12,6 +12,10 @@ No withdrawal submission.
 No transfer submission.
 """
 
+import hashlib
+import hmac
+import time
+
 import requests
 
 
@@ -23,6 +27,7 @@ class GateIOWalletMetadataClient:
         base_url="https://api.gateio.ws",
         timeout_seconds=10.0,
         session=None,
+        time_provider=None,
     ):
         timeout_seconds = float(
             timeout_seconds
@@ -63,6 +68,12 @@ class GateIOWalletMetadataClient:
             session
             if session is not None
             else requests.Session()
+        )
+
+        self._time_provider = (
+            time_provider
+            if time_provider is not None
+            else time.time
         )
 
         self.read_only = True
@@ -180,6 +191,60 @@ class GateIOWalletMetadataClient:
                 "live_transfer_submitted": False,
             }
 
+    @staticmethod
+    def _payload_hash(
+        payload="",
+    ):
+        return hashlib.sha512(
+            str(
+                payload
+                or ""
+            ).encode(
+                "utf-8"
+            )
+        ).hexdigest()
+
+    def _signed_headers(
+        self,
+        method,
+        path,
+        query_string="",
+        payload="",
+    ):
+        timestamp = str(
+            int(
+                float(
+                    self._time_provider()
+                )
+            )
+        )
+
+        signing_string = "\n".join([
+            str(method).upper(),
+            str(path),
+            str(query_string or ""),
+            self._payload_hash(
+                payload
+            ),
+            timestamp,
+        ])
+
+        signature = hmac.new(
+            self._api_secret.encode(
+                "utf-8"
+            ),
+            signing_string.encode(
+                "utf-8"
+            ),
+            hashlib.sha512,
+        ).hexdigest()
+
+        return {
+            "KEY": self._api_key,
+            "Timestamp": timestamp,
+            "SIGN": signature,
+        }
+
     def fetch_currencies(
         self,
     ):
@@ -197,15 +262,62 @@ class GateIOWalletMetadataClient:
                 "live_transfer_submitted": False,
             }
 
-        return {
-            "fetch_complete": False,
-            "reason": (
-                "authenticated_metadata_transport_"
-                "not_implemented"
-            ),
-            "currencies": [],
-            "read_only": True,
-            "paper_only": True,
-            "live_order_submitted": False,
-            "live_transfer_submitted": False,
-        }
+        path = (
+            "/api/v4/wallet/"
+            "withdraw_status"
+        )
+
+        try:
+            response = self._session.get(
+                (
+                    f"{self.base_url}"
+                    f"{path}"
+                ),
+                params=None,
+                headers=(
+                    self._signed_headers(
+                        method="GET",
+                        path=path,
+                    )
+                ),
+                timeout=(
+                    self._timeout_seconds
+                ),
+            )
+
+            response.raise_for_status()
+
+            payload = response.json()
+
+            if not isinstance(
+                payload,
+                list,
+            ):
+                raise ValueError(
+                    "unexpected Gate.io "
+                    "withdraw-status payload"
+                )
+
+            return {
+                "fetch_complete": True,
+                "reason": None,
+                "currencies": payload,
+                "read_only": True,
+                "paper_only": True,
+                "live_order_submitted": False,
+                "live_transfer_submitted": False,
+            }
+
+        except Exception as exc:
+            return {
+                "fetch_complete": False,
+                "reason": (
+                    f"{type(exc).__name__}: "
+                    f"{exc}"
+                ),
+                "currencies": [],
+                "read_only": True,
+                "paper_only": True,
+                "live_order_submitted": False,
+                "live_transfer_submitted": False,
+            }

@@ -332,3 +332,258 @@ def test_gate_negative_minimum_withdrawal_is_not_accepted():
     )
 
     assert network.min_withdraw is None
+
+
+class FakePublicAndFeeClient:
+    def __init__(
+        self,
+        public_result,
+        fee_result,
+    ):
+        self.public_result = public_result
+        self.fee_result = fee_result
+        self.public_calls = []
+        self.fee_calls = 0
+
+    def fetch_currency_chains(
+        self,
+        currency,
+    ):
+        self.public_calls.append(
+            currency
+        )
+        return self.public_result
+
+    def fetch_currencies(
+        self,
+    ):
+        self.fee_calls += 1
+        return self.fee_result
+
+
+def test_gate_per_chain_withdrawal_fee_is_preserved():
+    client = FakePublicAndFeeClient(
+        public_result={
+            "fetch_complete": True,
+            "currency": "USDT",
+            "currencies": [
+                {
+                    "asset": "USDT",
+                    "network": "ETH",
+                    "deposit": True,
+                    "withdraw": True,
+                    "raw": {
+                        "withdraw_amount_min": "1",
+                    },
+                },
+                {
+                    "asset": "USDT",
+                    "network": "TRX",
+                    "deposit": True,
+                    "withdraw": True,
+                    "raw": {
+                        "withdraw_amount_min": "10",
+                    },
+                },
+            ],
+            "reason": None,
+        },
+        fee_result={
+            "fetch_complete": True,
+            "currencies": [
+                {
+                    "currency": "USDT",
+                    "withdraw_fix": "2.5",
+                    "withdraw_fix_on_chains": {
+                        "ETH": "3.5",
+                        "TRX": "1",
+                    },
+                },
+            ],
+            "reason": None,
+        },
+    )
+
+    networks = (
+        GateIONetworkMetadataAdapter(
+            client=client,
+        )
+        .get_networks(
+            "USDT"
+        )
+    )
+
+    by_network = {
+        item.network: item
+        for item in networks
+    }
+
+    assert (
+        by_network["ETH"]
+        .withdraw_fee
+        == 3.5
+    )
+
+    assert (
+        by_network["TRX"]
+        .withdraw_fee
+        == 1.0
+    )
+
+    assert (
+        by_network["ETH"]
+        .min_withdraw
+        == 1.0
+    )
+
+    assert (
+        by_network["TRX"]
+        .min_withdraw
+        == 10.0
+    )
+
+
+def test_gate_default_withdrawal_fee_is_fallback():
+    client = FakePublicAndFeeClient(
+        public_result={
+            "fetch_complete": True,
+            "currency": "BTC",
+            "currencies": [
+                {
+                    "asset": "BTC",
+                    "network": "BTC",
+                    "deposit": True,
+                    "withdraw": True,
+                    "raw": {
+                        "withdraw_amount_min": "0.0005",
+                    },
+                },
+            ],
+            "reason": None,
+        },
+        fee_result={
+            "fetch_complete": True,
+            "currencies": [
+                {
+                    "currency": "BTC",
+                    "withdraw_fix": "0.0001",
+                    "withdraw_fix_on_chains": {},
+                },
+            ],
+            "reason": None,
+        },
+    )
+
+    network = (
+        GateIONetworkMetadataAdapter(
+            client=client,
+        )
+        .get_networks(
+            "BTC"
+        )[0]
+    )
+
+    assert (
+        network.withdraw_fee
+        == 0.0001
+    )
+
+    assert (
+        network.min_withdraw
+        == 0.0005
+    )
+
+
+def test_gate_fee_lookup_failure_preserves_public_metadata():
+    client = FakePublicAndFeeClient(
+        public_result={
+            "fetch_complete": True,
+            "currency": "SOL",
+            "currencies": [
+                {
+                    "asset": "SOL",
+                    "network": "SOL",
+                    "deposit": True,
+                    "withdraw": True,
+                    "raw": {
+                        "withdraw_amount_min": "0.1",
+                    },
+                },
+            ],
+            "reason": None,
+        },
+        fee_result={
+            "fetch_complete": False,
+            "currencies": [],
+            "reason": (
+                "credentials_unavailable"
+            ),
+        },
+    )
+
+    network = (
+        GateIONetworkMetadataAdapter(
+            client=client,
+        )
+        .get_networks(
+            "SOL"
+        )[0]
+    )
+
+    assert (
+        network.min_withdraw
+        == 0.1
+    )
+
+    assert (
+        network.withdraw_fee
+        is None
+    )
+
+
+def test_gate_invalid_withdrawal_fee_fails_closed():
+    client = FakePublicAndFeeClient(
+        public_result={
+            "fetch_complete": True,
+            "currency": "USDT",
+            "currencies": [
+                {
+                    "asset": "USDT",
+                    "network": "ETH",
+                    "deposit": True,
+                    "withdraw": True,
+                    "raw": {
+                        "withdraw_amount_min": "1",
+                    },
+                },
+            ],
+            "reason": None,
+        },
+        fee_result={
+            "fetch_complete": True,
+            "currencies": [
+                {
+                    "currency": "USDT",
+                    "withdraw_fix": "-1",
+                    "withdraw_fix_on_chains": {
+                        "ETH": "invalid",
+                    },
+                },
+            ],
+            "reason": None,
+        },
+    )
+
+    network = (
+        GateIONetworkMetadataAdapter(
+            client=client,
+        )
+        .get_networks(
+            "USDT"
+        )[0]
+    )
+
+    assert (
+        network.withdraw_fee
+        is None
+    )
