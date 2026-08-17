@@ -242,3 +242,93 @@ def test_public_empty_currency_chains_do_not_verify_transfer():
     assert result[
         "networks"
     ] == []
+
+
+def test_public_gate_minimum_withdrawal_is_preserved():
+    client = FakePublicClient({
+        "fetch_complete": True,
+        "currency": "BTC",
+        "currencies": [
+            {
+                "asset": "BTC",
+                "coin": "BTC",
+                "network": "BTC",
+                "chain": "BTC",
+                "deposit": True,
+                "withdraw": True,
+                "raw": {
+                    "withdraw_amount_min": "0.0005",
+                },
+            },
+        ],
+        "reason": None,
+    })
+
+    network = (
+        GateIONetworkMetadataAdapter(
+            client=client,
+        )
+        .get_networks("BTC")[0]
+    )
+
+    assert network.min_withdraw == 0.0005
+
+    # Gate public chain metadata currently does not
+    # expose a trustworthy withdrawal-fee field.
+    assert network.withdraw_fee is None
+
+
+def test_gate_invalid_minimum_withdrawal_fails_closed():
+    client = FakePublicClient({
+        "fetch_complete": True,
+        "currency": "USDT",
+        "currencies": [
+            {
+                "asset": "USDT",
+                "network": "ETH",
+                "deposit": True,
+                "withdraw": True,
+                "raw": {
+                    "withdraw_amount_min": "invalid",
+                },
+            },
+        ],
+        "reason": None,
+    })
+
+    network = (
+        GateIONetworkMetadataAdapter(
+            client=client,
+        )
+        .get_networks("USDT")[0]
+    )
+
+    assert network.min_withdraw is None
+
+
+def test_gate_negative_minimum_withdrawal_is_not_accepted():
+    client = FakePublicClient({
+        "fetch_complete": True,
+        "currency": "USDT",
+        "currencies": [
+            {
+                "asset": "USDT",
+                "network": "ETH",
+                "deposit": True,
+                "withdraw": True,
+                "raw": {
+                    "withdraw_amount_min": "-1",
+                },
+            },
+        ],
+        "reason": None,
+    })
+
+    network = (
+        GateIONetworkMetadataAdapter(
+            client=client,
+        )
+        .get_networks("USDT")[0]
+    )
+
+    assert network.min_withdraw is None

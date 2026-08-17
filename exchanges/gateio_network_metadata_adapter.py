@@ -48,6 +48,29 @@ class GateIONetworkMetadataAdapter:
 
         return coin
 
+    @staticmethod
+    def _optional_nonnegative_float(
+        value,
+    ):
+        if value in (
+            None,
+            "",
+        ):
+            return None
+
+        try:
+            value = float(value)
+        except (
+            TypeError,
+            ValueError,
+        ):
+            return None
+
+        if value < 0:
+            return None
+
+        return value
+
     def describe_networks(
         self,
         coin,
@@ -156,6 +179,34 @@ class GateIONetworkMetadataAdapter:
             if not network:
                 continue
 
+            raw = item.get(
+                "raw",
+                {},
+            )
+
+            if not isinstance(
+                raw,
+                dict,
+            ):
+                raw = {}
+
+            min_withdraw = (
+                self._optional_nonnegative_float(
+                    item.get(
+                        "min_withdraw"
+                    )
+                )
+            )
+
+            if min_withdraw is None:
+                min_withdraw = (
+                    self._optional_nonnegative_float(
+                        raw.get(
+                            "withdraw_amount_min"
+                        )
+                    )
+                )
+
             networks.append(
                 NetworkInfo(
                     coin=coin,
@@ -174,7 +225,7 @@ class GateIONetworkMetadataAdapter:
                     ),
                     maintenance=False,
                     withdraw_fee=None,
-                    min_withdraw=None,
+                    min_withdraw=min_withdraw,
                 )
             )
 

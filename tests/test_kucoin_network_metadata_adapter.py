@@ -265,3 +265,126 @@ def test_public_currency_chains_use_network_info_contract():
     assert networks[0].network == "ETH"
     assert networks[0].deposit_enabled is True
     assert networks[0].withdraw_enabled is False
+
+
+def test_public_kucoin_withdrawal_constraints_are_preserved():
+    client = FakePublicClient({
+        "fetch_complete": True,
+        "currency": "BTC",
+        "currencies": [
+            {
+                "asset": "BTC",
+                "coin": "BTC",
+                "network": "BSC",
+                "chain": "BSC",
+                "deposit": True,
+                "withdraw": True,
+                "raw": {
+                    "withdrawMinSize": "0.000008",
+                    "withdrawMinFee": "0.000004",
+                    "withdrawFeeRate": "0",
+                },
+            },
+        ],
+        "reason": None,
+    })
+
+    network = (
+        KuCoinNetworkMetadataAdapter(
+            client=client,
+        )
+        .get_networks("BTC")[0]
+    )
+
+    assert network.min_withdraw == 0.000008
+    assert network.withdraw_fee == 0.000004
+
+
+def test_kucoin_legacy_withdrawal_field_names_are_supported():
+    client = FakePublicClient({
+        "fetch_complete": True,
+        "currency": "ETH",
+        "currencies": [
+            {
+                "asset": "ETH",
+                "network": "ETH",
+                "deposit": True,
+                "withdraw": True,
+                "raw": {
+                    "withdrawalMinSize": "0.003",
+                    "withdrawalMinFee": "0.0015",
+                },
+            },
+        ],
+        "reason": None,
+    })
+
+    network = (
+        KuCoinNetworkMetadataAdapter(
+            client=client,
+        )
+        .get_networks("ETH")[0]
+    )
+
+    assert network.min_withdraw == 0.003
+    assert network.withdraw_fee == 0.0015
+
+
+def test_kucoin_invalid_withdrawal_constraints_fail_closed():
+    client = FakePublicClient({
+        "fetch_complete": True,
+        "currency": "USDT",
+        "currencies": [
+            {
+                "asset": "USDT",
+                "network": "KCC",
+                "deposit": True,
+                "withdraw": True,
+                "raw": {
+                    "withdrawMinSize": "invalid",
+                    "withdrawMinFee": "-1",
+                },
+            },
+        ],
+        "reason": None,
+    })
+
+    network = (
+        KuCoinNetworkMetadataAdapter(
+            client=client,
+        )
+        .get_networks("USDT")[0]
+    )
+
+    assert network.min_withdraw is None
+    assert network.withdraw_fee is None
+
+
+def test_kucoin_zero_withdrawal_fee_is_valid():
+    client = FakePublicClient({
+        "fetch_complete": True,
+        "currency": "USDT",
+        "currencies": [
+            {
+                "asset": "USDT",
+                "network": "KCC",
+                "deposit": True,
+                "withdraw": True,
+                "raw": {
+                    "withdrawMinSize": "1",
+                    "withdrawMinFee": "0",
+                },
+            },
+        ],
+        "reason": None,
+    })
+
+    network = (
+        KuCoinNetworkMetadataAdapter(
+            client=client,
+        )
+        .get_networks("USDT")[0]
+    )
+
+    assert network.min_withdraw == 1.0
+    assert network.withdraw_fee == 0.0
