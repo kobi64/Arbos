@@ -1385,3 +1385,143 @@ def test_gate_alias_is_normalized():
         adapter,
         GateIONetworkMetadataAdapter,
     )
+
+
+
+def test_default_gate_client_reads_credentials_from_environment(
+    monkeypatch,
+):
+    monkeypatch.setenv(
+        "ARBOS_GATE_API_KEY",
+        "gate-test-key",
+    )
+    monkeypatch.setenv(
+        "ARBOS_GATE_API_SECRET",
+        "gate-test-secret",
+    )
+
+    class GateExchange:
+        id = "gate"
+
+    factory = (
+        NetworkMetadataAdapterFactory()
+    )
+
+    adapter = factory.build(
+        GateExchange()
+    )
+
+    client = adapter._client
+
+    assert client._api_key == (
+        "gate-test-key"
+    )
+
+    assert client._api_secret == (
+        "gate-test-secret"
+    )
+
+
+def test_default_gate_client_without_environment_credentials_fails_closed(
+    monkeypatch,
+):
+    monkeypatch.delenv(
+        "ARBOS_GATE_API_KEY",
+        raising=False,
+    )
+    monkeypatch.delenv(
+        "ARBOS_GATE_API_SECRET",
+        raising=False,
+    )
+
+    class GateExchange:
+        id = "gate"
+
+    factory = (
+        NetworkMetadataAdapterFactory()
+    )
+
+    adapter = factory.build(
+        GateExchange()
+    )
+
+    client = adapter._client
+
+    assert client._api_key is None
+    assert client._api_secret is None
+
+
+def test_partial_gate_environment_credentials_do_not_enable_authentication(
+    monkeypatch,
+):
+    monkeypatch.setenv(
+        "ARBOS_GATE_API_KEY",
+        "gate-test-key",
+    )
+
+    monkeypatch.delenv(
+        "ARBOS_GATE_API_SECRET",
+        raising=False,
+    )
+
+    class GateExchange:
+        id = "gate"
+
+    factory = (
+        NetworkMetadataAdapterFactory()
+    )
+
+    adapter = factory.build(
+        GateExchange()
+    )
+
+    result = (
+        adapter._client
+        .fetch_currencies()
+    )
+
+    assert result[
+        "fetch_complete"
+    ] is False
+
+    assert result[
+        "reason"
+    ] == "credentials_unavailable"
+
+
+def test_blank_gate_environment_credentials_are_treated_as_missing(
+    monkeypatch,
+):
+    monkeypatch.setenv(
+        "ARBOS_GATE_API_KEY",
+        "   ",
+    )
+    monkeypatch.setenv(
+        "ARBOS_GATE_API_SECRET",
+        "",
+    )
+
+    class GateExchange:
+        id = "gate"
+
+    adapter = (
+        NetworkMetadataAdapterFactory()
+        .build(
+            GateExchange()
+        )
+    )
+
+    client = adapter._client
+
+    assert client._api_key is None
+    assert client._api_secret is None
+
+    result = client.fetch_currencies()
+
+    assert result[
+        "fetch_complete"
+    ] is False
+
+    assert result[
+        "reason"
+    ] == "credentials_unavailable"
