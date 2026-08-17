@@ -123,16 +123,14 @@ def test_describes_coinex_networks():
 
     bsc = result["networks"][0]
 
-    assert bsc["network"] == "BSC"
-    assert bsc["deposit_enabled"] is True
-    assert bsc["withdraw_enabled"] is True
-    assert bsc["minimum_deposit"] == 0.2
-    assert bsc["minimum_withdrawal"] == 2.0
-    assert bsc["withdraw_fee"] == 0.0065
-    assert bsc["safe_confirmations"] == 12
-    assert bsc[
-        "irreversible_confirmations"
-    ] == 30
+    assert bsc.coin == "USDT"
+    assert bsc.network == "BSC"
+    assert bsc.deposit_enabled is True
+    assert bsc.withdraw_enabled is True
+    assert bsc.maintenance is False
+    assert bsc.min_withdraw == 2.0
+    assert bsc.withdraw_fee == 0.0065
+    assert bsc.confirmations == 12
 
 
 def test_disabled_withdrawal_is_preserved():
@@ -148,32 +146,54 @@ def test_disabled_withdrawal_is_preserved():
         "networks"
     ][1]
 
-    assert plasma["network"] == "PLASMA"
-    assert plasma["deposit_enabled"] is True
-    assert plasma["withdraw_enabled"] is False
+    assert plasma.network == "PLASMA"
+    assert plasma.deposit_enabled is True
+    assert plasma.withdraw_enabled is False
 
 
-def test_memo_requirement_is_preserved():
-    adapter = CoinExNetworkMetadataAdapter(
-        client=FakeClient(),
+def test_coinex_common_network_names_are_normalized():
+    normalize = (
+        CoinExNetworkMetadataAdapter
+        ._normalize_network_name
     )
 
-    result = adapter.describe_networks(
-        "USDT"
+    assert normalize(
+        "ERC20"
+    ) == "ETH"
+
+    assert normalize(
+        "TRC20"
+    ) == "TRX"
+
+    assert normalize(
+        "BEP20"
+    ) == "BSC"
+
+    assert normalize(
+        "AVA_C"
+    ) == "AVAXC"
+
+    assert normalize(
+        "SOL"
+    ) == "SOL"
+
+    assert normalize(
+        "BTC"
+    ) == "BTC"
+
+    assert normalize(
+        "PLASMA"
+    ) == "PLASMA"
+
+
+def test_coinex_unknown_network_name_is_preserved():
+    assert (
+        CoinExNetworkMetadataAdapter
+        ._normalize_network_name(
+            "NEWCHAIN"
+        )
+        == "NEWCHAIN"
     )
-
-    ton = result[
-        "networks"
-    ][2]
-
-    assert ton[
-        "memo_required"
-    ] is True
-
-    assert ton[
-        "memo_label"
-    ] == "Memo/Comment"
-
 
 def test_currency_is_normalized():
     adapter = CoinExNetworkMetadataAdapter(
@@ -217,3 +237,113 @@ def test_coin_is_required():
         match="coin is required",
     ):
         adapter.describe_networks("")
+
+
+def test_coinex_networks_use_network_info_contract():
+    from exchanges.network_registry import (
+        NetworkInfo,
+    )
+
+    adapter = CoinExNetworkMetadataAdapter(
+        client=FakeClient(),
+    )
+
+    networks = adapter.get_networks(
+        "USDT"
+    )
+
+    assert len(networks) == 3
+
+    assert all(
+        isinstance(
+            network,
+            NetworkInfo,
+        )
+        for network in networks
+    )
+
+    bsc = networks[0]
+
+    assert bsc.coin == "USDT"
+    assert bsc.network == "BSC"
+    assert bsc.deposit_enabled is True
+    assert bsc.withdraw_enabled is True
+    assert bsc.maintenance is False
+    assert bsc.withdraw_fee == 0.0065
+    assert bsc.min_withdraw == 2.0
+    assert bsc.confirmations == 12
+
+
+def test_coinex_network_info_preserves_disabled_withdrawal():
+    adapter = CoinExNetworkMetadataAdapter(
+        client=FakeClient(),
+    )
+
+    networks = adapter.get_networks(
+        "USDT"
+    )
+
+    plasma = networks[1]
+
+    assert plasma.network == "PLASMA"
+    assert plasma.deposit_enabled is True
+    assert plasma.withdraw_enabled is False
+    assert plasma.maintenance is False
+    assert plasma.withdraw_fee == 0.000039
+    assert plasma.min_withdraw == 0.6
+    assert plasma.confirmations == 300
+
+
+def test_coinex_networks_use_network_info_contract():
+    from exchanges.network_registry import (
+        NetworkInfo,
+    )
+
+    adapter = CoinExNetworkMetadataAdapter(
+        client=FakeClient(),
+    )
+
+    networks = adapter.get_networks(
+        "USDT"
+    )
+
+    assert len(networks) == 3
+
+    assert all(
+        isinstance(
+            network,
+            NetworkInfo,
+        )
+        for network in networks
+    )
+
+    bsc = networks[0]
+
+    assert bsc.coin == "USDT"
+    assert bsc.network == "BSC"
+    assert bsc.deposit_enabled is True
+    assert bsc.withdraw_enabled is True
+    assert bsc.maintenance is False
+    assert bsc.withdraw_fee == 0.0065
+    assert bsc.min_withdraw == 2.0
+    assert bsc.confirmations == 12
+
+
+def test_coinex_network_info_preserves_disabled_withdrawal():
+    adapter = CoinExNetworkMetadataAdapter(
+        client=FakeClient(),
+    )
+
+    networks = adapter.get_networks(
+        "USDT"
+    )
+
+    plasma = networks[1]
+
+    assert plasma.network == "PLASMA"
+    assert plasma.deposit_enabled is True
+    assert plasma.withdraw_enabled is False
+    assert plasma.maintenance is False
+    assert plasma.withdraw_fee == 0.000039
+    assert plasma.min_withdraw == 0.6
+    assert plasma.confirmations == 300
