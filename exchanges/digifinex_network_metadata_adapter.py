@@ -15,6 +15,10 @@ Current production posture:
 - no live orders
 """
 
+from exchanges.network_registry import (
+    NetworkInfo,
+)
+
 
 class DigiFinexNetworkMetadataAdapter:
     def __init__(
@@ -43,6 +47,52 @@ class DigiFinexNetworkMetadataAdapter:
             )
 
         return coin
+
+    @staticmethod
+    def _optional_nonnegative_float(
+        value,
+    ):
+        if value in (
+            None,
+            "",
+        ):
+            return None
+
+        try:
+            value = float(value)
+        except (
+            TypeError,
+            ValueError,
+        ):
+            return None
+
+        if value < 0:
+            return None
+
+        return value
+
+    @staticmethod
+    def _optional_nonnegative_int(
+        value,
+    ):
+        if value in (
+            None,
+            "",
+        ):
+            return 0
+
+        try:
+            value = int(value)
+        except (
+            TypeError,
+            ValueError,
+        ):
+            return 0
+
+        if value < 0:
+            return 0
+
+        return value
 
     def describe_networks(
         self,
@@ -123,8 +173,76 @@ class DigiFinexNetworkMetadataAdapter:
             if asset != coin:
                 continue
 
+            network = str(
+                item.get(
+                    "network",
+                    item.get(
+                        "chain",
+                        "",
+                    ),
+                )
+                or ""
+            ).strip().upper()
+
+            if not network:
+                continue
+
             networks.append(
-                dict(item)
+                NetworkInfo(
+                    coin=coin,
+                    network=network,
+                    deposit_enabled=(
+                        item.get(
+                            "deposit_enabled",
+                            item.get(
+                                "deposit",
+                                False,
+                            ),
+                        )
+                        is True
+                    ),
+                    withdraw_enabled=(
+                        item.get(
+                            "withdraw_enabled",
+                            item.get(
+                                "withdraw",
+                                False,
+                            ),
+                        )
+                        is True
+                    ),
+                    maintenance=False,
+                    withdraw_fee=(
+                        self._optional_nonnegative_float(
+                            item.get(
+                                "withdraw_fee",
+                                item.get(
+                                    "withdrawFee"
+                                ),
+                            )
+                        )
+                    ),
+                    min_withdraw=(
+                        self._optional_nonnegative_float(
+                            item.get(
+                                "minimum_withdrawal",
+                                item.get(
+                                    "min_withdraw",
+                                    item.get(
+                                        "withdrawMin"
+                                    ),
+                                ),
+                            )
+                        )
+                    ),
+                    confirmations=(
+                        self._optional_nonnegative_int(
+                            item.get(
+                                "confirmations"
+                            )
+                        )
+                    ),
+                )
             )
 
         return {
