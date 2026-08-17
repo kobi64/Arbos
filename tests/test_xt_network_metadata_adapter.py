@@ -104,57 +104,30 @@ def test_describes_xt_networks():
 
     tron = result["networks"][0]
 
-    assert tron[
-        "network"
-    ] == "Tron"
-
-    assert tron[
-        "deposit_enabled"
-    ] is True
-
-    assert tron[
-        "withdraw_enabled"
-    ] is True
-
-    assert tron[
-        "deposit_confirmations"
-    ] == 3
-
-    assert tron[
-        "minimum_deposit"
-    ] == 0.1
-
-    assert tron[
-        "minimum_withdrawal"
-    ] == 10.0
-
-    assert tron[
-        "withdraw_fee"
-    ] == 1.0
-
-    assert tron[
-        "withdraw_fee_currency"
-    ] == "USDT"
+    assert tron.coin == "USDT"
+    assert tron.network == "TRX"
+    assert tron.deposit_enabled is True
+    assert tron.withdraw_enabled is True
+    assert tron.confirmations == 3
+    assert tron.min_withdraw == 10.0
+    assert tron.withdraw_fee == 1.0
 
 
-def test_contract_metadata_is_preserved():
+def test_xt_networks_use_network_info_contract():
     adapter = XTNetworkMetadataAdapter(
         client=FakeClient(),
     )
 
-    result = adapter.describe_networks(
-        "USDT"
+    network = (
+        adapter.describe_networks(
+            "USDT"
+        )["networks"][0]
     )
 
-    tron = result[
-        "networks"
-    ][0]
-
-    assert tron[
-        "contract_address"
-    ] == (
-        "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t"
-    )
+    assert network.coin == "USDT"
+    assert network.network == "TRX"
+    assert network.min_withdraw == 10.0
+    assert network.withdraw_fee == 1.0
 
 
 def test_disabled_withdrawal_is_preserved():
@@ -170,13 +143,8 @@ def test_disabled_withdrawal_is_preserved():
         "networks"
     ][1]
 
-    assert ethereum[
-        "deposit_enabled"
-    ] is True
-
-    assert ethereum[
-        "withdraw_enabled"
-    ] is False
+    assert ethereum.deposit_enabled is True
+    assert ethereum.withdraw_enabled is False
 
 
 def test_coin_is_normalized():
@@ -245,3 +213,53 @@ def test_coin_is_required():
         match="coin is required",
     ):
         adapter.describe_networks("")
+
+
+
+def test_xt_common_network_names_are_normalized():
+    normalize = (
+        XTNetworkMetadataAdapter
+        ._normalize_network
+    )
+
+    assert normalize(
+        "Bitcoin"
+    ) == "BTC"
+
+    assert normalize(
+        "BNB Smart Chain"
+    ) == "BSC"
+
+    assert normalize(
+        "Ethereum"
+    ) == "ETH"
+
+    assert normalize(
+        "Solana"
+    ) == "SOL"
+
+    assert normalize(
+        "Tron"
+    ) == "TRX"
+
+    assert normalize(
+        "Arbitrum One"
+    ) == "ARBITRUM"
+
+    assert normalize(
+        "Polygon POS"
+    ) == "MATIC"
+
+    assert normalize(
+        "AVAX C-Chain"
+    ) == "AVAXC"
+
+
+def test_xt_unknown_network_name_is_preserved():
+    assert (
+        XTNetworkMetadataAdapter
+        ._normalize_network(
+            "Some New Chain"
+        )
+        == "SOME NEW CHAIN"
+    )
