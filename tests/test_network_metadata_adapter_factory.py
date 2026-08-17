@@ -1331,3 +1331,57 @@ def test_coinbase_network_exchange_id_is_normalized():
         adapter,
         CoinbaseNetworkMetadataAdapter,
     )
+
+
+def test_gate_alias_builds_native_network_adapter():
+    from exchanges.gateio_network_metadata_adapter import (
+        GateIONetworkMetadataAdapter,
+    )
+
+    class GateExchange:
+        id = "gate"
+
+    marker = object()
+
+    factory = NetworkMetadataAdapterFactory(
+        gateio_client_factory=(
+            lambda exchange: marker
+        ),
+    )
+
+    adapter = factory.build(
+        GateExchange()
+    )
+
+    assert isinstance(
+        adapter,
+        GateIONetworkMetadataAdapter,
+    )
+
+    assert adapter._client is marker
+
+
+def test_gate_alias_is_normalized():
+    from exchanges.gateio_network_metadata_adapter import (
+        GateIONetworkMetadataAdapter,
+    )
+
+    class GateExchange:
+        id = " GATE "
+
+    marker = object()
+
+    factory = NetworkMetadataAdapterFactory(
+        gateio_client_factory=(
+            lambda exchange: marker
+        ),
+    )
+
+    adapter = factory.build(
+        GateExchange()
+    )
+
+    assert isinstance(
+        adapter,
+        GateIONetworkMetadataAdapter,
+    )

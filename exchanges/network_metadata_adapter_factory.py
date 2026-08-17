@@ -425,7 +425,10 @@ class NetworkMetadataAdapterFactory:
                 )
             )
 
-        if exchange_id == "gateio":
+        if exchange_id in (
+            "gate",
+            "gateio",
+        ):
             client = (
                 self._gateio_client_factory(
                     exchange
