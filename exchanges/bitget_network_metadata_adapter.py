@@ -13,8 +13,57 @@ No transfers.
 No live orders.
 """
 
+from exchanges.network_registry import NetworkInfo
+
 
 class BitgetNetworkMetadataAdapter:
+    _NETWORK_ALIASES = {
+        "ERC20": "ETH",
+        "ETHEREUM": "ETH",
+        "TRC20": "TRON",
+        "TRON": "TRON",
+        "BEP20": "BSC",
+        "BSC": "BSC",
+        "ARBITRUMONE": "ARBITRUM",
+        "ARBITRUM": "ARBITRUM",
+        "OPTIMISM": "OPTIMISM",
+        "POLYGON": "POLYGON",
+        "AVAXC-CHAIN": "AVAXC",
+        "AVAXC": "AVAXC",
+        "SOL": "SOL",
+        "SOLANA": "SOL",
+        "APTOS": "APTOS",
+        "BASE": "BASE",
+        "BTC": "BTC",
+        "LIGHTNING": "BTCLN",
+        "ZKSYNCERA": "ZKSYNC",
+        "STARKNET": "STARKNET",
+        "SCROLL": "SCROLL",
+        "TON": "TON",
+        "MORPH": "MORPH",
+        "PLASMA": "PLASMA",
+    }
+
+    @classmethod
+    def _normalize_network_name(
+        cls,
+        network,
+    ):
+        raw = str(
+            network
+            or ""
+        ).strip()
+
+        if not raw:
+            return ""
+
+        key = raw.upper()
+
+        return cls._NETWORK_ALIASES.get(
+            key,
+            key,
+        )
+
     def __init__(
         self,
         client,
@@ -173,13 +222,12 @@ class BitgetNetworkMetadataAdapter:
                 ):
                     continue
 
-                network = str(
+                network = self._normalize_network_name(
                     chain.get(
                         "chain",
                         "",
                     )
-                    or ""
-                ).strip()
+                )
 
                 if not network:
                     continue
@@ -257,7 +305,31 @@ class BitgetNetworkMetadataAdapter:
                     continue
 
                 networks.append(
-                    normalized
+                    NetworkInfo(
+                        coin=coin,
+                        network=normalized[
+                            "network"
+                        ],
+                        deposit_enabled=normalized[
+                            "deposit_enabled"
+                        ],
+                        withdraw_enabled=normalized[
+                            "withdraw_enabled"
+                        ],
+                        maintenance=False,
+                        withdraw_fee=normalized[
+                            "withdraw_fee"
+                        ],
+                        min_withdraw=normalized[
+                            "minimum_withdrawal"
+                        ],
+                        confirmations=(
+                            normalized[
+                                "deposit_confirmations"
+                            ]
+                            or 0
+                        ),
+                    )
                 )
 
         return {
