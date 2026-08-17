@@ -15,6 +15,10 @@ Current production posture:
 - no live orders
 """
 
+from exchanges.network_registry import (
+    NetworkInfo,
+)
+
 
 class HTXNetworkMetadataAdapter:
     def __init__(
@@ -43,6 +47,59 @@ class HTXNetworkMetadataAdapter:
             )
 
         return coin
+
+    @staticmethod
+    def _optional_nonnegative_float(
+        value,
+    ):
+        if value in (
+            None,
+            "",
+        ):
+            return None
+
+        try:
+            value = float(value)
+        except (
+            TypeError,
+            ValueError,
+        ):
+            return None
+
+        if value < 0:
+            return None
+
+        return value
+
+    @staticmethod
+    def _normalize_network(
+        network,
+    ):
+        network = str(
+            network
+            or ""
+        ).strip().upper()
+
+        aliases = {
+            "ERC20": "ETH",
+            "ETHEREUM": "ETH",
+            "TRC20": "TRX",
+            "TRON": "TRX",
+            "BEP20": "BSC",
+            "BSC": "BSC",
+            "SOLANA": "SOL",
+            "SOL": "SOL",
+            "ARBITRUM": "ARBITRUM",
+            "ARBITRUM ONE": "ARBITRUM",
+            "OPTIMISM": "OPTIMISM",
+            "BASE": "BASE",
+            "BTC": "BTC",
+        }
+
+        return aliases.get(
+            network,
+            network,
+        )
 
     def describe_networks(
         self,
@@ -123,8 +180,61 @@ class HTXNetworkMetadataAdapter:
             if asset != coin:
                 continue
 
+            network = self._normalize_network(
+                item.get(
+                    "network",
+                    item.get(
+                        "chain",
+                        "",
+                    ),
+                )
+            )
+
+            if not network:
+                continue
+
+            withdraw_fee = (
+                self._optional_nonnegative_float(
+                    item.get(
+                        "withdraw_fee",
+                        item.get(
+                            "withdrawFee"
+                        ),
+                    )
+                )
+            )
+
+            min_withdraw = (
+                self._optional_nonnegative_float(
+                    item.get(
+                        "min_withdraw",
+                        item.get(
+                            "withdrawMin"
+                        ),
+                    )
+                )
+            )
+
             networks.append(
-                dict(item)
+                NetworkInfo(
+                    coin=coin,
+                    network=network,
+                    deposit_enabled=(
+                        item.get(
+                            "deposit"
+                        )
+                        is True
+                    ),
+                    withdraw_enabled=(
+                        item.get(
+                            "withdraw"
+                        )
+                        is True
+                    ),
+                    maintenance=False,
+                    withdraw_fee=withdraw_fee,
+                    min_withdraw=min_withdraw,
+                )
             )
 
         return {
