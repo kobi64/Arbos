@@ -142,6 +142,103 @@ class GateIONetworkMetadataAdapter:
                 "live_transfer_submitted": False,
             }
 
+        withdrawal_fee_by_network = {}
+        default_withdrawal_fee = None
+
+        fetch_currencies = getattr(
+            self._client,
+            "fetch_currencies",
+            None,
+        )
+
+        if callable(
+            fetch_currencies
+        ):
+            fee_result = (
+                fetch_currencies()
+            )
+
+            if (
+                isinstance(
+                    fee_result,
+                    dict,
+                )
+                and fee_result.get(
+                    "fetch_complete"
+                )
+                is True
+            ):
+                fee_rows = fee_result.get(
+                    "currencies",
+                    [],
+                )
+
+                if isinstance(
+                    fee_rows,
+                    list,
+                ):
+                    for fee_row in fee_rows:
+                        if not isinstance(
+                            fee_row,
+                            dict,
+                        ):
+                            continue
+
+                        fee_currency = str(
+                            fee_row.get(
+                                "currency",
+                                "",
+                            )
+                            or ""
+                        ).strip().upper()
+
+                        if fee_currency != coin:
+                            continue
+
+                        default_withdrawal_fee = (
+                            self._optional_nonnegative_float(
+                                fee_row.get(
+                                    "withdraw_fix"
+                                )
+                            )
+                        )
+
+                        chain_fees = fee_row.get(
+                            "withdraw_fix_on_chains",
+                            {},
+                        )
+
+                        if not isinstance(
+                            chain_fees,
+                            dict,
+                        ):
+                            chain_fees = {}
+
+                        for (
+                            chain_name,
+                            chain_fee,
+                        ) in chain_fees.items():
+                            chain_name = str(
+                                chain_name
+                                or ""
+                            ).strip().upper()
+
+                            if not chain_name:
+                                continue
+
+                            normalized_fee = (
+                                self._optional_nonnegative_float(
+                                    chain_fee
+                                )
+                            )
+
+                            if normalized_fee is not None:
+                                withdrawal_fee_by_network[
+                                    chain_name
+                                ] = normalized_fee
+
+                        break
+
         networks = []
 
         for item in currencies:
@@ -207,6 +304,17 @@ class GateIONetworkMetadataAdapter:
                     )
                 )
 
+            withdraw_fee = (
+                withdrawal_fee_by_network.get(
+                    network
+                )
+            )
+
+            if withdraw_fee is None:
+                withdraw_fee = (
+                    default_withdrawal_fee
+                )
+
             networks.append(
                 NetworkInfo(
                     coin=coin,
@@ -224,7 +332,7 @@ class GateIONetworkMetadataAdapter:
                         is True
                     ),
                     maintenance=False,
-                    withdraw_fee=None,
+                    withdraw_fee=withdraw_fee,
                     min_withdraw=min_withdraw,
                 )
             )
