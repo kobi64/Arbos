@@ -15,6 +15,10 @@ Current production posture:
 - no live orders
 """
 
+from exchanges.network_registry import (
+    NetworkInfo,
+)
+
 
 class GateIONetworkMetadataAdapter:
     def __init__(
@@ -52,9 +56,24 @@ class GateIONetworkMetadataAdapter:
             coin
         )
 
-        result = (
-            self._client.fetch_currencies()
+        fetch_currency_chains = getattr(
+            self._client,
+            "fetch_currency_chains",
+            None,
         )
+
+        if callable(
+            fetch_currency_chains
+        ):
+            result = (
+                fetch_currency_chains(
+                    coin
+                )
+            )
+        else:
+            result = (
+                self._client.fetch_currencies()
+            )
 
         if (
             result.get(
@@ -123,8 +142,40 @@ class GateIONetworkMetadataAdapter:
             if asset != coin:
                 continue
 
+            network = str(
+                item.get(
+                    "network",
+                    item.get(
+                        "chain",
+                        "",
+                    ),
+                )
+                or ""
+            ).strip().upper()
+
+            if not network:
+                continue
+
             networks.append(
-                dict(item)
+                NetworkInfo(
+                    coin=coin,
+                    network=network,
+                    deposit_enabled=(
+                        item.get(
+                            "deposit"
+                        )
+                        is True
+                    ),
+                    withdraw_enabled=(
+                        item.get(
+                            "withdraw"
+                        )
+                        is True
+                    ),
+                    maintenance=False,
+                    withdraw_fee=None,
+                    min_withdraw=None,
+                )
             )
 
         return {
