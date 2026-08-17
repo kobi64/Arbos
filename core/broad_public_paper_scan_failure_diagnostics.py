@@ -145,6 +145,9 @@ class BroadPublicPaperScanFailureDiagnostics:
                 )
 
         rejection_reasons = {}
+        feasibility_failures_by_reason = {}
+        feasibility_failed_network_count = 0
+        feasibility_rejected_route_count = 0
 
         for route in rejected_routes:
             reason = (
@@ -159,6 +162,58 @@ class BroadPublicPaperScanFailureDiagnostics:
                 )
                 + 1
             )
+
+            diagnostics = route.get(
+                "feasibility_diagnostics"
+            )
+
+            if not isinstance(
+                diagnostics,
+                dict,
+            ):
+                continue
+
+            feasibility_rejected_route_count += 1
+
+            feasibility_failed_network_count += int(
+                diagnostics.get(
+                    "failed_network_count",
+                    0,
+                )
+                or 0
+            )
+
+            failures_by_reason = diagnostics.get(
+                "failures_by_reason",
+                {},
+            )
+
+            if not isinstance(
+                failures_by_reason,
+                dict,
+            ):
+                continue
+
+            for (
+                failure_reason,
+                count,
+            ) in failures_by_reason.items():
+                failure_reason = (
+                    str(
+                        failure_reason
+                        or "unknown"
+                    )
+                )
+
+                feasibility_failures_by_reason[
+                    failure_reason
+                ] = (
+                    feasibility_failures_by_reason.get(
+                        failure_reason,
+                        0,
+                    )
+                    + int(count or 0)
+                )
 
         total_failure_count = len(
             failures
@@ -232,6 +287,17 @@ class BroadPublicPaperScanFailureDiagnostics:
             "rejection_reasons": dict(
                 sorted(
                     rejection_reasons.items()
+                )
+            ),
+            "feasibility_rejected_route_count": (
+                feasibility_rejected_route_count
+            ),
+            "feasibility_failed_network_count": (
+                feasibility_failed_network_count
+            ),
+            "feasibility_failures_by_reason": dict(
+                sorted(
+                    feasibility_failures_by_reason.items()
                 )
             ),
             "affected_coin_assets": sorted(
