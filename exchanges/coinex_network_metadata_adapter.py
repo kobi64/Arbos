@@ -12,8 +12,43 @@ No transfers.
 No live orders.
 """
 
+from exchanges.network_registry import (
+    NetworkInfo,
+)
+
 
 class CoinExNetworkMetadataAdapter:
+    _NETWORK_ALIASES = {
+        "ERC20": "ETH",
+        "ETHEREUM": "ETH",
+        "TRC20": "TRX",
+        "TRON": "TRX",
+        "BEP20": "BSC",
+        "BSC": "BSC",
+        "SOL": "SOL",
+        "BTC": "BTC",
+        "TON": "TON",
+        "PLASMA": "PLASMA",
+        "AVA_C": "AVAXC",
+        "AVAXC": "AVAXC",
+        "POLKADOTASSETHUB": "STATEMINT",
+    }
+
+    @classmethod
+    def _normalize_network_name(
+        cls,
+        network,
+    ):
+        network = str(
+            network
+            or ""
+        ).strip().upper()
+
+        return cls._NETWORK_ALIASES.get(
+            network,
+            network,
+        )
+
     def __init__(
         self,
         client,
@@ -147,13 +182,12 @@ class CoinExNetworkMetadataAdapter:
             ):
                 continue
 
-            network = str(
+            network = self._normalize_network_name(
                 chain.get(
                     "chain",
                     "",
                 )
-                or ""
-            ).strip()
+            )
 
             if not network:
                 continue
@@ -259,7 +293,31 @@ class CoinExNetworkMetadataAdapter:
                 continue
 
             networks.append(
-                normalized
+                NetworkInfo(
+                    coin=coin,
+                    network=normalized[
+                        "network"
+                    ],
+                    deposit_enabled=normalized[
+                        "deposit_enabled"
+                    ],
+                    withdraw_enabled=normalized[
+                        "withdraw_enabled"
+                    ],
+                    maintenance=False,
+                    withdraw_fee=normalized[
+                        "withdraw_fee"
+                    ],
+                    min_withdraw=normalized[
+                        "minimum_withdrawal"
+                    ],
+                    confirmations=(
+                        normalized[
+                            "safe_confirmations"
+                        ]
+                        or 0
+                    ),
+                )
             )
 
         return {
