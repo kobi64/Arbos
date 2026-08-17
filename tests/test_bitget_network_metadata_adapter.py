@@ -98,64 +98,70 @@ def test_describes_bitget_networks():
         result["networks"]
     ) == 2
 
-    assert result[
-        "networks"
-    ][0][
-        "network"
-    ] == "ERC20"
-
-    assert result[
-        "networks"
-    ][0][
-        "withdraw_enabled"
-    ] is True
-
-    assert result[
-        "networks"
-    ][0][
-        "deposit_enabled"
-    ] is True
-
-    assert result[
-        "networks"
-    ][0][
-        "withdraw_fee"
-    ] == 0.8
-
-
-def test_contract_and_confirmation_metadata_is_preserved():
-    adapter = BitgetNetworkMetadataAdapter(
-        client=FakeClient(),
-    )
-
-    result = adapter.describe_networks(
-        "USDT"
-    )
-
     erc20 = result[
         "networks"
     ][0]
 
-    assert erc20[
-        "deposit_confirmations"
-    ] == 12
+    assert erc20.coin == "USDT"
+    assert erc20.network == "ETH"
+    assert erc20.withdraw_enabled is True
+    assert erc20.deposit_enabled is True
+    assert erc20.withdraw_fee == 0.8
+    assert erc20.min_withdraw == 10.0
+    assert erc20.confirmations == 12
 
-    assert erc20[
-        "withdraw_confirmations"
-    ] == 96
 
-    assert erc20[
-        "minimum_deposit"
-    ] == 0.5
+def test_networks_use_network_info_contract():
+    adapter = BitgetNetworkMetadataAdapter(
+        client=FakeClient(),
+    )
 
-    assert erc20[
-        "minimum_withdrawal"
-    ] == 10.0
+    networks = adapter.describe_networks(
+        "USDT"
+    )["networks"]
 
-    assert erc20[
-        "contract_address"
-    ].startswith("0xdac17")
+    assert len(networks) == 2
 
+    ethereum = networks[0]
+    tron = networks[1]
+
+    assert ethereum.coin == "USDT"
+    assert ethereum.network == "ETH"
+    assert ethereum.deposit_enabled is True
+    assert ethereum.withdraw_enabled is True
+    assert ethereum.withdraw_fee == 0.8
+    assert ethereum.min_withdraw == 10.0
+    assert ethereum.confirmations == 12
+
+    assert tron.coin == "USDT"
+    assert tron.network == "TRON"
+    assert tron.deposit_enabled is True
+    assert tron.withdraw_enabled is True
+    assert tron.withdraw_fee == 1.5
+    assert tron.min_withdraw == 10.0
+    assert tron.confirmations == 3
+
+
+def test_public_chain_aliases_are_normalized():
+    aliases = {
+        "ERC20": "ETH",
+        "TRC20": "TRON",
+        "BEP20": "BSC",
+        "ArbitrumOne": "ARBITRUM",
+        "Optimism": "OPTIMISM",
+        "AVAXC-Chain": "AVAXC",
+        "Aptos": "APTOS",
+        "SOL": "SOL",
+        "BASE": "BASE",
+        "LIGHTNING": "BTCLN",
+    }
+
+    for raw, expected in aliases.items():
+        assert (
+            BitgetNetworkMetadataAdapter
+            ._normalize_network_name(raw)
+            == expected
+        )
 
 def test_coin_is_normalized():
     adapter = BitgetNetworkMetadataAdapter(
