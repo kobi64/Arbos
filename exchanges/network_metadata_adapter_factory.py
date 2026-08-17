@@ -147,6 +147,8 @@ from exchanges.coinex_network_metadata_client import (
     CoinExNetworkMetadataClient,
 )
 
+import os
+
 from exchanges.phemex_network_metadata_adapter import (
     PhemexNetworkMetadataAdapter,
 )
@@ -617,9 +619,35 @@ class NetworkMetadataAdapterFactory:
     def _build_default_gateio_client(
         exchange,
     ):
+        api_key = os.getenv(
+            "ARBOS_GATE_API_KEY"
+        )
+
+        api_secret = os.getenv(
+            "ARBOS_GATE_API_SECRET"
+        )
+
+        api_key = (
+            str(api_key).strip()
+            if api_key is not None
+            else None
+        )
+
+        api_secret = (
+            str(api_secret).strip()
+            if api_secret is not None
+            else None
+        )
+
+        if not api_key:
+            api_key = None
+
+        if not api_secret:
+            api_secret = None
+
         return GateIOWalletMetadataClient(
-            api_key=None,
-            api_secret=None,
+            api_key=api_key,
+            api_secret=api_secret,
         )
 
     @staticmethod
