@@ -146,6 +146,9 @@ class BroadPublicPaperScanFailureDiagnostics:
 
         rejection_reasons = {}
         feasibility_failures_by_reason = {}
+        feasibility_failures_by_exchange_pair = {}
+        feasibility_failures_by_coin = {}
+        feasibility_failures_by_network = {}
         feasibility_failed_network_count = 0
         feasibility_rejected_route_count = 0
 
@@ -213,6 +216,137 @@ class BroadPublicPaperScanFailureDiagnostics:
                         0,
                     )
                     + int(count or 0)
+                )
+
+            source_exchange = str(
+                route.get(
+                    "source_exchange",
+                    route.get(
+                        "source_exchange_id",
+                        "",
+                    ),
+                )
+                or ""
+            ).strip().lower()
+
+            destination_exchange = str(
+                route.get(
+                    "destination_exchange",
+                    route.get(
+                        "destination_exchange_id",
+                        "",
+                    ),
+                )
+                or ""
+            ).strip().lower()
+
+            coin_asset = str(
+                route.get(
+                    "coin_asset",
+                    route.get(
+                        "transfer_asset",
+                        "",
+                    ),
+                )
+                or ""
+            ).strip().upper()
+
+            failed_networks = diagnostics.get(
+                "failed_networks",
+                [],
+            )
+
+            if not isinstance(
+                failed_networks,
+                list,
+            ):
+                continue
+
+            for failed_network in failed_networks:
+                if not isinstance(
+                    failed_network,
+                    dict,
+                ):
+                    continue
+
+                failure_reason = str(
+                    failed_network.get(
+                        "reason",
+                        "unknown",
+                    )
+                    or "unknown"
+                )
+
+                network = str(
+                    failed_network.get(
+                        "network",
+                        "unknown",
+                    )
+                    or "unknown"
+                ).strip().upper()
+
+                if (
+                    source_exchange
+                    and destination_exchange
+                ):
+                    pair_key = (
+                        f"{source_exchange}"
+                        f"->{destination_exchange}"
+                    )
+
+                    pair_reasons = (
+                        feasibility_failures_by_exchange_pair
+                        .setdefault(
+                            pair_key,
+                            {},
+                        )
+                    )
+
+                    pair_reasons[
+                        failure_reason
+                    ] = (
+                        pair_reasons.get(
+                            failure_reason,
+                            0,
+                        )
+                        + 1
+                    )
+
+                if coin_asset:
+                    coin_reasons = (
+                        feasibility_failures_by_coin
+                        .setdefault(
+                            coin_asset,
+                            {},
+                        )
+                    )
+
+                    coin_reasons[
+                        failure_reason
+                    ] = (
+                        coin_reasons.get(
+                            failure_reason,
+                            0,
+                        )
+                        + 1
+                    )
+
+                network_reasons = (
+                    feasibility_failures_by_network
+                    .setdefault(
+                        network,
+                        {},
+                    )
+                )
+
+                network_reasons[
+                    failure_reason
+                ] = (
+                    network_reasons.get(
+                        failure_reason,
+                        0,
+                    )
+                    + 1
                 )
 
         total_failure_count = len(
@@ -300,6 +434,30 @@ class BroadPublicPaperScanFailureDiagnostics:
                     feasibility_failures_by_reason.items()
                 )
             ),
+            "feasibility_failures_by_exchange_pair": {
+                key: dict(
+                    sorted(value.items())
+                )
+                for key, value in sorted(
+                    feasibility_failures_by_exchange_pair.items()
+                )
+            },
+            "feasibility_failures_by_coin": {
+                key: dict(
+                    sorted(value.items())
+                )
+                for key, value in sorted(
+                    feasibility_failures_by_coin.items()
+                )
+            },
+            "feasibility_failures_by_network": {
+                key: dict(
+                    sorted(value.items())
+                )
+                for key, value in sorted(
+                    feasibility_failures_by_network.items()
+                )
+            },
             "affected_coin_assets": sorted(
                 affected_coins
             ),

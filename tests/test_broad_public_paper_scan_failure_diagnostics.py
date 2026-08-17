@@ -311,3 +311,138 @@ def test_missing_feasibility_diagnostics_remains_safe():
     assert result[
         "feasibility_failures_by_reason"
     ] == {}
+
+
+def test_feasibility_metadata_coverage_is_grouped_by_route_context():
+    scan_result = {
+        "rejected_routes": [
+            {
+                "reason": "no_feasible_network",
+                "source_exchange": "gate",
+                "destination_exchange": "kucoin",
+                "coin_asset": "ABC",
+                "feasibility_diagnostics": {
+                    "failed_network_count": 2,
+                    "failures_by_reason": {
+                        "minimum_withdrawal_unknown": 2,
+                    },
+                    "failed_networks": [
+                        {
+                            "network": "ERC20",
+                            "reason": (
+                                "minimum_withdrawal_unknown"
+                            ),
+                        },
+                        {
+                            "network": "BSC",
+                            "reason": (
+                                "minimum_withdrawal_unknown"
+                            ),
+                        },
+                    ],
+                },
+            },
+            {
+                "reason": "no_feasible_network",
+                "source_exchange": "kucoin",
+                "destination_exchange": "gate",
+                "coin_asset": "XYZ",
+                "feasibility_diagnostics": {
+                    "failed_network_count": 1,
+                    "failures_by_reason": {
+                        "withdrawal_fee_unknown": 1,
+                    },
+                    "failed_networks": [
+                        {
+                            "network": "ERC20",
+                            "reason": (
+                                "withdrawal_fee_unknown"
+                            ),
+                        },
+                    ],
+                },
+            },
+        ],
+    }
+
+    result = (
+        BroadPublicPaperScanFailureDiagnostics()
+        .build(scan_result)
+    )
+
+    assert result[
+        "feasibility_failures_by_exchange_pair"
+    ] == {
+        "gate->kucoin": {
+            "minimum_withdrawal_unknown": 2,
+        },
+        "kucoin->gate": {
+            "withdrawal_fee_unknown": 1,
+        },
+    }
+
+    assert result[
+        "feasibility_failures_by_coin"
+    ] == {
+        "ABC": {
+            "minimum_withdrawal_unknown": 2,
+        },
+        "XYZ": {
+            "withdrawal_fee_unknown": 1,
+        },
+    }
+
+    assert result[
+        "feasibility_failures_by_network"
+    ] == {
+        "BSC": {
+            "minimum_withdrawal_unknown": 1,
+        },
+        "ERC20": {
+            "minimum_withdrawal_unknown": 1,
+            "withdrawal_fee_unknown": 1,
+        },
+    }
+
+
+def test_feasibility_metadata_coverage_handles_missing_context():
+    result = (
+        BroadPublicPaperScanFailureDiagnostics()
+        .build({
+            "rejected_routes": [
+                {
+                    "reason": "no_feasible_network",
+                    "feasibility_diagnostics": {
+                        "failed_network_count": 1,
+                        "failures_by_reason": {
+                            "minimum_withdrawal_unknown": 1,
+                        },
+                        "failed_networks": [
+                            {
+                                "network": "ETH",
+                                "reason": (
+                                    "minimum_withdrawal_unknown"
+                                ),
+                            },
+                        ],
+                    },
+                },
+            ],
+        })
+    )
+
+    assert result[
+        "feasibility_failures_by_exchange_pair"
+    ] == {}
+
+    assert result[
+        "feasibility_failures_by_coin"
+    ] == {}
+
+    assert result[
+        "feasibility_failures_by_network"
+    ] == {
+        "ETH": {
+            "minimum_withdrawal_unknown": 1,
+        },
+    }
