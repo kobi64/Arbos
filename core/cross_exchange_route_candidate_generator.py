@@ -263,6 +263,11 @@ class CrossExchangeRouteCandidateGenerator:
                         "network_identity"
                     )
                 ),
+                "feasibility_diagnostics": (
+                    direct_result.get(
+                        "feasibility_diagnostics"
+                    )
+                ),
                 "source_network": direct_result.get(
                     "source_network"
                 ),
@@ -396,6 +401,11 @@ class CrossExchangeRouteCandidateGenerator:
                 "network_identity": (
                     transfer_result.get(
                         "network_identity"
+                    )
+                ),
+                "feasibility_diagnostics": (
+                    transfer_result.get(
+                        "feasibility_diagnostics"
                     )
                 ),
             })

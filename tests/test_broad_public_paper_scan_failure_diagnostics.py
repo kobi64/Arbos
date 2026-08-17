@@ -227,3 +227,87 @@ def test_scan_result_is_required():
         match="scan_result is required",
     ):
         diagnostics.build(None)
+
+
+def test_aggregates_transfer_feasibility_diagnostics():
+    scan_result = {
+        "rejected_routes": [
+            {
+                "route_id": "DIRECT-gate-AAA-kucoin",
+                "reason": "no_feasible_network",
+                "feasibility_diagnostics": {
+                    "compatible_network_count": 2,
+                    "failed_network_count": 2,
+                    "failures_by_reason": {
+                        "below_minimum_withdrawal": 1,
+                        "withdrawal_fee_unknown": 1,
+                    },
+                    "failed_networks": [],
+                },
+            },
+            {
+                "route_id": "DIRECT-gate-BBB-kucoin",
+                "reason": "no_feasible_network",
+                "feasibility_diagnostics": {
+                    "compatible_network_count": 1,
+                    "failed_network_count": 1,
+                    "failures_by_reason": {
+                        "withdrawal_fee_unknown": 1,
+                    },
+                    "failed_networks": [],
+                },
+            },
+            {
+                "route_id": "DIRECT-gate-CCC-kucoin",
+                "reason": "no_compatible_network",
+            },
+        ],
+    }
+
+    result = (
+        BroadPublicPaperScanFailureDiagnostics()
+        .build(scan_result)
+    )
+
+    assert result[
+        "feasibility_rejected_route_count"
+    ] == 2
+
+    assert result[
+        "feasibility_failed_network_count"
+    ] == 3
+
+    assert result[
+        "feasibility_failures_by_reason"
+    ] == {
+        "below_minimum_withdrawal": 1,
+        "withdrawal_fee_unknown": 2,
+    }
+
+    assert result["rejection_reasons"] == {
+        "no_compatible_network": 1,
+        "no_feasible_network": 2,
+    }
+
+
+def test_missing_feasibility_diagnostics_remains_safe():
+    result = (
+        BroadPublicPaperScanFailureDiagnostics()
+        .build({
+            "rejected_routes": [
+                {
+                    "reason": "no_feasible_network",
+                },
+            ],
+        })
+    )
+
+    assert result[
+        "feasibility_rejected_route_count"
+    ] == 0
+    assert result[
+        "feasibility_failed_network_count"
+    ] == 0
+    assert result[
+        "feasibility_failures_by_reason"
+    ] == {}
