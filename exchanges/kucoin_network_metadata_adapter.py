@@ -48,6 +48,29 @@ class KuCoinNetworkMetadataAdapter:
 
         return coin
 
+    @staticmethod
+    def _optional_nonnegative_float(
+        value,
+    ):
+        if value in (
+            None,
+            "",
+        ):
+            return None
+
+        try:
+            value = float(value)
+        except (
+            TypeError,
+            ValueError,
+        ):
+            return None
+
+        if value < 0:
+            return None
+
+        return value
+
     def describe_networks(
         self,
         coin,
@@ -156,6 +179,61 @@ class KuCoinNetworkMetadataAdapter:
             if not network:
                 continue
 
+            raw = item.get(
+                "raw",
+                {},
+            )
+
+            if not isinstance(
+                raw,
+                dict,
+            ):
+                raw = {}
+
+            min_withdraw = (
+                self._optional_nonnegative_float(
+                    item.get(
+                        "min_withdraw"
+                    )
+                )
+            )
+
+            if min_withdraw is None:
+                for key in (
+                    "withdrawMinSize",
+                    "withdrawalMinSize",
+                ):
+                    min_withdraw = (
+                        self._optional_nonnegative_float(
+                            raw.get(key)
+                        )
+                    )
+
+                    if min_withdraw is not None:
+                        break
+
+            withdraw_fee = (
+                self._optional_nonnegative_float(
+                    item.get(
+                        "withdraw_fee"
+                    )
+                )
+            )
+
+            if withdraw_fee is None:
+                for key in (
+                    "withdrawMinFee",
+                    "withdrawalMinFee",
+                ):
+                    withdraw_fee = (
+                        self._optional_nonnegative_float(
+                            raw.get(key)
+                        )
+                    )
+
+                    if withdraw_fee is not None:
+                        break
+
             networks.append(
                 NetworkInfo(
                     coin=coin,
@@ -173,8 +251,8 @@ class KuCoinNetworkMetadataAdapter:
                         is True
                     ),
                     maintenance=False,
-                    withdraw_fee=None,
-                    min_withdraw=None,
+                    withdraw_fee=withdraw_fee,
+                    min_withdraw=min_withdraw,
                 )
             )
 
