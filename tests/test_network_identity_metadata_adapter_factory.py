@@ -43,19 +43,6 @@ def test_poloniex_builds_native_identity_adapter():
     )
 
 
-def test_non_poloniex_exchange_uses_ccxt_identity_adapter():
-    factory = NetworkIdentityMetadataAdapterFactory()
-
-    adapter = factory.build(
-        FakeExchange("kucoin")
-    )
-
-    assert isinstance(
-        adapter,
-        CCXTNetworkIdentityMetadataAdapter,
-    )
-
-
 def test_unknown_exchange_uses_ccxt_identity_adapter():
     factory = NetworkIdentityMetadataAdapterFactory()
 
@@ -291,3 +278,133 @@ def test_ourbit_native_only_exchange_fails_closed_for_identity():
     )
 
     assert records == []
+
+
+def test_gate_builds_native_identity_adapter():
+    from exchanges.gateio_network_identity_metadata_adapter import (
+        GateIONetworkIdentityMetadataAdapter,
+    )
+
+    marker = object()
+
+    factory = NetworkIdentityMetadataAdapterFactory(
+        gateio_client_factory=(
+            lambda exchange: marker
+        ),
+    )
+
+    adapter = factory.build(
+        FakeExchange("gate")
+    )
+
+    assert isinstance(
+        adapter,
+        GateIONetworkIdentityMetadataAdapter,
+    )
+    assert adapter._client is marker
+
+
+def test_gateio_exchange_id_is_supported():
+    from exchanges.gateio_network_identity_metadata_adapter import (
+        GateIONetworkIdentityMetadataAdapter,
+    )
+
+    marker = object()
+
+    factory = NetworkIdentityMetadataAdapterFactory(
+        gateio_client_factory=(
+            lambda exchange: marker
+        ),
+    )
+
+    adapter = factory.build(
+        FakeExchange(" GATEIO ")
+    )
+
+    assert isinstance(
+        adapter,
+        GateIONetworkIdentityMetadataAdapter,
+    )
+
+
+def test_kucoin_builds_native_identity_adapter():
+    from exchanges.kucoin_network_identity_metadata_adapter import (
+        KuCoinNetworkIdentityMetadataAdapter,
+    )
+
+    marker = object()
+
+    factory = NetworkIdentityMetadataAdapterFactory(
+        kucoin_client_factory=(
+            lambda exchange: marker
+        ),
+    )
+
+    adapter = factory.build(
+        FakeExchange("kucoin")
+    )
+
+    assert isinstance(
+        adapter,
+        KuCoinNetworkIdentityMetadataAdapter,
+    )
+    assert adapter._client is marker
+
+
+def test_kucoin_exchange_id_is_normalized():
+    from exchanges.kucoin_network_identity_metadata_adapter import (
+        KuCoinNetworkIdentityMetadataAdapter,
+    )
+
+    marker = object()
+
+    factory = NetworkIdentityMetadataAdapterFactory(
+        kucoin_client_factory=(
+            lambda exchange: marker
+        ),
+    )
+
+    adapter = factory.build(
+        FakeExchange(" KUCOIN ")
+    )
+
+    assert isinstance(
+        adapter,
+        KuCoinNetworkIdentityMetadataAdapter,
+    )
+
+
+def test_default_factory_builds_gate_identity_adapter():
+    from exchanges.gateio_network_identity_metadata_adapter import (
+        GateIONetworkIdentityMetadataAdapter,
+    )
+
+    adapter = (
+        NetworkIdentityMetadataAdapterFactory()
+        .build(
+            FakeExchange("gate")
+        )
+    )
+
+    assert isinstance(
+        adapter,
+        GateIONetworkIdentityMetadataAdapter,
+    )
+
+
+def test_default_factory_builds_kucoin_identity_adapter():
+    from exchanges.kucoin_network_identity_metadata_adapter import (
+        KuCoinNetworkIdentityMetadataAdapter,
+    )
+
+    adapter = (
+        NetworkIdentityMetadataAdapterFactory()
+        .build(
+            FakeExchange("kucoin")
+        )
+    )
+
+    assert isinstance(
+        adapter,
+        KuCoinNetworkIdentityMetadataAdapter,
+    )
