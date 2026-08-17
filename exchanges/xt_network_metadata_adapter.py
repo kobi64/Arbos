@@ -14,6 +14,11 @@ No live orders.
 """
 
 
+from exchanges.network_registry import (
+    NetworkInfo,
+)
+
+
 class XTNetworkMetadataAdapter:
     def __init__(
         self,
@@ -41,6 +46,44 @@ class XTNetworkMetadataAdapter:
             )
 
         return coin
+
+    @staticmethod
+    def _normalize_network(
+        network,
+    ):
+        network = str(
+            network
+            or ""
+        ).strip().upper()
+
+        aliases = {
+            "BITCOIN": "BTC",
+            "BTC": "BTC",
+            "BNB SMART CHAIN": "BSC",
+            "BSC": "BSC",
+            "ETHEREUM": "ETH",
+            "ERC20": "ETH",
+            "SOLANA": "SOL",
+            "SOL": "SOL",
+            "TRON": "TRX",
+            "TRX": "TRX",
+            "ARBITRUM ONE": "ARBITRUM",
+            "ARBITRUM": "ARBITRUM",
+            "POLYGON POS": "MATIC",
+            "MATIC": "MATIC",
+            "AVAX C-CHAIN": "AVAXC",
+            "AVAXC": "AVAXC",
+            "OPTIMISM": "OPTIMISM",
+            "BASE": "BASE",
+            "APTOS": "APTOS",
+            "THE OPEN NETWORK": "TON",
+            "TON": "TON",
+        }
+
+        return aliases.get(
+            network,
+            network,
+        )
 
     @staticmethod
     def _as_float(
@@ -252,7 +295,43 @@ class XTNetworkMetadataAdapter:
                     continue
 
                 networks.append(
-                    normalized
+                    NetworkInfo(
+                        coin=coin,
+                        network=(
+                            self._normalize_network(
+                                normalized[
+                                    "network"
+                                ]
+                            )
+                        ),
+                        deposit_enabled=(
+                            normalized[
+                                "deposit_enabled"
+                            ]
+                        ),
+                        withdraw_enabled=(
+                            normalized[
+                                "withdraw_enabled"
+                            ]
+                        ),
+                        maintenance=False,
+                        withdraw_fee=(
+                            normalized[
+                                "withdraw_fee"
+                            ]
+                        ),
+                        min_withdraw=(
+                            normalized[
+                                "minimum_withdrawal"
+                            ]
+                        ),
+                        confirmations=(
+                            normalized[
+                                "deposit_confirmations"
+                            ]
+                            or 0
+                        ),
+                    )
                 )
 
         return {
