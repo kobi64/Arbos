@@ -86,6 +86,8 @@ class ControlledTestTradeOrderIntent:
             "approval_id",
             "permission_id",
             "asset",
+            "buy_exchange",
+            "sell_exchange",
         ):
             value = execution_result.get(
                 field
@@ -107,6 +109,26 @@ class ControlledTestTradeOrderIntent:
                 normalized = normalized.upper()
 
             identity[field] = normalized
+
+        if (
+            side == "buy"
+            and exchange != identity["buy_exchange"]
+        ):
+            return {
+                "intent_ready": False,
+                "reason": "buy_exchange_mismatch",
+                "live_order_submitted": False,
+            }
+
+        if (
+            side == "sell"
+            and exchange != identity["sell_exchange"]
+        ):
+            return {
+                "intent_ready": False,
+                "reason": "sell_exchange_mismatch",
+                "live_order_submitted": False,
+            }
 
         raw_trade_amount = execution_result.get(
             "trade_amount",

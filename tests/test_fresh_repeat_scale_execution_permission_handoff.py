@@ -758,3 +758,11 @@ def test_exchange_whitespace_is_normalized_for_identity_match():
     )
 
     assert result["handoff_ready"] is True
+
+
+def test_successful_handoff_propagates_approved_exchange_identity():
+    result = prepare()
+
+    assert result["handoff_ready"] is True
+    assert result["buy_exchange"] == "kucoin"
+    assert result["sell_exchange"] == "gate"

@@ -14,6 +14,8 @@ def authorised_execution():
         "approval_id": "ARB-001",
         "asset": "ETH",
         "trade_amount": 250.0,
+        "buy_exchange": "kucoin",
+        "sell_exchange": "gate",
         "live_order_submitted": False,
     }
 
@@ -269,3 +271,82 @@ def test_order_destination_identity_is_required(
         match=f"{field} is required",
     ):
         builder.build(**kwargs)
+
+
+def test_buy_intent_requires_approved_buy_exchange():
+    builder = ControlledTestTradeOrderIntent()
+
+    result = builder.build(
+        execution_result=authorised_execution(),
+        exchange="gate",
+        symbol="ETH/USDT",
+        side="buy",
+    )
+
+    assert result["intent_ready"] is False
+    assert result["reason"] == "buy_exchange_mismatch"
+    assert result["live_order_submitted"] is False
+
+
+def test_sell_intent_requires_approved_sell_exchange():
+    builder = ControlledTestTradeOrderIntent()
+
+    result = builder.build(
+        execution_result=authorised_execution(),
+        exchange="kucoin",
+        symbol="ETH/USDT",
+        side="sell",
+    )
+
+    assert result["intent_ready"] is False
+    assert result["reason"] == "sell_exchange_mismatch"
+    assert result["live_order_submitted"] is False
+
+
+def test_sell_intent_accepts_approved_sell_exchange():
+    builder = ControlledTestTradeOrderIntent()
+
+    result = builder.build(
+        execution_result=authorised_execution(),
+        exchange="gate",
+        symbol="ETH/USDT",
+        side="sell",
+    )
+
+    assert result["intent_ready"] is True
+    assert result["exchange"] == "gate"
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("buy_exchange", None),
+        ("buy_exchange", ""),
+        ("buy_exchange", "   "),
+        ("buy_exchange", 0),
+        ("buy_exchange", False),
+        ("sell_exchange", None),
+        ("sell_exchange", ""),
+        ("sell_exchange", "   "),
+        ("sell_exchange", 0),
+        ("sell_exchange", False),
+    ],
+)
+def test_approved_exchange_identity_is_required_for_intent(
+    field,
+    value,
+):
+    builder = ControlledTestTradeOrderIntent()
+
+    execution = authorised_execution()
+    execution[field] = value
+
+    result = builder.build(
+        execution_result=execution,
+        exchange="kucoin",
+        symbol="ETH/USDT",
+        side="buy",
+    )
+
+    assert result["intent_ready"] is False
+    assert result["reason"] == f"{field}_required"

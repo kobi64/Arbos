@@ -444,6 +444,8 @@ class FreshRepeatScaleExecutionPermissionHandoff:
             ),
             "approval_id": fresh_approval_id,
             "asset": requested_asset,
+            "buy_exchange": requested_buy_exchange,
+            "sell_exchange": requested_sell_exchange,
             "trade_amount": requested_amount,
             "previous_approval_id": (
                 normalized_previous_approval_id

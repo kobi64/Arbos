@@ -52,6 +52,8 @@ class StagedTestTradeExecutionPermission:
             "route_id",
             "approval_id",
             "asset",
+            "buy_exchange",
+            "sell_exchange",
         ):
             value = handoff_result.get(field)
 
@@ -124,6 +126,8 @@ class StagedTestTradeExecutionPermission:
             "route_id": identity["route_id"],
             "approval_id": identity["approval_id"],
             "asset": identity["asset"],
+            "buy_exchange": identity["buy_exchange"],
+            "sell_exchange": identity["sell_exchange"],
             "trade_amount": trade_amount,
         }
 
