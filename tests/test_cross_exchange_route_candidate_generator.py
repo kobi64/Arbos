@@ -547,3 +547,217 @@ def test_bridge_missing_net_amount_is_preserved_as_unknown():
     assert candidate["reason"] == (
         "transfer_amount_unknown"
     )
+
+
+def test_source_metadata_available_but_transfer_unverified_fails_closed():
+    generator = CrossExchangeRouteCandidateGenerator(
+        transfer_evaluator=FakeTransferEvaluator(),
+    )
+
+    candidates = generator.generate(
+        source_exchange="mexc",
+        destination_exchange="gateio",
+        coin_asset="COINX",
+        coin_amount=100.0,
+        source_networks={
+            "COINX": [{"asset": "COINX"}],
+        },
+        destination_networks={
+            "COINX": [{"asset": "COINX"}],
+        },
+        bridge_quotes={},
+        source_network_metadata={
+            "COINX": {
+                "network_metadata_available": True,
+                "network_metadata_reason": None,
+                "transfer_verification_available": False,
+            },
+        },
+        destination_network_metadata={
+            "COINX": {
+                "network_metadata_available": True,
+                "network_metadata_reason": None,
+                "transfer_verification_available": True,
+            },
+        },
+    )
+
+    assert len(candidates) == 1
+
+    candidate = candidates[0]
+
+    assert candidate["executable"] is False
+    assert candidate["network"] is None
+    assert candidate["withdraw_fee"] is None
+    assert candidate[
+        "transfer_verification_available"
+    ] is False
+    assert candidate["reason"] == (
+        "transfer_verification_unavailable"
+    )
+
+
+def test_destination_metadata_available_but_transfer_unverified_fails_closed():
+    generator = CrossExchangeRouteCandidateGenerator(
+        transfer_evaluator=FakeTransferEvaluator(),
+    )
+
+    candidates = generator.generate(
+        source_exchange="gateio",
+        destination_exchange="poloniex",
+        coin_asset="COINX",
+        coin_amount=100.0,
+        source_networks={
+            "COINX": [{"asset": "COINX"}],
+        },
+        destination_networks={
+            "COINX": [{"asset": "COINX"}],
+        },
+        bridge_quotes={},
+        source_network_metadata={
+            "COINX": {
+                "network_metadata_available": True,
+                "network_metadata_reason": None,
+                "transfer_verification_available": True,
+            },
+        },
+        destination_network_metadata={
+            "COINX": {
+                "network_metadata_available": True,
+                "network_metadata_reason": None,
+                "transfer_verification_available": False,
+            },
+        },
+    )
+
+    assert len(candidates) == 1
+
+    candidate = candidates[0]
+
+    assert candidate["executable"] is False
+    assert candidate["network"] is None
+    assert candidate["withdraw_fee"] is None
+    assert candidate[
+        "transfer_verification_available"
+    ] is False
+    assert candidate["reason"] == (
+        "transfer_verification_unavailable"
+    )
+
+
+def test_bridge_source_transfer_unverified_fails_closed():
+    generator = CrossExchangeRouteCandidateGenerator(
+        transfer_evaluator=FakeTransferEvaluator(),
+    )
+
+    candidates = generator.generate(
+        source_exchange="mexc",
+        destination_exchange="gateio",
+        coin_asset="COINX",
+        coin_amount=100.0,
+        source_networks={
+            "BTC": [{"asset": "BTC"}],
+        },
+        destination_networks={
+            "BTC": [{"asset": "BTC"}],
+        },
+        bridge_quotes={
+            "BTC": {
+                "output_amount": 0.0025,
+                "method": "spot",
+            },
+        },
+        source_network_metadata={
+            "BTC": {
+                "network_metadata_available": True,
+                "network_metadata_reason": None,
+                "transfer_verification_available": False,
+            },
+        },
+        destination_network_metadata={
+            "BTC": {
+                "network_metadata_available": True,
+                "network_metadata_reason": None,
+                "transfer_verification_available": True,
+            },
+        },
+    )
+
+    assert len(candidates) == 1
+
+    candidate = candidates[0]
+
+    assert candidate[
+        "route_type"
+    ] == "bridge_cross_exchange"
+
+    assert candidate["executable"] is False
+    assert candidate["network"] is None
+    assert candidate["withdraw_fee"] is None
+
+    assert candidate[
+        "transfer_verification_available"
+    ] is False
+
+    assert candidate["reason"] == (
+        "transfer_verification_unavailable"
+    )
+
+
+def test_bridge_destination_transfer_unverified_fails_closed():
+    generator = CrossExchangeRouteCandidateGenerator(
+        transfer_evaluator=FakeTransferEvaluator(),
+    )
+
+    candidates = generator.generate(
+        source_exchange="gateio",
+        destination_exchange="poloniex",
+        coin_asset="COINX",
+        coin_amount=100.0,
+        source_networks={
+            "BTC": [{"asset": "BTC"}],
+        },
+        destination_networks={
+            "BTC": [{"asset": "BTC"}],
+        },
+        bridge_quotes={
+            "BTC": {
+                "output_amount": 0.0025,
+                "method": "spot",
+            },
+        },
+        source_network_metadata={
+            "BTC": {
+                "network_metadata_available": True,
+                "network_metadata_reason": None,
+                "transfer_verification_available": True,
+            },
+        },
+        destination_network_metadata={
+            "BTC": {
+                "network_metadata_available": True,
+                "network_metadata_reason": None,
+                "transfer_verification_available": False,
+            },
+        },
+    )
+
+    assert len(candidates) == 1
+
+    candidate = candidates[0]
+
+    assert candidate[
+        "route_type"
+    ] == "bridge_cross_exchange"
+
+    assert candidate["executable"] is False
+    assert candidate["network"] is None
+    assert candidate["withdraw_fee"] is None
+
+    assert candidate[
+        "transfer_verification_available"
+    ] is False
+
+    assert candidate["reason"] == (
+        "transfer_verification_unavailable"
+    )
