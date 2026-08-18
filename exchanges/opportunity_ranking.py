@@ -7,11 +7,39 @@ Ranks executable arbitrage opportunities by profit percentage,
 using net profit as a secondary tie-breaker.
 """
 
+import math
+
 
 class OpportunityRanking:
 
     @staticmethod
-    def rank(opportunities):
+    def _ranking_value(opportunity, field):
+        if field not in opportunity:
+            raise ValueError(f"{field} is required")
+
+        value = opportunity[field]
+
+        if isinstance(value, bool):
+            raise ValueError(
+                f"{field} must be a finite number"
+            )
+
+        try:
+            value = float(value)
+        except (TypeError, ValueError):
+            raise ValueError(
+                f"{field} must be a finite number"
+            )
+
+        if not math.isfinite(value):
+            raise ValueError(
+                f"{field} must be a finite number"
+            )
+
+        return value
+
+    @classmethod
+    def rank(cls, opportunities):
         """
         Return executable opportunities ranked from best to worst.
 
@@ -21,7 +49,11 @@ class OpportunityRanking:
         Tie-breaker:
             net_profit descending
 
-        The original input list is not modified.
+        Executable opportunities must provide finite numeric
+        profit_percent and net_profit values.
+
+        The original input list and opportunity mappings are not
+        modified.
         """
 
         if not opportunities:
@@ -36,8 +68,14 @@ class OpportunityRanking:
         return sorted(
             executable,
             key=lambda opportunity: (
-                opportunity.get("profit_percent", 0.0),
-                opportunity.get("net_profit", 0.0),
+                cls._ranking_value(
+                    opportunity,
+                    "profit_percent",
+                ),
+                cls._ranking_value(
+                    opportunity,
+                    "net_profit",
+                ),
             ),
             reverse=True,
         )

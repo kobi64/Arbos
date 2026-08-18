@@ -120,3 +120,138 @@ def test_does_not_mutate_original_list():
     OpportunityRanking.rank(opportunities)
 
     assert opportunities == original
+
+
+import pytest
+
+
+@pytest.mark.parametrize(
+    "field",
+    [
+        "profit_percent",
+        "net_profit",
+    ],
+)
+def test_executable_opportunity_requires_ranking_economic_fields(
+    field,
+):
+    opportunity = {
+        "id": "route-a",
+        "executable": True,
+        "profit_percent": 2.5,
+        "net_profit": 25.0,
+    }
+    del opportunity[field]
+
+    with pytest.raises(
+        ValueError,
+        match=rf"{field} is required",
+    ):
+        OpportunityRanking.rank([opportunity])
+
+
+@pytest.mark.parametrize(
+    "field",
+    [
+        "profit_percent",
+        "net_profit",
+    ],
+)
+@pytest.mark.parametrize(
+    "value",
+    [
+        None,
+        "not-a-number",
+        float("nan"),
+        float("inf"),
+        float("-inf"),
+        True,
+        False,
+    ],
+)
+def test_executable_opportunity_rejects_invalid_ranking_numeric_values(
+    field,
+    value,
+):
+    opportunity = {
+        "id": "route-a",
+        "executable": True,
+        "profit_percent": 2.5,
+        "net_profit": 25.0,
+    }
+    opportunity[field] = value
+
+    with pytest.raises(
+        ValueError,
+        match=rf"{field} must be a finite number",
+    ):
+        OpportunityRanking.rank([opportunity])
+
+
+def test_numeric_string_ranking_values_are_supported():
+    opportunities = [
+        {
+            "id": "route-a",
+            "executable": True,
+            "profit_percent": "2.5",
+            "net_profit": "25.0",
+        },
+        {
+            "id": "route-b",
+            "executable": True,
+            "profit_percent": "4.0",
+            "net_profit": "40.0",
+        },
+    ]
+
+    ranked = OpportunityRanking.rank(opportunities)
+
+    assert [item["id"] for item in ranked] == [
+        "route-b",
+        "route-a",
+    ]
+
+
+def test_negative_and_zero_ranking_values_remain_valid():
+    opportunities = [
+        {
+            "id": "loss",
+            "executable": True,
+            "profit_percent": -1.0,
+            "net_profit": -10.0,
+        },
+        {
+            "id": "breakeven",
+            "executable": True,
+            "profit_percent": 0.0,
+            "net_profit": 0.0,
+        },
+    ]
+
+    ranked = OpportunityRanking.rank(opportunities)
+
+    assert [item["id"] for item in ranked] == [
+        "breakeven",
+        "loss",
+    ]
+
+
+def test_non_executable_opportunity_does_not_require_ranking_economics():
+    opportunities = [
+        {
+            "id": "rejected-route",
+            "executable": False,
+        },
+        {
+            "id": "route-a",
+            "executable": True,
+            "profit_percent": 2.0,
+            "net_profit": 20.0,
+        },
+    ]
+
+    ranked = OpportunityRanking.rank(opportunities)
+
+    assert [item["id"] for item in ranked] == [
+        "route-a",
+    ]
