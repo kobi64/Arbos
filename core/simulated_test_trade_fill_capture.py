@@ -56,26 +56,38 @@ class SimulatedTestTradeFillCapture:
                 "live_order_submitted": False,
             }
 
-        filled_quantity = float(
-            execution_result.get(
-                "filled_quantity",
-                0.0,
-            )
-        )
+        import math
 
-        average_price = float(
-            execution_result.get(
-                "average_price",
-                0.0,
+        try:
+            filled_quantity = float(
+                execution_result["filled_quantity"]
             )
-        )
+            average_price = float(
+                execution_result["average_price"]
+            )
+            notional = float(
+                execution_result["notional"]
+            )
+        except (KeyError, TypeError, ValueError):
+            return {
+                "fill_captured": False,
+                "reason": "invalid_simulated_fill_values",
+                "live_order_submitted": False,
+            }
 
-        notional = float(
-            execution_result.get(
-                "notional",
-                0.0,
-            )
-        )
+        if (
+            not math.isfinite(filled_quantity)
+            or not math.isfinite(average_price)
+            or not math.isfinite(notional)
+            or filled_quantity <= 0
+            or average_price <= 0
+            or notional < 0
+        ):
+            return {
+                "fill_captured": False,
+                "reason": "invalid_simulated_fill_values",
+                "live_order_submitted": False,
+            }
 
         return {
             "fill_captured": True,

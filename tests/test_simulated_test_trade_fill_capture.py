@@ -155,3 +155,143 @@ def test_fill_record_is_normalized_to_float_values():
     assert result["filled_quantity"] == 0.05
     assert result["average_price"] == 3200.0
     assert result["notional"] == 160.0
+
+
+@pytest.mark.parametrize(
+    "field",
+    [
+        "filled_quantity",
+        "average_price",
+        "notional",
+    ],
+)
+def test_missing_filled_execution_values_are_rejected(field):
+    capture = SimulatedTestTradeFillCapture()
+
+    execution = simulated_fill()
+    del execution[field]
+
+    result = capture.capture(
+        execution_result=execution,
+    )
+
+    assert result["fill_captured"] is False
+    assert result["reason"] == "invalid_simulated_fill_values"
+    assert result["live_order_submitted"] is False
+
+
+@pytest.mark.parametrize(
+    "field",
+    [
+        "filled_quantity",
+        "average_price",
+        "notional",
+    ],
+)
+def test_none_filled_execution_values_are_rejected(field):
+    capture = SimulatedTestTradeFillCapture()
+
+    execution = simulated_fill()
+    execution[field] = None
+
+    result = capture.capture(
+        execution_result=execution,
+    )
+
+    assert result["fill_captured"] is False
+    assert result["reason"] == "invalid_simulated_fill_values"
+
+
+@pytest.mark.parametrize(
+    "field",
+    [
+        "filled_quantity",
+        "average_price",
+        "notional",
+    ],
+)
+def test_non_numeric_filled_execution_values_are_rejected(field):
+    capture = SimulatedTestTradeFillCapture()
+
+    execution = simulated_fill()
+    execution[field] = "not-a-number"
+
+    result = capture.capture(
+        execution_result=execution,
+    )
+
+    assert result["fill_captured"] is False
+    assert result["reason"] == "invalid_simulated_fill_values"
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("filled_quantity", 0.0),
+        ("filled_quantity", -1.0),
+        ("average_price", 0.0),
+        ("average_price", -1.0),
+        ("notional", -1.0),
+    ],
+)
+def test_invalid_numeric_fill_values_are_rejected(
+    field,
+    value,
+):
+    capture = SimulatedTestTradeFillCapture()
+
+    execution = simulated_fill()
+    execution[field] = value
+
+    result = capture.capture(
+        execution_result=execution,
+    )
+
+    assert result["fill_captured"] is False
+    assert result["reason"] == "invalid_simulated_fill_values"
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("filled_quantity", float("nan")),
+        ("filled_quantity", float("inf")),
+        ("average_price", float("nan")),
+        ("average_price", float("inf")),
+        ("notional", float("nan")),
+        ("notional", float("inf")),
+    ],
+)
+def test_non_finite_fill_values_are_rejected(
+    field,
+    value,
+):
+    capture = SimulatedTestTradeFillCapture()
+
+    execution = simulated_fill()
+    execution[field] = value
+
+    result = capture.capture(
+        execution_result=execution,
+    )
+
+    assert result["fill_captured"] is False
+    assert result["reason"] == "invalid_simulated_fill_values"
+
+
+def test_genuine_numeric_string_fill_values_still_normalize():
+    capture = SimulatedTestTradeFillCapture()
+
+    execution = simulated_fill()
+    execution["filled_quantity"] = "0.05"
+    execution["average_price"] = "3200"
+    execution["notional"] = "160"
+
+    result = capture.capture(
+        execution_result=execution,
+    )
+
+    assert result["fill_captured"] is True
+    assert result["filled_quantity"] == 0.05
+    assert result["average_price"] == 3200.0
+    assert result["notional"] == 160.0
