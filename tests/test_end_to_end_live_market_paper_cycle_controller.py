@@ -613,3 +613,339 @@ def test_every_stage_remains_paper_only():
         ]
         is False
     )
+
+
+# EX-349 — fresh repeat/scale market provenance
+
+
+class ChangingMarketSnapshotEngine:
+    """
+    First capture represents the executable paper trade.
+
+    Any later capture represents the genuinely fresh market
+    state that must be used before another approval request.
+    """
+
+    def __init__(
+        self,
+        second_market_liquidity=True,
+    ):
+        self.calls = []
+        self.timestamp = 1000
+        self.second_market_liquidity = (
+            second_market_liquidity
+        )
+
+    def snapshot(
+        self,
+        symbol,
+        limit=None,
+    ):
+        self.calls.append(symbol)
+        self.timestamp += 1
+
+        capture_number = (
+            (len(self.calls) - 1) // 3
+        ) + 1
+
+        if capture_number == 1:
+            books = {
+                "BTC/USDT": {
+                    "bids": [[61900.0, 10.0]],
+                    "asks": [[62000.0, 10.0]],
+                },
+                "ETH/BTC": {
+                    "bids": [[0.049, 100.0]],
+                    "asks": [[0.05, 100.0]],
+                },
+                "ETH/USDT": {
+                    "bids": [[3300.0, 100.0]],
+                    "asks": [[3310.0, 100.0]],
+                },
+            }
+        elif self.second_market_liquidity:
+            books = {
+                "BTC/USDT": {
+                    "bids": [[61890.0, 10.0]],
+                    "asks": [[62010.0, 10.0]],
+                },
+                "ETH/BTC": {
+                    "bids": [[0.0489, 100.0]],
+                    "asks": [[0.0501, 100.0]],
+                },
+                "ETH/USDT": {
+                    "bids": [[3295.0, 100.0]],
+                    "asks": [[3315.0, 100.0]],
+                },
+            }
+        else:
+            # Deliberately inadequate fresh depth.
+            # Caller-supplied "available_liquidity=10000"
+            # must not be able to override this.
+            books = {
+                "BTC/USDT": {
+                    "bids": [[61890.0, 0.00001]],
+                    "asks": [[62010.0, 0.00001]],
+                },
+                "ETH/BTC": {
+                    "bids": [[0.0489, 0.00001]],
+                    "asks": [[0.0501, 0.00001]],
+                },
+                "ETH/USDT": {
+                    "bids": [[3295.0, 0.00001]],
+                    "asks": [[3315.0, 0.00001]],
+                },
+            }
+
+        book = books[symbol]
+
+        return {
+            "exchange_id": "kucoin",
+            "symbol": symbol,
+            "bids": book["bids"],
+            "asks": book["asks"],
+            "best_bid": book["bids"][0][0],
+            "best_ask": book["asks"][0][0],
+            "timestamp": self.timestamp,
+            "sequence": len(self.calls),
+            "paper_only": True,
+            "live_order_submitted": False,
+        }
+
+
+def run_with_snapshot_engine(
+    snapshot_engine,
+    *,
+    available_liquidity=10000.0,
+    expected_price=100.0,
+    current_price=99.5,
+):
+    service = (
+        EndToEndLiveMarketPaperCycleController(
+            snapshot_engine
+        )
+    )
+
+    return service.run_cycle(
+        permission_result=permission(),
+        execution_id="EXEC-349-001",
+        route=route(),
+        portfolio=portfolio(),
+        asset="BTC",
+        additional_exposure=0.05,
+        starting_value=250.0,
+        successful_test_count=0,
+        required_successes_for_scale=2,
+        scale_multiplier=2.0,
+        min_trade_size=100.0,
+        max_trade_size=1000.0,
+        repeat_count=0,
+        scale_count=0,
+        cumulative_trade_amount=250.0,
+        max_repeats=5,
+        max_scale_steps=2,
+        max_cumulative_trade_amount=2000.0,
+        circuit_breaker_result=circuit_allowed(),
+        portfolio_risk_result=portfolio_allowed(),
+        source_networks=source_networks(),
+        destination_networks=destination_networks(),
+        transfer_amount=250.0,
+        available_liquidity=available_liquidity,
+        minimum_liquidity_ratio=0.1,
+        expected_price=expected_price,
+        current_price=current_price,
+        max_slippage_percent=1.0,
+        buy_exchange="kucoin",
+        sell_exchange="gate",
+        expected_profit=5.0,
+        estimated_fees=0.5,
+        slippage_allowance=0.25,
+        minimum_profit_percent=2.0,
+    )
+
+
+def test_repeat_scale_requires_second_fresh_market_capture():
+    snapshots = ChangingMarketSnapshotEngine()
+
+    result = run_with_snapshot_engine(
+        snapshots
+    )
+
+    assert result["cycle_complete"] is True
+
+    # Three route legs were required for the completed paper
+    # execution. A next-cycle approval must use another
+    # independent market capture, not reuse those observations.
+    assert len(snapshots.calls) >= 6
+
+    assert snapshots.calls[:3] == [
+        "BTC/USDT",
+        "ETH/BTC",
+        "ETH/USDT",
+    ]
+
+    assert snapshots.calls[3:6] == [
+        "BTC/USDT",
+        "ETH/BTC",
+        "ETH/USDT",
+    ]
+
+
+def test_caller_liquidity_cannot_override_fresh_order_book():
+    snapshots = ChangingMarketSnapshotEngine(
+        second_market_liquidity=False
+    )
+
+    result = run_with_snapshot_engine(
+        snapshots,
+        # Deliberately dishonest optimistic value.
+        available_liquidity=1_000_000_000.0,
+    )
+
+    continuation = result[
+        "continuation_result"
+    ]
+
+    assert (
+        continuation["continuation_ready"]
+        is False
+    )
+    assert (
+        continuation["stage"]
+        == "NEXT_CYCLE"
+    )
+    assert continuation["hard_stop"] is False
+    assert (
+        continuation["reason"]
+        == "liquidity_revalidation_failed"
+    )
+
+    next_cycle = continuation[
+        "next_cycle"
+    ]
+
+    assert (
+        next_cycle["stage"]
+        == "REVALIDATION"
+    )
+    assert (
+        next_cycle["reason"]
+        == "liquidity_revalidation_failed"
+    )
+    assert (
+        next_cycle[
+            "revalidation_result"
+        ]["revalidated"]
+        is False
+    )
+    assert (
+        next_cycle[
+            "revalidation_result"
+        ]["allowed"]
+        is False
+    )
+
+    assert len(snapshots.calls) >= 6
+
+
+def test_repeat_scale_result_contains_market_provenance():
+    snapshots = ChangingMarketSnapshotEngine()
+
+    result = run_with_snapshot_engine(
+        snapshots
+    )
+
+    continuation = result[
+        "continuation_result"
+    ]
+
+    provenance = continuation[
+        "market_provenance"
+    ]
+
+    assert provenance["route_id"] == "ROUTE-001"
+
+    assert provenance[
+        "independent_revalidation_capture"
+    ] is True
+
+    assert provenance[
+        "snapshot_age_verified"
+    ] is False
+
+    assert provenance[
+        "snapshot_count"
+    ] == 3
+
+    assert provenance[
+        "symbols"
+    ] == [
+        "BTC/USDT",
+        "ETH/BTC",
+        "ETH/USDT",
+    ]
+
+    assert (
+        provenance["latest_timestamp"]
+        >= provenance["earliest_timestamp"]
+    )
+
+
+def test_provenance_market_data_is_separate_from_execution_capture():
+    snapshots = ChangingMarketSnapshotEngine()
+
+    result = run_with_snapshot_engine(
+        snapshots
+    )
+
+    provenance = result[
+        "continuation_result"
+    ]["market_provenance"]
+
+    # Fresh revalidation must be based on observations taken
+    # after the execution-stage market capture.
+    assert provenance[
+        "earliest_timestamp"
+    ] >= 1004
+
+
+def test_caller_price_cannot_be_only_source_of_revalidation_truth():
+    snapshots = ChangingMarketSnapshotEngine()
+
+    result = run_with_snapshot_engine(
+        snapshots,
+        # These deliberately have no relationship to the
+        # BTC/USDT / ETH/BTC / ETH/USDT books above.
+        expected_price=1.0,
+        current_price=1.0,
+    )
+
+    provenance = result[
+        "continuation_result"
+    ]["market_provenance"]
+
+    assert (
+        provenance[
+            "market_inputs_derived_from_snapshot"
+        ]
+        is True
+    )
+
+    assert provenance[
+        "caller_market_values_authoritative"
+    ] is False
+
+
+def test_market_provenance_remains_paper_only():
+    snapshots = ChangingMarketSnapshotEngine()
+
+    result = run_with_snapshot_engine(
+        snapshots
+    )
+
+    provenance = result[
+        "continuation_result"
+    ]["market_provenance"]
+
+    assert provenance["paper_only"] is True
+    assert provenance["live_order_submitted"] is False
