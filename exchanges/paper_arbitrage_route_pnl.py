@@ -4,6 +4,8 @@ EX-072
 Paper Arbitrage Route P&L
 """
 
+import math
+
 from exchanges.arbitrage_profit_evaluation import (
     ArbitrageProfitEvaluation,
 )
@@ -19,19 +21,64 @@ class PaperArbitrageRoutePnL:
         other_costs,
         minimum_profit_percent,
     ):
-        if starting_value <= 0:
+        try:
+            starting_value = float(starting_value)
+        except (TypeError, ValueError):
             raise ValueError("starting_value must be positive")
 
-        if gross_final_value < 0:
-            raise ValueError("gross_final_value must be non-negative")
+        if not math.isfinite(starting_value) or starting_value <= 0:
+            raise ValueError("starting_value must be positive")
 
-        if minimum_profit_percent < 0:
-            raise ValueError("minimum_profit_percent must be non-negative")
+        try:
+            gross_final_value = float(gross_final_value)
+        except (TypeError, ValueError):
+            raise ValueError(
+                "gross_final_value must be non-negative"
+            )
 
-        costs = [trading_fees, transfer_fees, other_costs]
+        if (
+            not math.isfinite(gross_final_value)
+            or gross_final_value < 0
+        ):
+            raise ValueError(
+                "gross_final_value must be non-negative"
+            )
 
-        if any(cost < 0 for cost in costs):
+        try:
+            minimum_profit_percent = float(
+                minimum_profit_percent
+            )
+        except (TypeError, ValueError):
+            raise ValueError(
+                "minimum_profit_percent must be non-negative"
+            )
+
+        if (
+            not math.isfinite(minimum_profit_percent)
+            or minimum_profit_percent < 0
+        ):
+            raise ValueError(
+                "minimum_profit_percent must be non-negative"
+            )
+
+        raw_costs = [
+            trading_fees,
+            transfer_fees,
+            other_costs,
+        ]
+
+        try:
+            costs = [float(cost) for cost in raw_costs]
+        except (TypeError, ValueError):
             raise ValueError("costs must be non-negative")
+
+        if any(
+            not math.isfinite(cost) or cost < 0
+            for cost in costs
+        ):
+            raise ValueError("costs must be non-negative")
+
+        trading_fees, transfer_fees, other_costs = costs
 
         total_costs = trading_fees + transfer_fees + other_costs
         net_final_value = gross_final_value - total_costs
