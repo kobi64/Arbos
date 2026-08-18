@@ -9,6 +9,7 @@ profit threshold.
 """
 
 from dataclasses import dataclass
+import math
 from typing import Optional
 
 
@@ -30,23 +31,61 @@ class ArbitrageProfitEvaluation:
         minimum_profit_percent: float,
     ) -> ArbitrageProfitEvaluationResult:
 
-        if starting_value <= 0:
-            return ArbitrageProfitEvaluationResult(
-                valid=False,
-                reason="invalid_starting_value",
-            )
+        numeric_fields = (
+            (
+                "starting_value",
+                starting_value,
+                "invalid_starting_value",
+                False,
+            ),
+            (
+                "final_value",
+                final_value,
+                "invalid_final_value",
+                True,
+            ),
+            (
+                "minimum_profit_percent",
+                minimum_profit_percent,
+                "invalid_minimum_profit_percent",
+                True,
+            ),
+        )
 
-        if final_value < 0:
-            return ArbitrageProfitEvaluationResult(
-                valid=False,
-                reason="invalid_final_value",
-            )
+        normalized = {}
 
-        if minimum_profit_percent < 0:
-            return ArbitrageProfitEvaluationResult(
-                valid=False,
-                reason="invalid_minimum_profit_percent",
-            )
+        for name, value, reason, allow_zero in numeric_fields:
+            if isinstance(value, bool):
+                return ArbitrageProfitEvaluationResult(
+                    valid=False,
+                    reason=reason,
+                )
+
+            try:
+                number = float(value)
+            except (TypeError, ValueError, OverflowError):
+                return ArbitrageProfitEvaluationResult(
+                    valid=False,
+                    reason=reason,
+                )
+
+            if (
+                not math.isfinite(number)
+                or number < 0
+                or (not allow_zero and number == 0)
+            ):
+                return ArbitrageProfitEvaluationResult(
+                    valid=False,
+                    reason=reason,
+                )
+
+            normalized[name] = number
+
+        starting_value = normalized["starting_value"]
+        final_value = normalized["final_value"]
+        minimum_profit_percent = normalized[
+            "minimum_profit_percent"
+        ]
 
         net_profit = final_value - starting_value
 

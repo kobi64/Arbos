@@ -1,3 +1,4 @@
+import pytest
 from exchanges.arbitrage_cost_analysis import ArbitrageCostAnalysis
 
 
@@ -148,3 +149,68 @@ def test_genuine_zero_cost_arbitrage_preserves_numeric_zero():
     assert result.total_cost == 0.0
     assert result.final_value == 1000.0
     assert result.reason == "ok"
+
+
+@pytest.mark.parametrize(
+    "starting_value",
+    [
+        None,
+        "not-a-number",
+        float("nan"),
+        float("inf"),
+        float("-inf"),
+        True,
+    ],
+)
+def test_invalid_starting_value_numeric_contract(starting_value):
+    result = ArbitrageCostAnalysis.evaluate(
+        starting_value=starting_value,
+        buy_fee_percent=0.1,
+        transfer_fee=1.0,
+        sell_fee_percent=0.1,
+    )
+
+    assert result.valid is False
+    assert result.reason == "invalid_starting_value"
+
+
+@pytest.mark.parametrize(
+    "field,value,reason",
+    [
+        ("buy_fee_percent", None, "invalid_buy_fee_percent"),
+        ("buy_fee_percent", "bad", "invalid_buy_fee_percent"),
+        ("buy_fee_percent", float("nan"), "invalid_buy_fee_percent"),
+        ("buy_fee_percent", float("inf"), "invalid_buy_fee_percent"),
+        ("buy_fee_percent", float("-inf"), "invalid_buy_fee_percent"),
+        ("buy_fee_percent", True, "invalid_buy_fee_percent"),
+        ("sell_fee_percent", None, "invalid_sell_fee_percent"),
+        ("sell_fee_percent", "bad", "invalid_sell_fee_percent"),
+        ("sell_fee_percent", float("nan"), "invalid_sell_fee_percent"),
+        ("sell_fee_percent", float("inf"), "invalid_sell_fee_percent"),
+        ("sell_fee_percent", float("-inf"), "invalid_sell_fee_percent"),
+        ("sell_fee_percent", True, "invalid_sell_fee_percent"),
+        ("transfer_fee", None, "invalid_transfer_fee"),
+        ("transfer_fee", "bad", "invalid_transfer_fee"),
+        ("transfer_fee", float("nan"), "invalid_transfer_fee"),
+        ("transfer_fee", float("inf"), "invalid_transfer_fee"),
+        ("transfer_fee", float("-inf"), "invalid_transfer_fee"),
+        ("transfer_fee", True, "invalid_transfer_fee"),
+    ],
+)
+def test_invalid_cost_component_numeric_contract(
+    field,
+    value,
+    reason,
+):
+    kwargs = {
+        "starting_value": 1000.0,
+        "buy_fee_percent": 0.1,
+        "transfer_fee": 1.0,
+        "sell_fee_percent": 0.1,
+    }
+    kwargs[field] = value
+
+    result = ArbitrageCostAnalysis.evaluate(**kwargs)
+
+    assert result.valid is False
+    assert result.reason == reason

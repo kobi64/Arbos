@@ -1,3 +1,4 @@
+import pytest
 from exchanges.arbitrage_profit_evaluation import ArbitrageProfitEvaluation
 
 
@@ -128,3 +129,71 @@ def test_calculated_break_even_preserves_numeric_zero():
     assert result.net_profit == 0.0
     assert result.profit_percent == 0.0
     assert result.reason == "ok"
+
+
+@pytest.mark.parametrize(
+    "starting_value",
+    [
+        None,
+        "not-a-number",
+        float("nan"),
+        float("inf"),
+        float("-inf"),
+        True,
+    ],
+)
+def test_invalid_starting_value_numeric_contract(starting_value):
+    result = ArbitrageProfitEvaluation.evaluate(
+        starting_value=starting_value,
+        final_value=1100.0,
+        minimum_profit_percent=1.0,
+    )
+
+    assert result.valid is False
+    assert result.reason == "invalid_starting_value"
+
+
+@pytest.mark.parametrize(
+    "final_value",
+    [
+        None,
+        "not-a-number",
+        float("nan"),
+        float("inf"),
+        float("-inf"),
+        True,
+    ],
+)
+def test_invalid_final_value_numeric_contract(final_value):
+    result = ArbitrageProfitEvaluation.evaluate(
+        starting_value=1000.0,
+        final_value=final_value,
+        minimum_profit_percent=1.0,
+    )
+
+    assert result.valid is False
+    assert result.reason == "invalid_final_value"
+
+
+@pytest.mark.parametrize(
+    "minimum_profit_percent",
+    [
+        None,
+        "not-a-number",
+        float("nan"),
+        float("inf"),
+        float("-inf"),
+        True,
+    ],
+)
+def test_invalid_minimum_profit_numeric_contract(
+    minimum_profit_percent,
+):
+    result = ArbitrageProfitEvaluation.evaluate(
+        starting_value=1000.0,
+        final_value=1100.0,
+        minimum_profit_percent=minimum_profit_percent,
+    )
+
+    assert result.valid is False
+    assert result.reason == "invalid_minimum_profit_percent"
