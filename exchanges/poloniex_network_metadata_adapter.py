@@ -168,14 +168,12 @@ class PoloniexNetworkMetadataAdapter:
                 networks
             )
 
-        transfer_available = result.get(
-            "transfer_verification_available"
-        )
-
-        if transfer_available is None:
-            transfer_available = bool(
-                metadata_available
+        transfer_available = (
+            result.get(
+                "transfer_verification_available"
             )
+            is True
+        )
 
         return {
             "exchange": "poloniex",

@@ -83,14 +83,12 @@ class WeexNetworkMetadataAdapter:
                 len(networks) > 0
             )
 
-        transfer_available = result.get(
-            "transfer_verification_available"
-        )
-
-        if transfer_available is None:
-            transfer_available = (
-                bool(metadata_available)
+        transfer_available = (
+            result.get(
+                "transfer_verification_available"
             )
+            is True
+        )
 
         return {
             "exchange": "weex",
