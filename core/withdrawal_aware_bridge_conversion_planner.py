@@ -19,6 +19,20 @@ class WithdrawalAwareBridgeConversionPlanner:
         spot_conversion_available,
         convert_quote_available,
     ):
+        if (
+            not isinstance(
+                spot_conversion_available,
+                bool,
+            )
+            or not isinstance(
+                convert_quote_available,
+                bool,
+            )
+        ):
+            raise ValueError(
+                "conversion availability flags must be booleans"
+            )
+
         direct = TransferFeasibility.evaluate(
             amount=amount,
             network=coin_network,
@@ -34,7 +48,19 @@ class WithdrawalAwareBridgeConversionPlanner:
                 "reason": "direct_withdrawal_available",
             }
 
-        if spot_conversion_available:
+        btc_transfer = TransferFeasibility.evaluate(
+            amount=amount,
+            network=btc_network,
+        )
+
+        btc_withdrawable = (
+            btc_transfer.feasible is True
+        )
+
+        if (
+            spot_conversion_available
+            and btc_withdrawable
+        ):
             return {
                 "coin": str(coin).strip().upper(),
                 "route_type": "SPOT_BRIDGE_CONVERSION",
@@ -44,7 +70,10 @@ class WithdrawalAwareBridgeConversionPlanner:
                 "reason": "coin_withdrawal_unavailable",
             }
 
-        if convert_quote_available:
+        if (
+            convert_quote_available
+            and btc_withdrawable
+        ):
             return {
                 "coin": str(coin).strip().upper(),
                 "route_type": "CONVERT_SWAP_BRIDGE",

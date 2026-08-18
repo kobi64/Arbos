@@ -361,3 +361,146 @@ def test_missing_decision_is_rejected():
             current_price=99.5,
             max_slippage_percent=1.0,
         )
+
+
+@pytest.mark.parametrize(
+    "next_trade_size",
+    [
+        None,
+        "bad",
+        float("nan"),
+        float("inf"),
+        float("-inf"),
+        True,
+    ],
+)
+def test_invalid_next_trade_size_contract(next_trade_size):
+    record = decision(
+        next_trade_size=next_trade_size
+    )
+
+    result = run_revalidation(
+        decision_result=record
+    )
+
+    assert result["revalidated"] is False
+    assert result["allowed"] is False
+    assert result["reason"] == "invalid_next_trade_size"
+
+
+@pytest.mark.parametrize(
+    "transfer_amount",
+    [
+        None,
+        "bad",
+        float("nan"),
+        float("inf"),
+        float("-inf"),
+        True,
+        0.0,
+        -1.0,
+    ],
+)
+def test_invalid_transfer_amount_fails_closed(
+    transfer_amount,
+):
+    result = run_revalidation(
+        transfer_amount=transfer_amount
+    )
+
+    assert result["revalidated"] is False
+    assert result["allowed"] is False
+    assert result["reason"] == "invalid_transfer_amount"
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("available_liquidity", None),
+        ("available_liquidity", "bad"),
+        ("available_liquidity", float("nan")),
+        ("available_liquidity", float("inf")),
+        ("available_liquidity", float("-inf")),
+        ("available_liquidity", True),
+        ("minimum_liquidity_ratio", None),
+        ("minimum_liquidity_ratio", "bad"),
+        ("minimum_liquidity_ratio", float("nan")),
+        ("minimum_liquidity_ratio", float("inf")),
+        ("minimum_liquidity_ratio", float("-inf")),
+        ("minimum_liquidity_ratio", True),
+        ("expected_price", None),
+        ("expected_price", "bad"),
+        ("expected_price", float("nan")),
+        ("expected_price", float("inf")),
+        ("expected_price", float("-inf")),
+        ("expected_price", True),
+        ("current_price", None),
+        ("current_price", "bad"),
+        ("current_price", float("nan")),
+        ("current_price", float("inf")),
+        ("current_price", float("-inf")),
+        ("current_price", True),
+        ("max_slippage_percent", None),
+        ("max_slippage_percent", "bad"),
+        ("max_slippage_percent", float("nan")),
+        ("max_slippage_percent", float("inf")),
+        ("max_slippage_percent", float("-inf")),
+        ("max_slippage_percent", True),
+    ],
+)
+def test_invalid_market_revalidation_inputs_fail_closed(
+    field,
+    value,
+):
+    kwargs = {
+        "available_liquidity": 10000.0,
+        "minimum_liquidity_ratio": 0.1,
+        "expected_price": 100.0,
+        "current_price": 99.5,
+        "max_slippage_percent": 1.0,
+    }
+    kwargs[field] = value
+
+    result = run_revalidation(**kwargs)
+
+    assert result["revalidated"] is False
+    assert result["allowed"] is False
+    assert result["reason"] == "invalid_revalidation_input"
+
+
+def test_numeric_string_revalidation_inputs_remain_supported():
+    record = decision(
+        next_trade_size="250"
+    )
+
+    result = run_revalidation(
+        decision_result=record,
+        transfer_amount="250",
+        available_liquidity="10000",
+        minimum_liquidity_ratio="0.1",
+        expected_price="100",
+        current_price="99.5",
+        max_slippage_percent="1",
+    )
+
+    assert result["revalidated"] is True
+    assert result["allowed"] is True
+    assert result["next_trade_size"] == 250.0
+
+
+def test_numeric_string_revalidation_contract_remains_supported():
+    result = run_revalidation(
+        decision_result=decision(
+            next_trade_size="250.0",
+        ),
+        transfer_amount="250.0",
+        available_liquidity="10000.0",
+        minimum_liquidity_ratio="0.1",
+        expected_price="100.0",
+        current_price="99.5",
+        max_slippage_percent="1.0",
+    )
+
+    assert result["revalidated"] is True
+    assert result["allowed"] is True
+    assert result["next_trade_size"] == 250.0
