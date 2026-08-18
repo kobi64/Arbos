@@ -5,6 +5,7 @@ Continuous Opportunity Scheduler
 """
 
 import heapq
+import math
 
 
 class ContinuousOpportunityScheduler:
@@ -25,7 +26,19 @@ class ContinuousOpportunityScheduler:
         if opportunity_id in self._queued_ids:
             raise ValueError("opportunity_id already queued")
 
-        priority = float(opportunity.get("priority", 0.0))
+        raw_priority = opportunity.get("priority", 0.0)
+
+        if isinstance(raw_priority, bool):
+            raise ValueError("priority must be a finite number")
+
+        try:
+            priority = float(raw_priority)
+        except (TypeError, ValueError):
+            raise ValueError("priority must be a finite number")
+
+        if not math.isfinite(priority):
+            raise ValueError("priority must be a finite number")
+
         self._sequence += 1
 
         heapq.heappush(

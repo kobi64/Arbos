@@ -5,6 +5,7 @@ Exchange Request Queue Manager
 """
 
 import heapq
+import math
 
 
 class ExchangeRequestQueueManager:
@@ -30,7 +31,19 @@ class ExchangeRequestQueueManager:
             }
 
         request_id = str(request_id).strip()
-        priority = float(request.get("priority", 0.0))
+        raw_priority = request.get("priority", 0.0)
+
+        if isinstance(raw_priority, bool):
+            raise ValueError("priority must be a finite number")
+
+        try:
+            priority = float(raw_priority)
+        except (TypeError, ValueError):
+            raise ValueError("priority must be a finite number")
+
+        if not math.isfinite(priority):
+            raise ValueError("priority must be a finite number")
+
         self._sequence += 1
 
         heapq.heappush(
