@@ -88,6 +88,36 @@ class FreshRepeatScaleRevalidation:
                 "live_order_submitted": False,
             }
 
+        route_id = decision_result.get(
+            "route_id"
+        )
+        approval_id = decision_result.get(
+            "approval_id"
+        )
+        permission_id = decision_result.get(
+            "permission_id"
+        )
+
+        if (
+            not isinstance(route_id, str)
+            or not route_id.strip()
+            or not isinstance(approval_id, str)
+            or not approval_id.strip()
+            or not isinstance(permission_id, str)
+            or not permission_id.strip()
+        ):
+            return {
+                "revalidated": False,
+                "allowed": False,
+                "status": "BLOCKED",
+                "reason": "invalid_decision_identity",
+                "live_order_submitted": False,
+            }
+
+        route_id = route_id.strip()
+        approval_id = approval_id.strip()
+        permission_id = permission_id.strip()
+
         raw_next_trade_size = decision_result.get(
             "next_trade_size",
             0.0,
@@ -219,9 +249,7 @@ class FreshRepeatScaleRevalidation:
                 "allowed": False,
                 "status": "BLOCKED",
                 "reason": "route_not_executable",
-                "route_id": decision_result.get(
-                    "route_id"
-                ),
+                "route_id": route_id,
                 "next_trade_size": next_trade_size,
                 "live_order_submitted": False,
             }
@@ -242,9 +270,7 @@ class FreshRepeatScaleRevalidation:
                 "allowed": False,
                 "status": "BLOCKED",
                 "reason": "selected_network_not_found",
-                "route_id": decision_result.get(
-                    "route_id"
-                ),
+                "route_id": route_id,
                 "next_trade_size": next_trade_size,
                 "live_order_submitted": False,
             }
@@ -265,9 +291,7 @@ class FreshRepeatScaleRevalidation:
                 "transfer_reason": (
                     transfer_result.reason
                 ),
-                "route_id": decision_result.get(
-                    "route_id"
-                ),
+                "route_id": route_id,
                 "network": route_result.network,
                 "next_trade_size": next_trade_size,
                 "live_order_submitted": False,
@@ -290,9 +314,7 @@ class FreshRepeatScaleRevalidation:
                 "liquidity_reason": (
                     liquidity_result["reason"]
                 ),
-                "route_id": decision_result.get(
-                    "route_id"
-                ),
+                "route_id": route_id,
                 "network": route_result.network,
                 "next_trade_size": next_trade_size,
                 "live_order_submitted": False,
@@ -315,9 +337,7 @@ class FreshRepeatScaleRevalidation:
                 "slippage_reason": (
                     slippage_result["reason"]
                 ),
-                "route_id": decision_result.get(
-                    "route_id"
-                ),
+                "route_id": route_id,
                 "network": route_result.network,
                 "next_trade_size": next_trade_size,
                 "live_order_submitted": False,
@@ -329,19 +349,9 @@ class FreshRepeatScaleRevalidation:
             "status": "REVALIDATED",
             "reason": "fresh_repeat_scale_revalidation_passed",
             "decision": decision,
-            "route_id": decision_result.get(
-                "route_id"
-            ),
-            "previous_approval_id": (
-                decision_result.get(
-                    "approval_id"
-                )
-            ),
-            "previous_permission_id": (
-                decision_result.get(
-                    "permission_id"
-                )
-            ),
+            "route_id": route_id,
+            "previous_approval_id": approval_id,
+            "previous_permission_id": permission_id,
             "next_trade_size": next_trade_size,
             "network": route_result.network,
             "withdraw_fee": (
