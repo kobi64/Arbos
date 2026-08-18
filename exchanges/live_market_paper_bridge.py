@@ -4,6 +4,8 @@ EX-068
 Live Market Paper Bridge
 """
 
+import math
+
 from exchanges.paper_trading_execution_engine import (
     PaperTradingExecutionEngine,
 )
@@ -24,23 +26,41 @@ class LiveMarketPaperBridge:
             raise ValueError("symbol is required")
 
         try:
-            quantity = float(order.get("quantity"))
+            quantity = float(
+                order.get("quantity")
+            )
         except (TypeError, ValueError):
-            quantity = 0.0
+            raise ValueError(
+                "quantity must be positive"
+            )
 
-        if quantity <= 0:
-            raise ValueError("quantity must be positive")
+        if (
+            not math.isfinite(quantity)
+            or quantity <= 0
+        ):
+            raise ValueError(
+                "quantity must be positive"
+            )
 
         symbol = str(symbol).strip().upper()
         market_price = self._provider.get_price(symbol)
 
         try:
-            market_price = float(market_price)
+            market_price = float(
+                market_price
+            )
         except (TypeError, ValueError):
-            raise ValueError("market price unavailable")
+            raise ValueError(
+                "market price unavailable"
+            )
 
-        if market_price <= 0:
-            raise ValueError("market price unavailable")
+        if (
+            not math.isfinite(market_price)
+            or market_price <= 0
+        ):
+            raise ValueError(
+                "market price unavailable"
+            )
 
         paper_order = dict(order)
         paper_order["symbol"] = symbol
