@@ -137,3 +137,123 @@ def test_recovery_action_is_generated(engine):
     result = engine.reconcile(local, remote)
 
     assert result["recovery_action"] == "SYNC_FROM_EXCHANGE"
+
+
+def test_local_missing_preserves_missing_remote_fill_as_unknown(engine):
+    remote = {
+        "order_id": "A1",
+        "status": "open",
+        "amount": 10.0,
+    }
+
+    result = engine.reconcile(None, remote)
+
+    assert result["state"] == "LOCAL_MISSING"
+    assert result["resolved_filled"] is None
+    assert result["recovery_required"] is True
+
+
+def test_remote_missing_preserves_missing_local_fill_as_unknown(engine):
+    local = {
+        "order_id": "A1",
+        "status": "open",
+        "amount": 10.0,
+    }
+
+    result = engine.reconcile(local, None)
+
+    assert result["state"] == "REMOTE_MISSING"
+    assert result["resolved_filled"] is None
+    assert result["recovery_required"] is True
+
+
+def test_explicit_none_remote_fill_remains_unknown(engine):
+    remote = {
+        "order_id": "A1",
+        "status": "open",
+        "filled": None,
+        "amount": 10.0,
+    }
+
+    result = engine.reconcile(None, remote)
+
+    assert result["resolved_filled"] is None
+
+
+def test_missing_remote_fill_cannot_produce_matched_state(engine):
+    local = {
+        "order_id": "A1",
+        "status": "open",
+        "filled": 0.0,
+        "amount": 10.0,
+    }
+    remote = {
+        "order_id": "A1",
+        "status": "open",
+        "amount": 10.0,
+    }
+
+    result = engine.reconcile(local, remote)
+
+    assert result["state"] != "MATCHED"
+    assert result["recovery_required"] is True
+    assert result["resolved_filled"] is None
+
+
+def test_missing_local_fill_cannot_produce_matched_state(engine):
+    local = {
+        "order_id": "A1",
+        "status": "open",
+        "amount": 10.0,
+    }
+    remote = {
+        "order_id": "A1",
+        "status": "open",
+        "filled": 0.0,
+        "amount": 10.0,
+    }
+
+    result = engine.reconcile(local, remote)
+
+    assert result["state"] != "MATCHED"
+    assert result["recovery_required"] is True
+
+
+def test_both_missing_fill_values_cannot_produce_matched_state(engine):
+    local = {
+        "order_id": "A1",
+        "status": "open",
+        "amount": 10.0,
+    }
+    remote = {
+        "order_id": "A1",
+        "status": "open",
+        "amount": 10.0,
+    }
+
+    result = engine.reconcile(local, remote)
+
+    assert result["state"] != "MATCHED"
+    assert result["recovery_required"] is True
+    assert result["resolved_filled"] is None
+
+
+def test_genuine_zero_fill_remains_numeric_zero_and_can_match(engine):
+    local = {
+        "order_id": "A1",
+        "status": "open",
+        "filled": 0.0,
+        "amount": 10.0,
+    }
+    remote = {
+        "order_id": "A1",
+        "status": "open",
+        "filled": 0.0,
+        "amount": 10.0,
+    }
+
+    result = engine.reconcile(local, remote)
+
+    assert result["state"] == "MATCHED"
+    assert result["resolved_filled"] == 0.0
+    assert result["recovery_required"] is False
