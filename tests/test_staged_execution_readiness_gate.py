@@ -118,3 +118,96 @@ def test_missing_scan_result_is_rejected():
             scan_result=None,
             safety_context=safe_context(),
         )
+
+
+def test_non_executable_profitable_route_is_not_ready():
+    scan = profitable_scan()
+    scan["best_profitable_route"]["executable"] = False
+
+    result = StagedExecutionReadinessGate().evaluate(
+        scan_result=scan,
+        safety_context=safe_context(),
+    )
+
+    assert result["ready_for_staged_execution"] is False
+    assert result["reason"] == "route_not_executable"
+
+
+@pytest.mark.parametrize(
+    "executable",
+    [
+        None,
+        0,
+        1,
+        "true",
+        "false",
+    ],
+)
+def test_route_executable_requires_real_true_boolean(
+    executable,
+):
+    scan = profitable_scan()
+    scan["best_profitable_route"][
+        "executable"
+    ] = executable
+
+    result = StagedExecutionReadinessGate().evaluate(
+        scan_result=scan,
+        safety_context=safe_context(),
+    )
+
+    assert result["ready_for_staged_execution"] is False
+    assert result["reason"] == "route_not_executable"
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("net_profit", None),
+        ("net_profit", "bad"),
+        ("net_profit", float("nan")),
+        ("net_profit", float("inf")),
+        ("net_profit", float("-inf")),
+        ("net_profit", True),
+        ("net_profit", 0.0),
+        ("net_profit", -1.0),
+        ("net_profit_percent", None),
+        ("net_profit_percent", "bad"),
+        ("net_profit_percent", float("nan")),
+        ("net_profit_percent", float("inf")),
+        ("net_profit_percent", float("-inf")),
+        ("net_profit_percent", True),
+        ("net_profit_percent", 0.0),
+        ("net_profit_percent", -1.0),
+    ],
+)
+def test_invalid_route_profitability_is_not_ready(
+    field,
+    value,
+):
+    scan = profitable_scan()
+    scan["best_profitable_route"][field] = value
+
+    result = StagedExecutionReadinessGate().evaluate(
+        scan_result=scan,
+        safety_context=safe_context(),
+    )
+
+    assert result["ready_for_staged_execution"] is False
+    assert result["reason"] == "invalid_route_profitability"
+
+
+def test_numeric_string_route_profitability_remains_supported():
+    scan = profitable_scan()
+    scan["best_profitable_route"]["net_profit"] = "1.0"
+    scan["best_profitable_route"][
+        "net_profit_percent"
+    ] = "1.0"
+
+    result = StagedExecutionReadinessGate().evaluate(
+        scan_result=scan,
+        safety_context=safe_context(),
+    )
+
+    assert result["ready_for_staged_execution"] is True
+    assert result["reason"] == "ready_for_staged_execution"

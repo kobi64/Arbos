@@ -13,6 +13,9 @@ This module does not approve, authorize, or submit orders.
 """
 
 
+import math
+
+
 class RevalidatedRepeatScaleApprovalHandoff:
     def prepare(
         self,
@@ -99,20 +102,102 @@ class RevalidatedRepeatScaleApprovalHandoff:
                 "live_order_submitted": False,
             }
 
-        trade_amount = float(
-            revalidation_result.get(
-                "next_trade_size",
-                0.0,
-            )
+        raw_trade_amount = revalidation_result.get(
+            "next_trade_size",
+            0.0,
         )
 
-        if trade_amount <= 0:
+        if isinstance(raw_trade_amount, bool):
             return {
                 "prepared": False,
                 "approval_ready": False,
                 "reason": "invalid_trade_amount",
                 "live_order_submitted": False,
             }
+
+        try:
+            trade_amount = float(raw_trade_amount)
+        except (TypeError, ValueError, OverflowError):
+            return {
+                "prepared": False,
+                "approval_ready": False,
+                "reason": "invalid_trade_amount",
+                "live_order_submitted": False,
+            }
+
+        if (
+            not math.isfinite(trade_amount)
+            or trade_amount <= 0
+        ):
+            return {
+                "prepared": False,
+                "approval_ready": False,
+                "reason": "invalid_trade_amount",
+                "live_order_submitted": False,
+            }
+
+        def finite_number(
+            value,
+            field,
+            *,
+            non_negative=False,
+        ):
+            requirement = (
+                "finite non-negative number"
+                if non_negative
+                else "finite number"
+            )
+
+            if isinstance(value, bool):
+                raise ValueError(
+                    f"{field} must be a {requirement}"
+                )
+
+            try:
+                number = float(value)
+            except (
+                TypeError,
+                ValueError,
+                OverflowError,
+            ):
+                raise ValueError(
+                    f"{field} must be a {requirement}"
+                ) from None
+
+            if not math.isfinite(number):
+                raise ValueError(
+                    f"{field} must be a {requirement}"
+                )
+
+            if non_negative and number < 0:
+                raise ValueError(
+                    f"{field} must be a {requirement}"
+                )
+
+            return number
+
+        expected_profit = finite_number(
+            expected_profit,
+            "expected_profit",
+        )
+        if expected_profit <= 0:
+            return {
+                "prepared": False,
+                "approval_ready": False,
+                "reason": "non_positive_expected_profit",
+                "live_order_submitted": False,
+            }
+
+        estimated_fees = finite_number(
+            estimated_fees,
+            "estimated_fees",
+            non_negative=True,
+        )
+        slippage_allowance = finite_number(
+            slippage_allowance,
+            "slippage_allowance",
+            non_negative=True,
+        )
 
         asset = str(asset).strip().upper()
         buy_exchange = str(
@@ -148,15 +233,9 @@ class RevalidatedRepeatScaleApprovalHandoff:
             "buy_exchange": buy_exchange,
             "sell_exchange": sell_exchange,
             "trade_amount": trade_amount,
-            "expected_profit": float(
-                expected_profit
-            ),
-            "estimated_fees": float(
-                estimated_fees
-            ),
-            "slippage_allowance": float(
-                slippage_allowance
-            ),
+            "expected_profit": expected_profit,
+            "estimated_fees": estimated_fees,
+            "slippage_allowance": slippage_allowance,
             "network": revalidation_result.get(
                 "network"
             ),
