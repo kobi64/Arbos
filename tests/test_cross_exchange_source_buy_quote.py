@@ -191,3 +191,95 @@ def test_unfilled_source_buy_preserves_coin_amount_as_unknown():
     assert result["filled"] is False
     assert result["coin_amount"] is None
     assert result["live_order_submitted"] is False
+
+
+@pytest.mark.parametrize(
+    "net_final_value",
+    [
+        None,
+        "not-a-number",
+        float("nan"),
+        float("inf"),
+        float("-inf"),
+        0.0,
+        -1.0,
+    ],
+)
+def test_invalid_filled_source_buy_value_is_rejected(
+    net_final_value,
+):
+    class InvalidValueScanner:
+        def scan_route(self, **kwargs):
+            return {
+                "filled": True,
+                "reason": None,
+                "net_final_value": net_final_value,
+                "legs": [],
+                "paper_only": True,
+                "live_order_submitted": False,
+            }
+
+    result = CrossExchangeSourceBuyQuote(
+        depth_scanner=InvalidValueScanner(),
+    ).quote(
+        coin_asset="ALT",
+        starting_usdt_value=100.0,
+        source_fee_rate=0.001,
+        max_slippage_percent=0.5,
+    )
+
+    assert result["filled"] is False
+    assert result["coin_amount"] is None
+    assert result["reason"] == "source_buy_value_invalid"
+    assert result["paper_only"] is True
+    assert result["live_order_submitted"] is False
+
+
+def test_missing_filled_source_buy_value_is_not_zero():
+    class MissingValueScanner:
+        def scan_route(self, **kwargs):
+            return {
+                "filled": True,
+                "reason": None,
+                "legs": [],
+                "paper_only": True,
+                "live_order_submitted": False,
+            }
+
+    result = CrossExchangeSourceBuyQuote(
+        depth_scanner=MissingValueScanner(),
+    ).quote(
+        coin_asset="ALT",
+        starting_usdt_value=100.0,
+        source_fee_rate=0.001,
+        max_slippage_percent=0.5,
+    )
+
+    assert result["filled"] is False
+    assert result["coin_amount"] is None
+    assert result["reason"] == "source_buy_value_required"
+
+
+def test_numeric_string_source_buy_value_is_normalized():
+    class NumericStringScanner:
+        def scan_route(self, **kwargs):
+            return {
+                "filled": True,
+                "reason": None,
+                "net_final_value": "25.5",
+                "legs": [],
+                "paper_only": True,
+                "live_order_submitted": False,
+            }
+
+    result = CrossExchangeSourceBuyQuote(
+        depth_scanner=NumericStringScanner(),
+    ).quote(
+        coin_asset="ALT",
+        starting_usdt_value=100.0,
+        source_fee_rate=0.001,
+        max_slippage_percent=0.5,
+    )
+
+    assert result["filled"] is True
+    assert result["coin_amount"] == 25.5

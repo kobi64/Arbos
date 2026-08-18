@@ -15,6 +15,8 @@ No transfers.
 No live orders.
 """
 
+import math
+
 
 class CrossExchangeSourceBuyQuote:
     def __init__(
@@ -94,13 +96,58 @@ class CrossExchangeSourceBuyQuote:
                 "live_order_submitted": False,
             }
 
-        coin_amount = float(
-            scanned.get(
-                "net_final_value",
-                0.0,
+        if "net_final_value" not in scanned:
+            return {
+                **scanned,
+                "filled": False,
+                "reason": "source_buy_value_required",
+                "coin_asset": coin_asset,
+                "coin_amount": None,
+                "starting_usdt_value": float(
+                    starting_usdt_value
+                ),
+                "paper_only": True,
+                "live_order_submitted": False,
+            }
+
+        raw_coin_amount = scanned[
+            "net_final_value"
+        ]
+
+        try:
+            coin_amount = float(
+                raw_coin_amount
             )
-            or 0.0
-        )
+        except (TypeError, ValueError):
+            return {
+                **scanned,
+                "filled": False,
+                "reason": "source_buy_value_invalid",
+                "coin_asset": coin_asset,
+                "coin_amount": None,
+                "starting_usdt_value": float(
+                    starting_usdt_value
+                ),
+                "paper_only": True,
+                "live_order_submitted": False,
+            }
+
+        if (
+            not math.isfinite(coin_amount)
+            or coin_amount <= 0
+        ):
+            return {
+                **scanned,
+                "filled": False,
+                "reason": "source_buy_value_invalid",
+                "coin_asset": coin_asset,
+                "coin_amount": None,
+                "starting_usdt_value": float(
+                    starting_usdt_value
+                ),
+                "paper_only": True,
+                "live_order_submitted": False,
+            }
 
         return {
             **scanned,
