@@ -52,16 +52,56 @@ class SimulatedMultiLegRouteCompletion:
         route_id = route.get(
             "route_id"
         )
-
-        if route_id != final_fill.get(
+        fill_route_id = final_fill.get(
             "route_id"
+        )
+
+        if (
+            not isinstance(route_id, str)
+            or not route_id.strip()
+            or not isinstance(fill_route_id, str)
+            or not fill_route_id.strip()
         ):
+            return {
+                "completed": False,
+                "route_complete": False,
+                "reason": "invalid_route_identity",
+                "live_order_submitted": False,
+            }
+
+        route_id = route_id.strip()
+        fill_route_id = fill_route_id.strip()
+
+        if route_id != fill_route_id:
             return {
                 "completed": False,
                 "route_complete": False,
                 "reason": "route_id_mismatch",
                 "live_order_submitted": False,
             }
+
+        approval_id = final_fill.get(
+            "approval_id"
+        )
+        permission_id = final_fill.get(
+            "permission_id"
+        )
+
+        if (
+            not isinstance(approval_id, str)
+            or not approval_id.strip()
+            or not isinstance(permission_id, str)
+            or not permission_id.strip()
+        ):
+            return {
+                "completed": False,
+                "route_complete": False,
+                "reason": "invalid_fill_identity",
+                "live_order_submitted": False,
+            }
+
+        approval_id = approval_id.strip()
+        permission_id = permission_id.strip()
 
         legs = route.get(
             "legs"
@@ -157,12 +197,8 @@ class SimulatedMultiLegRouteCompletion:
             "route_complete": True,
             "reason": "simulated_multi_leg_route_complete",
             "route_id": route_id,
-            "approval_id": final_fill.get(
-                "approval_id"
-            ),
-            "permission_id": final_fill.get(
-                "permission_id"
-            ),
+            "approval_id": approval_id,
+            "permission_id": permission_id,
             "completed_leg_number": (
                 completed_leg_number
             ),

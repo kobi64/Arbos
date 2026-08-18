@@ -406,3 +406,122 @@ def test_zero_notional_cannot_complete_final_sell():
     assert result["completed"] is False
     assert result["route_complete"] is False
     assert result["reason"] == "invalid_final_fill_values"
+
+
+# EX-337 — multi-leg completion identity integrity audit
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        None,
+        "",
+        "   ",
+        0,
+        False,
+    ],
+)
+def test_invalid_completion_route_identity_is_blocked(value):
+    completer = SimulatedMultiLegRouteCompletion()
+
+    fill = final_fill()
+    planned_route = route()
+
+    fill["route_id"] = value
+    planned_route["route_id"] = value
+
+    result = completer.complete(
+        final_fill=fill,
+        route=planned_route,
+        completed_leg_number=3,
+    )
+
+    assert result["completed"] is False
+    assert result["route_complete"] is False
+    assert result["reason"] == "invalid_route_identity"
+    assert result["live_order_submitted"] is False
+
+
+@pytest.mark.parametrize(
+    "field",
+    [
+        "approval_id",
+        "permission_id",
+    ],
+)
+@pytest.mark.parametrize(
+    "value",
+    [
+        None,
+        "",
+        "   ",
+        0,
+        False,
+    ],
+)
+def test_invalid_final_fill_control_identity_is_blocked(
+    field,
+    value,
+):
+    completer = SimulatedMultiLegRouteCompletion()
+
+    fill = final_fill()
+    fill[field] = value
+
+    result = completer.complete(
+        final_fill=fill,
+        route=route(),
+        completed_leg_number=3,
+    )
+
+    assert result["completed"] is False
+    assert result["route_complete"] is False
+    assert result["reason"] == "invalid_fill_identity"
+    assert result["live_order_submitted"] is False
+
+
+def test_completion_identity_whitespace_is_normalized():
+    completer = SimulatedMultiLegRouteCompletion()
+
+    fill = final_fill()
+    planned_route = route()
+
+    fill["route_id"] = "  ROUTE-001  "
+    planned_route["route_id"] = " ROUTE-001 "
+    fill["approval_id"] = "  ARB-001  "
+    fill["permission_id"] = "  PERM-001  "
+
+    result = completer.complete(
+        final_fill=fill,
+        route=planned_route,
+        completed_leg_number=3,
+    )
+
+    assert result["completed"] is True
+    assert result["route_complete"] is True
+    assert result["route_id"] == "ROUTE-001"
+    assert result["approval_id"] == "ARB-001"
+    assert result["permission_id"] == "PERM-001"
+
+
+def test_completion_identity_normalization_does_not_mutate_inputs():
+    completer = SimulatedMultiLegRouteCompletion()
+
+    fill = final_fill()
+    planned_route = route()
+
+    fill["route_id"] = "  ROUTE-001  "
+    fill["approval_id"] = "  ARB-001  "
+    fill["permission_id"] = "  PERM-001  "
+    planned_route["route_id"] = " ROUTE-001 "
+
+    completer.complete(
+        final_fill=fill,
+        route=planned_route,
+        completed_leg_number=3,
+    )
+
+    assert fill["route_id"] == "  ROUTE-001  "
+    assert fill["approval_id"] == "  ARB-001  "
+    assert fill["permission_id"] == "  PERM-001  "
+    assert planned_route["route_id"] == " ROUTE-001 "
