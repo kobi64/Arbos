@@ -222,10 +222,25 @@ class RevalidatedRepeatScaleApprovalHandoff:
                 "sell_exchange is required"
             )
 
+        raw_route_id = revalidation_result.get(
+            "route_id"
+        )
+
+        if (
+            not isinstance(raw_route_id, str)
+            or not raw_route_id.strip()
+        ):
+            return {
+                "prepared": False,
+                "approval_ready": False,
+                "reason": "route_id_required",
+                "live_order_submitted": False,
+            }
+
+        route_id = raw_route_id.strip()
+
         approval_request = {
-            "route_id": revalidation_result.get(
-                "route_id"
-            ),
+            "route_id": route_id,
             "decision": revalidation_result.get(
                 "decision"
             ),
@@ -255,9 +270,7 @@ class RevalidatedRepeatScaleApprovalHandoff:
             "reason": (
                 "fresh_repeat_scale_approval_ready"
             ),
-            "route_id": revalidation_result.get(
-                "route_id"
-            ),
+            "route_id": route_id,
             "decision": revalidation_result.get(
                 "decision"
             ),
