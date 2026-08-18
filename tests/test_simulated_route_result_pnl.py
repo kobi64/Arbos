@@ -327,3 +327,109 @@ def test_genuine_zero_final_output_amount_remains_numeric_zero():
 
     assert result["evaluated"] is True
     assert result["pnl"]["gross_final_value"] == 0.0
+
+
+# EX-338 — simulated route result P&L identity binding audit
+
+
+@pytest.mark.parametrize(
+    "field",
+    [
+        "route_id",
+        "approval_id",
+        "permission_id",
+    ],
+)
+@pytest.mark.parametrize(
+    "value",
+    [
+        None,
+        "",
+        "   ",
+        0,
+        False,
+    ],
+)
+def test_invalid_completion_control_identity_blocks_pnl(
+    field,
+    value,
+):
+    evaluator = SimulatedRouteResultPnL()
+
+    record = completed_route()
+    record[field] = value
+
+    result = evaluator.evaluate(
+        completion_record=record,
+        starting_value=1000.0,
+    )
+
+    assert result["evaluated"] is False
+    assert (
+        result["reason"]
+        == "invalid_completion_identity"
+    )
+    assert result["live_order_submitted"] is False
+
+
+def test_completion_control_identity_is_normalized_for_pnl():
+    evaluator = SimulatedRouteResultPnL()
+
+    record = completed_route()
+    record["route_id"] = "  ROUTE-001  "
+    record["approval_id"] = "  ARB-001  "
+    record["permission_id"] = "  PERM-001  "
+
+    result = evaluator.evaluate(
+        completion_record=record,
+        starting_value=1000.0,
+    )
+
+    assert result["evaluated"] is True
+    assert result["route_id"] == "ROUTE-001"
+    assert result["approval_id"] == "ARB-001"
+    assert result["permission_id"] == "PERM-001"
+
+
+def test_pnl_identity_normalization_does_not_mutate_completion_record():
+    evaluator = SimulatedRouteResultPnL()
+
+    record = completed_route()
+    record["route_id"] = "  ROUTE-001  "
+    record["approval_id"] = "  ARB-001  "
+    record["permission_id"] = "  PERM-001  "
+
+    evaluator.evaluate(
+        completion_record=record,
+        starting_value=1000.0,
+    )
+
+    assert record["route_id"] == "  ROUTE-001  "
+    assert record["approval_id"] == "  ARB-001  "
+    assert record["permission_id"] == "  PERM-001  "
+
+
+def test_normalized_identity_does_not_change_pnl_accounting():
+    evaluator = SimulatedRouteResultPnL()
+
+    record = completed_route()
+    record["route_id"] = " ROUTE-001 "
+    record["approval_id"] = " ARB-001 "
+    record["permission_id"] = " PERM-001 "
+
+    result = evaluator.evaluate(
+        completion_record=record,
+        starting_value=1000.0,
+        trading_fees=5.0,
+        transfer_fees=2.0,
+        other_costs=3.0,
+        minimum_profit_percent=2.0,
+    )
+
+    assert result["evaluated"] is True
+    assert result["pnl"]["gross_final_value"] == 1050.0
+    assert result["pnl"]["total_costs"] == 10.0
+    assert result["pnl"]["net_final_value"] == 1040.0
+    assert result["pnl"]["net_profit"] == 40.0
+    assert result["pnl"]["profit_percent"] == 4.0
+    assert result["pnl"]["profitable"] is True
