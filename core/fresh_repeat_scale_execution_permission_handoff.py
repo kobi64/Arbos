@@ -410,6 +410,29 @@ class FreshRepeatScaleExecutionPermissionHandoff:
                 "live_order_submitted": False,
             }
 
+        raw_previous_permission_id = (
+            approval_handoff.get(
+                "previous_permission_id"
+            )
+        )
+
+        if (
+            not isinstance(
+                raw_previous_permission_id,
+                str,
+            )
+            or not raw_previous_permission_id.strip()
+        ):
+            return {
+                "handoff_ready": False,
+                "reason": "previous_permission_id_required",
+                "live_order_submitted": False,
+            }
+
+        previous_permission_id = (
+            raw_previous_permission_id.strip()
+        )
+
         previous_approval_id = (
             approval_handoff.get(
                 "previous_approval_id"
@@ -451,9 +474,7 @@ class FreshRepeatScaleExecutionPermissionHandoff:
                 normalized_previous_approval_id
             ),
             "previous_permission_id": (
-                approval_handoff.get(
-                    "previous_permission_id"
-                )
+                previous_permission_id
             ),
             "fresh_execution_permission_required": True,
             "permission_granted": False,

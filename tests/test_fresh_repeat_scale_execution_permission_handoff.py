@@ -766,3 +766,151 @@ def test_successful_handoff_propagates_approved_exchange_identity():
     assert result["handoff_ready"] is True
     assert result["buy_exchange"] == "kucoin"
     assert result["sell_exchange"] == "gate"
+
+
+# EX-342 — historical permission lineage integrity
+
+
+@pytest.mark.parametrize(
+    "previous_permission_id",
+    [
+        None,
+        "",
+        "   ",
+        0,
+        False,
+    ],
+)
+def test_previous_permission_id_requires_real_non_empty_string(
+    previous_permission_id,
+):
+    handoff = approval_handoff()
+    handoff["previous_permission_id"] = (
+        previous_permission_id
+    )
+
+    result = prepare(
+        handoff=handoff,
+    )
+
+    assert result["handoff_ready"] is False
+    assert (
+        result["reason"]
+        == "previous_permission_id_required"
+    )
+    assert result["live_order_submitted"] is False
+
+
+def test_previous_permission_id_is_normalized():
+    handoff = approval_handoff()
+    handoff["previous_permission_id"] = (
+        "  PERM-001  "
+    )
+
+    result = prepare(
+        handoff=handoff,
+    )
+
+    assert result["handoff_ready"] is True
+    assert (
+        result["previous_permission_id"]
+        == "PERM-001"
+    )
+
+
+def test_previous_permission_normalization_does_not_mutate_handoff():
+    handoff = approval_handoff()
+    handoff["previous_permission_id"] = (
+        "  PERM-001  "
+    )
+
+    prepare(
+        handoff=handoff,
+    )
+
+    assert (
+        handoff["previous_permission_id"]
+        == "  PERM-001  "
+    )
+
+
+def test_previous_permission_remains_audit_only():
+    handoff = approval_handoff()
+    handoff["previous_permission_id"] = (
+        " PERM-001 "
+    )
+
+    result = prepare(
+        handoff=handoff,
+    )
+
+    assert result["handoff_ready"] is True
+    assert (
+        result["previous_permission_id"]
+        == "PERM-001"
+    )
+
+    assert (
+        result["fresh_execution_permission_required"]
+        is True
+    )
+    assert result["permission_granted"] is False
+    assert "permission_id" not in result
+
+
+def test_new_permission_is_distinct_from_previous_permission():
+    handoff = approval_handoff()
+    handoff["previous_permission_id"] = (
+        " PERM-999 "
+    )
+
+    result = prepare(
+        handoff=handoff,
+    )
+
+    gate = StagedTestTradeExecutionPermission()
+
+    permission = gate.create(
+        handoff_result=result,
+    )
+
+    assert (
+        permission["permission_id"]
+        != result["previous_permission_id"]
+    )
+    assert permission["permission_granted"] is False
+    assert (
+        permission["status"]
+        == "awaiting_execution_permission"
+    )
+
+
+def test_new_permission_remains_single_use_with_previous_lineage_present():
+    handoff = approval_handoff()
+    handoff["previous_permission_id"] = (
+        " PERM-999 "
+    )
+
+    result = prepare(
+        handoff=handoff,
+    )
+
+    gate = StagedTestTradeExecutionPermission()
+
+    permission = gate.create(
+        handoff_result=result,
+    )
+
+    first = gate.grant(
+        permission_id=permission["permission_id"],
+        trade_amount=permission["trade_amount"],
+    )
+
+    second = gate.grant(
+        permission_id=permission["permission_id"],
+        trade_amount=permission["trade_amount"],
+    )
+
+    assert first["permission_granted"] is True
+    assert second["permission_granted"] is False
+    assert second["status"] == "not_found"
