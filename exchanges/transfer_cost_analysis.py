@@ -9,6 +9,7 @@ relative to the transfer amount.
 """
 
 from dataclasses import dataclass
+import math
 from typing import Optional
 
 from exchanges.network_registry import NetworkInfo
@@ -32,7 +33,23 @@ class TransferCostAnalysis:
         max_cost_percent: float,
     ) -> TransferCostAnalysisResult:
 
-        if amount <= 0:
+        if isinstance(amount, bool):
+            return TransferCostAnalysisResult(
+                acceptable=False,
+                withdraw_fee=network.withdraw_fee,
+                reason="invalid_amount",
+            )
+
+        try:
+            amount = float(amount)
+        except (TypeError, ValueError, OverflowError):
+            return TransferCostAnalysisResult(
+                acceptable=False,
+                withdraw_fee=network.withdraw_fee,
+                reason="invalid_amount",
+            )
+
+        if not math.isfinite(amount) or amount <= 0:
             return TransferCostAnalysisResult(
                 acceptable=False,
                 withdraw_fee=network.withdraw_fee,
@@ -46,15 +63,69 @@ class TransferCostAnalysis:
                 reason="withdrawal_fee_unknown",
             )
 
-        net_amount = amount - network.withdraw_fee
+        withdraw_fee = network.withdraw_fee
+
+        if isinstance(withdraw_fee, bool):
+            return TransferCostAnalysisResult(
+                acceptable=False,
+                withdraw_fee=withdraw_fee,
+                reason="invalid_withdrawal_fee",
+            )
+
+        try:
+            withdraw_fee = float(withdraw_fee)
+        except (TypeError, ValueError, OverflowError):
+            return TransferCostAnalysisResult(
+                acceptable=False,
+                withdraw_fee=withdraw_fee,
+                reason="invalid_withdrawal_fee",
+            )
+
+        if (
+            not math.isfinite(withdraw_fee)
+            or withdraw_fee < 0
+        ):
+            return TransferCostAnalysisResult(
+                acceptable=False,
+                withdraw_fee=withdraw_fee,
+                reason="invalid_withdrawal_fee",
+            )
+
+        if isinstance(max_cost_percent, bool):
+            return TransferCostAnalysisResult(
+                acceptable=False,
+                withdraw_fee=withdraw_fee,
+                reason="invalid_max_cost_percent",
+            )
+
+        try:
+            max_cost_percent = float(max_cost_percent)
+        except (TypeError, ValueError, OverflowError):
+            return TransferCostAnalysisResult(
+                acceptable=False,
+                withdraw_fee=withdraw_fee,
+                reason="invalid_max_cost_percent",
+            )
+
+        if (
+            not math.isfinite(max_cost_percent)
+            or max_cost_percent < 0
+        ):
+            return TransferCostAnalysisResult(
+                acceptable=False,
+                withdraw_fee=withdraw_fee,
+                reason="invalid_max_cost_percent",
+            )
+
+        net_amount = amount - withdraw_fee
         cost_percent = (
-            network.withdraw_fee / amount
+            withdraw_fee / amount
         ) * 100
 
         if net_amount <= 0:
             return TransferCostAnalysisResult(
                 acceptable=False,
-                withdraw_fee=network.withdraw_fee,
+                withdraw_fee=withdraw_fee,
                 cost_percent=cost_percent,
                 net_amount=0.0,
                 reason="fee_consumes_amount",
@@ -63,7 +134,7 @@ class TransferCostAnalysis:
         if cost_percent > max_cost_percent:
             return TransferCostAnalysisResult(
                 acceptable=False,
-                withdraw_fee=network.withdraw_fee,
+                withdraw_fee=withdraw_fee,
                 cost_percent=cost_percent,
                 net_amount=net_amount,
                 reason="transfer_cost_too_high",
@@ -71,7 +142,7 @@ class TransferCostAnalysis:
 
         return TransferCostAnalysisResult(
             acceptable=True,
-            withdraw_fee=network.withdraw_fee,
+            withdraw_fee=withdraw_fee,
             cost_percent=cost_percent,
             net_amount=net_amount,
             reason="ok",
