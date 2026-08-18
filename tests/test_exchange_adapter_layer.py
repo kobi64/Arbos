@@ -73,3 +73,33 @@ def test_adapter_information():
     info = adapter.info()
 
     assert info["exchange"] == "HTX"
+
+
+def test_supported_exchange_unknown_balance_is_not_zero():
+    adapter = ExchangeAdapterLayer("HTX")
+
+    result = adapter.get_balance("USDT")
+
+    assert result["success"] is True
+    assert result["asset"] == "USDT"
+    assert result["balance"] is None
+
+
+def test_unknown_balance_is_distinct_from_real_zero_balance():
+    adapter = ExchangeAdapterLayer("Gate")
+
+    result = adapter.get_balance("BTC")
+
+    # The adapter has not actually queried a live account.
+    # Therefore zero must not be fabricated.
+    assert result["balance"] is None
+
+
+def test_unsupported_exchange_does_not_report_balance():
+    adapter = ExchangeAdapterLayer("UNKNOWN")
+
+    result = adapter.get_balance("USDT")
+
+    assert result["success"] is False
+    assert result["reason"] == "unsupported_exchange"
+    assert "balance" not in result

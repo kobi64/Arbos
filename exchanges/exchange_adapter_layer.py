@@ -38,7 +38,7 @@ class ExchangeAdapterLayer:
         return {
             "success": True,
             "asset": asset,
-            "balance": 0,
+            "balance": None,
         }
 
     def create_order(
