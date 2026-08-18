@@ -380,6 +380,8 @@ def test_real_single_use_permission_output_is_accepted():
             "route_id": "ROUTE-001",
             "approval_id": "ARB-002",
             "asset": "BTC",
+            "buy_exchange": "kucoin",
+            "sell_exchange": "gate",
             "trade_amount": 250.0,
             "live_order_submitted": False,
         }

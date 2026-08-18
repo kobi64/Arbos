@@ -14,6 +14,8 @@ def ready_handoff():
         "approval_id": "ARB-001",
         "asset": "ETH",
         "trade_amount": 250.0,
+        "buy_exchange": "kucoin",
+        "sell_exchange": "gate",
         "live_order_submitted": False,
     }
 
@@ -307,3 +309,31 @@ def test_identity_strings_are_normalized_on_permission_create():
     assert result["route_id"] == "DIRECT-ETH"
     assert result["approval_id"] == "ARB-001"
     assert result["asset"] == "ETH"
+
+
+def test_permission_request_preserves_exchange_identity():
+    gate = StagedTestTradeExecutionPermission()
+
+    result = gate.create(
+        handoff_result=ready_handoff(),
+    )
+
+    assert result["buy_exchange"] == "kucoin"
+    assert result["sell_exchange"] == "gate"
+
+
+def test_granted_permission_preserves_exchange_identity():
+    gate = StagedTestTradeExecutionPermission()
+
+    request = gate.create(
+        handoff_result=ready_handoff(),
+    )
+
+    result = gate.grant(
+        permission_id=request["permission_id"],
+        trade_amount=250.0,
+    )
+
+    assert result["permission_granted"] is True
+    assert result["buy_exchange"] == "kucoin"
+    assert result["sell_exchange"] == "gate"
