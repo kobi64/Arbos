@@ -8,13 +8,14 @@ trade value after fees.
 """
 
 from dataclasses import dataclass
+from typing import Optional
 
 
 @dataclass
 class TradeCostAnalysisResult:
     valid: bool
-    fee_amount: float = 0.0
-    net_value: float = 0.0
+    fee_amount: Optional[float] = None
+    net_value: Optional[float] = None
     reason: str = ""
 
 

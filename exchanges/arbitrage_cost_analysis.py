@@ -8,16 +8,17 @@ sell-side trading fees into a single cost evaluation.
 """
 
 from dataclasses import dataclass
+from typing import Optional
 
 
 @dataclass
 class ArbitrageCostAnalysisResult:
     valid: bool
-    buy_fee: float = 0.0
-    transfer_fee: float = 0.0
-    sell_fee: float = 0.0
-    total_cost: float = 0.0
-    final_value: float = 0.0
+    buy_fee: Optional[float] = None
+    transfer_fee: Optional[float] = None
+    sell_fee: Optional[float] = None
+    total_cost: Optional[float] = None
+    final_value: Optional[float] = None
     reason: str = ""
 
 
