@@ -144,7 +144,7 @@ class CrossExchangeRouteCandidateGenerator:
                 "conversion_method": None,
                 "network": None,
                 "withdraw_fee": None,
-                "transfer_amount": 0.0,
+                "transfer_amount": None,
                 "pre_transfer_amount": float(
                     coin_amount
                 ),

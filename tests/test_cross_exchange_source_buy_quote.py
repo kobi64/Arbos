@@ -121,7 +121,7 @@ def test_rejected_source_buy_remains_rejected():
     )
 
     assert result["filled"] is False
-    assert result["coin_amount"] == 0.0
+    assert result["coin_amount"] is None
     assert result["reason"] == "slippage_exceeded"
 
 
@@ -166,4 +166,28 @@ def test_source_buy_is_paper_only():
     )
 
     assert result["paper_only"] is True
+    assert result["live_order_submitted"] is False
+
+
+def test_unfilled_source_buy_preserves_coin_amount_as_unknown():
+    class UnfilledScanner:
+        def scan_route(self, **kwargs):
+            return {
+                "filled": False,
+                "reason": "insufficient_depth",
+            }
+
+    quote = CrossExchangeSourceBuyQuote(
+        depth_scanner=UnfilledScanner(),
+    )
+
+    result = quote.quote(
+        coin_asset="BTC",
+        starting_usdt_value=100.0,
+        source_fee_rate=0.001,
+        max_slippage_percent=1.0,
+    )
+
+    assert result["filled"] is False
+    assert result["coin_amount"] is None
     assert result["live_order_submitted"] is False

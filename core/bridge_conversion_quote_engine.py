@@ -50,7 +50,7 @@ class BridgeConversionQuoteEngine:
             "from_asset": str(from_asset).strip().upper(),
             "to_asset": str(to_asset).strip().upper(),
             "input_amount": float(amount),
-            "output_amount": 0.0,
+            "output_amount": None,
             "method": None,
             "reason": "conversion_quote_unavailable",
         }

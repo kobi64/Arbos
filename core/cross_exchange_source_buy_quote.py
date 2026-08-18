@@ -86,7 +86,7 @@ class CrossExchangeSourceBuyQuote:
             return {
                 **scanned,
                 "coin_asset": coin_asset,
-                "coin_amount": 0.0,
+                "coin_amount": None,
                 "starting_usdt_value": float(
                     starting_usdt_value
                 ),
