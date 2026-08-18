@@ -102,3 +102,47 @@ def test_invalid_quantity_is_rejected(adapter):
 
     with pytest.raises(ValueError, match="quantity must be positive"):
         adapter.execute(order)
+
+
+def test_open_limit_order_has_confirmed_zero_execution_notional(adapter):
+    order = market_order()
+    order["order_type"] = "limit"
+    order["limit_price"] = 61000.0
+
+    result = adapter.execute(order)
+
+    assert result["status"] == "OPEN"
+
+    # No quantity executed: this is a genuine numeric zero.
+    assert result["filled_quantity"] == 0.0
+
+    # No execution occurred, so no average execution price exists.
+    assert result["average_price"] is None
+
+    # Executed notional is known to be zero because nothing filled.
+    assert result["notional"] == 0.0
+
+
+def test_filled_order_has_numeric_execution_price_and_notional(adapter):
+    result = adapter.execute(
+        market_order()
+    )
+
+    assert result["status"] == "FILLED"
+    assert result["filled_quantity"] == 0.01
+    assert result["average_price"] == 62000.0
+    assert result["notional"] == 620.0
+
+
+def test_open_sell_order_preserves_same_zero_execution_contract(adapter):
+    order = market_order()
+    order["side"] = "sell"
+    order["order_type"] = "limit"
+    order["limit_price"] = 63000.0
+
+    result = adapter.execute(order)
+
+    assert result["status"] == "OPEN"
+    assert result["filled_quantity"] == 0.0
+    assert result["average_price"] is None
+    assert result["notional"] == 0.0
