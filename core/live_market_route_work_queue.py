@@ -15,6 +15,7 @@ No transfers.
 No live orders.
 """
 
+import math
 import heapq
 import threading
 
@@ -126,23 +127,37 @@ class LiveMarketRouteWorkQueue:
 
             coalesced = False
 
-        priority = float(
-            request.get(
-                "priority",
-                0.0,
-            )
-            or 0.0
+        raw_priority = request.get(
+            "priority",
+            0.0,
         )
+
+        try:
+            priority = float(raw_priority)
+        except (TypeError, ValueError):
+            raise ValueError(
+                "priority must be a finite number"
+            )
+
+        if not math.isfinite(priority):
+            raise ValueError(
+                "priority must be a finite number"
+            )
 
         self._sequence += 1
 
         generation = self._sequence
 
+        normalized_request = dict(
+            request
+        )
+        normalized_request[
+            "priority"
+        ] = priority
+
         record = {
             "generation": generation,
-            "request": dict(
-                request
-            ),
+            "request": normalized_request,
         }
 
         self._active[
