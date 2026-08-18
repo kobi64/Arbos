@@ -68,6 +68,34 @@ class SimulatedRouteResultPnL:
                 "live_order_submitted": False,
             }
 
+        route_id = completion_record.get(
+            "route_id"
+        )
+        approval_id = completion_record.get(
+            "approval_id"
+        )
+        permission_id = completion_record.get(
+            "permission_id"
+        )
+
+        if (
+            not isinstance(route_id, str)
+            or not route_id.strip()
+            or not isinstance(approval_id, str)
+            or not approval_id.strip()
+            or not isinstance(permission_id, str)
+            or not permission_id.strip()
+        ):
+            return {
+                "evaluated": False,
+                "reason": "invalid_completion_identity",
+                "live_order_submitted": False,
+            }
+
+        route_id = route_id.strip()
+        approval_id = approval_id.strip()
+        permission_id = permission_id.strip()
+
         raw_final_output_amount = (
             completion_record.get(
                 "final_output_amount"
@@ -118,15 +146,9 @@ class SimulatedRouteResultPnL:
         return {
             "evaluated": True,
             "reason": "simulated_route_pnl_evaluated",
-            "route_id": completion_record.get(
-                "route_id"
-            ),
-            "approval_id": completion_record.get(
-                "approval_id"
-            ),
-            "permission_id": completion_record.get(
-                "permission_id"
-            ),
+            "route_id": route_id,
+            "approval_id": approval_id,
+            "permission_id": permission_id,
             "completed_leg_number": (
                 completion_record.get(
                     "completed_leg_number"
