@@ -696,3 +696,214 @@ def test_native_only_source_can_supply_markets_and_order_book():
     assert result["coin_amount"] > 0
     assert result["paper_only"] is True
     assert result["live_order_submitted"] is False
+
+
+@pytest.mark.parametrize(
+    "starting_value",
+    [
+        None,
+        "not-a-number",
+        float("nan"),
+        float("inf"),
+        float("-inf"),
+        0.0,
+        -1.0,
+    ],
+)
+def test_invalid_starting_usdt_values_are_rejected(
+    starting_value,
+):
+    preparer = PublicLiveMultiPathInputPreparer(
+        source_exchange=FakeExchange(),
+        destination_exchange=FakeExchange(
+            destination=True
+        ),
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="starting_usdt_value must be positive",
+    ):
+        preparer.prepare(
+            source_exchange_id="source",
+            destination_exchange_id="destination",
+            coin_asset="COINX",
+            starting_usdt_value=starting_value,
+            source_fee_rate=0.001,
+        )
+
+
+@pytest.mark.parametrize(
+    "fee_rate",
+    [
+        None,
+        "not-a-number",
+        float("nan"),
+        float("inf"),
+        float("-inf"),
+        -0.001,
+        1.001,
+    ],
+)
+def test_invalid_source_fee_rates_are_rejected(
+    fee_rate,
+):
+    preparer = PublicLiveMultiPathInputPreparer(
+        source_exchange=FakeExchange(),
+        destination_exchange=FakeExchange(
+            destination=True
+        ),
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="source_fee_rate must be between 0 and 1",
+    ):
+        preparer.prepare(
+            source_exchange_id="source",
+            destination_exchange_id="destination",
+            coin_asset="COINX",
+            starting_usdt_value=100.0,
+            source_fee_rate=fee_rate,
+        )
+
+
+@pytest.mark.parametrize(
+    "slippage",
+    [
+        None,
+        "not-a-number",
+        float("nan"),
+        float("inf"),
+        float("-inf"),
+        -0.1,
+    ],
+)
+def test_invalid_max_slippage_values_are_rejected(
+    slippage,
+):
+    preparer = PublicLiveMultiPathInputPreparer(
+        source_exchange=FakeExchange(),
+        destination_exchange=FakeExchange(
+            destination=True
+        ),
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="max_slippage_percent must be non-negative",
+    ):
+        preparer.prepare(
+            source_exchange_id="source",
+            destination_exchange_id="destination",
+            coin_asset="COINX",
+            starting_usdt_value=100.0,
+            source_fee_rate=0.001,
+            max_slippage_percent=slippage,
+        )
+
+
+@pytest.mark.parametrize(
+    "coin_amount",
+    [
+        None,
+        "not-a-number",
+        float("nan"),
+        float("inf"),
+        float("-inf"),
+        0.0,
+        -1.0,
+    ],
+)
+def test_invalid_depth_aware_coin_amount_is_rejected(
+    coin_amount,
+):
+    class InvalidSourceBuyQuote:
+        def quote(self, **kwargs):
+            return {
+                "filled": True,
+                "coin_amount": coin_amount,
+            }
+
+    preparer = PublicLiveMultiPathInputPreparer(
+        source_exchange=FakeExchange(),
+        destination_exchange=FakeExchange(
+            destination=True
+        ),
+        source_buy_quote=InvalidSourceBuyQuote(),
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="source buy coin_amount must be positive",
+    ):
+        preparer.prepare(
+            source_exchange_id="source",
+            destination_exchange_id="destination",
+            coin_asset="COINX",
+            starting_usdt_value=100.0,
+            source_fee_rate=0.001,
+        )
+
+
+@pytest.mark.parametrize(
+    "ask_price",
+    [
+        None,
+        "not-a-number",
+        float("nan"),
+        float("inf"),
+        float("-inf"),
+        0.0,
+        -1.0,
+    ],
+)
+def test_invalid_legacy_source_ask_price_is_rejected(
+    ask_price,
+):
+    class InvalidAskProvider:
+        def snapshot(self, symbol, limit=None):
+            books = {
+                "COINX/USDT": {
+                    "bids": [[0.99, 10000.0]],
+                    "asks": [
+                        [ask_price, 10000.0]
+                    ],
+                },
+                "COINX/BTC": {
+                    "bids": [
+                        [0.00002, 10000.0]
+                    ],
+                    "asks": [
+                        [0.000021, 10000.0]
+                    ],
+                },
+                "BTC/USDT": {
+                    "bids": [[50000.0, 10.0]],
+                    "asks": [[50010.0, 10.0]],
+                },
+            }
+
+            return books[symbol]
+
+    preparer = PublicLiveMultiPathInputPreparer(
+        source_exchange=FakeExchange(),
+        destination_exchange=FakeExchange(
+            destination=True
+        ),
+        source_order_book_provider=(
+            InvalidAskProvider()
+        ),
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="source ask price must be positive",
+    ):
+        preparer.prepare(
+            source_exchange_id="source",
+            destination_exchange_id="destination",
+            coin_asset="COINX",
+            starting_usdt_value=100.0,
+            source_fee_rate=0.001,
+        )

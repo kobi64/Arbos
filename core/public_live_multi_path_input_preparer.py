@@ -4,6 +4,8 @@ EX-142
 Public Live Multi-Path Input Preparer
 """
 
+import math
+
 from core.live_order_book_provider_adapter import (
     LiveOrderBookProviderAdapter,
 )
@@ -154,9 +156,56 @@ class PublicLiveMultiPathInputPreparer:
         source_fee_rate,
         max_slippage_percent=0.5,
     ):
-        if starting_usdt_value <= 0:
+        try:
+            starting_usdt_value = float(
+                starting_usdt_value
+            )
+        except (TypeError, ValueError):
             raise ValueError(
                 "starting_usdt_value must be positive"
+            )
+
+        if (
+            not math.isfinite(starting_usdt_value)
+            or starting_usdt_value <= 0
+        ):
+            raise ValueError(
+                "starting_usdt_value must be positive"
+            )
+
+        try:
+            source_fee_rate = float(
+                source_fee_rate
+            )
+        except (TypeError, ValueError):
+            raise ValueError(
+                "source_fee_rate must be between 0 and 1"
+            )
+
+        if (
+            not math.isfinite(source_fee_rate)
+            or source_fee_rate < 0
+            or source_fee_rate > 1
+        ):
+            raise ValueError(
+                "source_fee_rate must be between 0 and 1"
+            )
+
+        try:
+            max_slippage_percent = float(
+                max_slippage_percent
+            )
+        except (TypeError, ValueError):
+            raise ValueError(
+                "max_slippage_percent must be non-negative"
+            )
+
+        if (
+            not math.isfinite(max_slippage_percent)
+            or max_slippage_percent < 0
+        ):
+            raise ValueError(
+                "max_slippage_percent must be non-negative"
             )
 
         coin_asset = str(
@@ -264,13 +313,24 @@ class PublicLiveMultiPathInputPreparer:
                     "live_order_submitted": False,
                 }
 
-            coin_amount = float(
-                source_buy_result.get(
-                    "coin_amount",
-                    0.0,
+            try:
+                coin_amount = float(
+                    source_buy_result.get(
+                        "coin_amount"
+                    )
                 )
-                or 0.0
-            )
+            except (TypeError, ValueError):
+                raise ValueError(
+                    "source buy coin_amount must be positive"
+                )
+
+            if (
+                not math.isfinite(coin_amount)
+                or coin_amount <= 0
+            ):
+                raise ValueError(
+                    "source buy coin_amount must be positive"
+                )
 
         else:
             if self._source_order_book_provider is not None:
@@ -284,9 +344,22 @@ class PublicLiveMultiPathInputPreparer:
                     coin_symbol
                 )
 
-            ask_price = float(
-                coin_book["asks"][0][0]
-            )
+            try:
+                ask_price = float(
+                    coin_book["asks"][0][0]
+                )
+            except (TypeError, ValueError, IndexError, KeyError):
+                raise ValueError(
+                    "source ask price must be positive"
+                )
+
+            if (
+                not math.isfinite(ask_price)
+                or ask_price <= 0
+            ):
+                raise ValueError(
+                    "source ask price must be positive"
+                )
 
             gross_coin_amount = (
                 float(starting_usdt_value)
@@ -297,9 +370,17 @@ class PublicLiveMultiPathInputPreparer:
                 gross_coin_amount
                 * (
                     1.0
-                    - float(source_fee_rate)
+                    - source_fee_rate
                 )
             )
+
+            if (
+                not math.isfinite(coin_amount)
+                or coin_amount <= 0
+            ):
+                raise ValueError(
+                    "source buy coin_amount must be positive"
+                )
 
         source_network_adapter = (
             self._network_metadata_adapter_factory.build(
@@ -564,12 +645,31 @@ class PublicLiveMultiPathInputPreparer:
 
             quote = dict(quote)
 
-            quote["output_amount"] = (
-                float(
+            try:
+                output_amount = float(
                     quote["output_amount"]
                 )
-                * (1.0 - float(source_fee_rate))
+            except (TypeError, ValueError, KeyError):
+                continue
+
+            if (
+                not math.isfinite(output_amount)
+                or output_amount <= 0
+            ):
+                continue
+
+            output_amount = (
+                output_amount
+                * (1.0 - source_fee_rate)
             )
+
+            if (
+                not math.isfinite(output_amount)
+                or output_amount <= 0
+            ):
+                continue
+
+            quote["output_amount"] = output_amount
 
             bridge_quotes[
                 bridge_asset
