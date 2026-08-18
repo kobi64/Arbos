@@ -504,3 +504,135 @@ def test_numeric_string_revalidation_contract_remains_supported():
     assert result["revalidated"] is True
     assert result["allowed"] is True
     assert result["next_trade_size"] == 250.0
+
+
+# EX-340 — fresh revalidation identity continuity audit
+
+
+@pytest.mark.parametrize(
+    "field",
+    [
+        "route_id",
+        "approval_id",
+        "permission_id",
+    ],
+)
+@pytest.mark.parametrize(
+    "value",
+    [
+        None,
+        "",
+        "   ",
+        0,
+        False,
+    ],
+)
+def test_invalid_decision_control_identity_blocks_revalidation(
+    field,
+    value,
+):
+    record = decision()
+    record[field] = value
+
+    result = run_revalidation(
+        decision_result=record
+    )
+
+    assert result["revalidated"] is False
+    assert result["allowed"] is False
+    assert result["status"] == "BLOCKED"
+    assert (
+        result["reason"]
+        == "invalid_decision_identity"
+    )
+    assert result["live_order_submitted"] is False
+
+
+def test_revalidation_normalizes_control_identity():
+    record = decision()
+    record["route_id"] = "  ROUTE-001  "
+    record["approval_id"] = "  ARB-001  "
+    record["permission_id"] = "  PERM-001  "
+
+    result = run_revalidation(
+        decision_result=record
+    )
+
+    assert result["revalidated"] is True
+    assert result["allowed"] is True
+    assert result["route_id"] == "ROUTE-001"
+    assert (
+        result["previous_approval_id"]
+        == "ARB-001"
+    )
+    assert (
+        result["previous_permission_id"]
+        == "PERM-001"
+    )
+
+
+def test_revalidation_identity_normalization_does_not_mutate_decision():
+    record = decision()
+    record["route_id"] = "  ROUTE-001  "
+    record["approval_id"] = "  ARB-001  "
+    record["permission_id"] = "  PERM-001  "
+
+    run_revalidation(
+        decision_result=record
+    )
+
+    assert record["route_id"] == "  ROUTE-001  "
+    assert record["approval_id"] == "  ARB-001  "
+    assert record["permission_id"] == "  PERM-001  "
+
+
+def test_normalized_identity_preserves_repeat_revalidation_contract():
+    record = decision()
+    record["route_id"] = " ROUTE-001 "
+    record["approval_id"] = " ARB-001 "
+    record["permission_id"] = " PERM-001 "
+
+    result = run_revalidation(
+        decision_result=record
+    )
+
+    assert result["revalidated"] is True
+    assert result["allowed"] is True
+    assert result["status"] == "REVALIDATED"
+    assert result["decision"] == "REPEAT_SAME_SIZE"
+    assert result["next_trade_size"] == 250.0
+    assert result["fresh_approval_required"] is True
+    assert result["approval_granted"] is False
+    assert (
+        result["fresh_execution_permission_required"]
+        is True
+    )
+    assert result["permission_granted"] is False
+
+
+def test_normalized_identity_preserves_scale_revalidation_contract():
+    record = decision(
+        action="SCALE_UP",
+        next_trade_size=500.0,
+    )
+    record["route_id"] = " ROUTE-001 "
+    record["approval_id"] = " ARB-001 "
+    record["permission_id"] = " PERM-001 "
+
+    result = run_revalidation(
+        decision_result=record
+    )
+
+    assert result["revalidated"] is True
+    assert result["allowed"] is True
+    assert result["decision"] == "SCALE_UP"
+    assert result["route_id"] == "ROUTE-001"
+    assert result["next_trade_size"] == 500.0
+    assert (
+        result["previous_approval_id"]
+        == "ARB-001"
+    )
+    assert (
+        result["previous_permission_id"]
+        == "PERM-001"
+    )
