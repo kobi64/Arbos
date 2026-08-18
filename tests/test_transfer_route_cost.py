@@ -265,3 +265,64 @@ def test_genuine_zero_fee_route_preserves_zero():
     assert result.cost_percent == 0.0
     assert result.net_amount == 100.0
     assert result.reason == "ok"
+
+
+def test_failed_cost_route_preserves_uncalculated_values_as_unknown():
+    source = [
+        NetworkInfo(
+            "USDT",
+            "ERC20",
+            withdraw_fee=5.0,
+            min_withdraw=1.0,
+        ),
+    ]
+
+    destination = [
+        NetworkInfo(
+            "USDT",
+            "TRC20",
+        ),
+    ]
+
+    result = TransferRouteCost.evaluate(
+        amount=100.0,
+        source_networks=source,
+        destination_networks=destination,
+        max_cost_percent=10.0,
+    )
+
+    assert result.executable is False
+    assert result.cost_percent is None
+    assert result.net_amount is None
+
+
+def test_economically_rejected_route_preserves_result_values_as_unknown():
+    source = [
+        NetworkInfo(
+            "USDT",
+            "TRC20",
+            withdraw_fee=10.0,
+            min_withdraw=1.0,
+        ),
+    ]
+
+    destination = [
+        NetworkInfo(
+            "USDT",
+            "TRC20",
+        ),
+    ]
+
+    result = TransferRouteCost.evaluate(
+        amount=100.0,
+        source_networks=source,
+        destination_networks=destination,
+        max_cost_percent=5.0,
+    )
+
+    assert result.executable is False
+    assert result.cost_percent is None
+    assert result.net_amount is None
+    assert result.reason == (
+        "no_economically_acceptable_route"
+    )

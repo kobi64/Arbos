@@ -391,3 +391,57 @@ def test_genuine_zero_fee_executable_route_preserves_zero():
     assert result.network == "TRC20"
     assert result.withdraw_fee == 0.0
     assert result.net_amount == 100.0
+
+
+def test_failed_route_preserves_uncalculated_net_amount_as_unknown():
+    source = [
+        NetworkInfo(
+            "USDT",
+            "ERC20",
+            withdraw_fee=5.0,
+            min_withdraw=1.0,
+        ),
+    ]
+
+    destination = [
+        NetworkInfo(
+            "USDT",
+            "TRC20",
+        ),
+    ]
+
+    result = TransferRouteEvaluation.evaluate(
+        amount=100.0,
+        source_networks=source,
+        destination_networks=destination,
+    )
+
+    assert result.executable is False
+    assert result.net_amount is None
+
+
+def test_infeasible_route_preserves_uncalculated_net_amount_as_unknown():
+    source = [
+        NetworkInfo(
+            "USDT",
+            "TRC20",
+            withdraw_fee=None,
+            min_withdraw=1.0,
+        ),
+    ]
+
+    destination = [
+        NetworkInfo(
+            "USDT",
+            "TRC20",
+        ),
+    ]
+
+    result = TransferRouteEvaluation.evaluate(
+        amount=100.0,
+        source_networks=source,
+        destination_networks=destination,
+    )
+
+    assert result.executable is False
+    assert result.net_amount is None
