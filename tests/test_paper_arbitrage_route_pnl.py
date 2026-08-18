@@ -115,3 +115,20 @@ def test_profitability_threshold_matches_existing_evaluator(pnl):
     assert result["net_final_value"] == 1020.0
     assert result["profit_percent"] == 2.0
     assert result["profitable"] is True
+
+
+def test_costs_exceeding_gross_value_do_not_report_zero_profit(pnl):
+    result = pnl.evaluate(
+        starting_value=1000.0,
+        gross_final_value=10.0,
+        trading_fees=20.0,
+        transfer_fees=0.0,
+        other_costs=0.0,
+        minimum_profit_percent=2.0,
+    )
+
+    assert result["net_final_value"] == -10.0
+    assert result["net_profit"] is None
+    assert result["profit_percent"] is None
+    assert result["profitable"] is False
+    assert result["reason"] == "invalid_final_value"

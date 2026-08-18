@@ -88,3 +88,43 @@ def test_marks_loss_as_unprofitable():
     assert result.net_profit == -50.0
     assert result.profit_percent == -5.0
     assert result.reason == "below_minimum_profit"
+
+
+def test_invalid_starting_value_preserves_unknown_profit():
+    result = ArbitrageProfitEvaluation.evaluate(
+        starting_value=0.0,
+        final_value=1050.0,
+        minimum_profit_percent=2.0,
+    )
+
+    assert result.valid is False
+    assert result.net_profit is None
+    assert result.profit_percent is None
+    assert result.reason == "invalid_starting_value"
+
+
+def test_invalid_final_value_preserves_unknown_profit():
+    result = ArbitrageProfitEvaluation.evaluate(
+        starting_value=1000.0,
+        final_value=-10.0,
+        minimum_profit_percent=2.0,
+    )
+
+    assert result.valid is False
+    assert result.net_profit is None
+    assert result.profit_percent is None
+    assert result.reason == "invalid_final_value"
+
+
+def test_calculated_break_even_preserves_numeric_zero():
+    result = ArbitrageProfitEvaluation.evaluate(
+        starting_value=1000.0,
+        final_value=1000.0,
+        minimum_profit_percent=0.0,
+    )
+
+    assert result.valid is True
+    assert result.profitable is True
+    assert result.net_profit == 0.0
+    assert result.profit_percent == 0.0
+    assert result.reason == "ok"

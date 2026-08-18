@@ -9,14 +9,15 @@ profit threshold.
 """
 
 from dataclasses import dataclass
+from typing import Optional
 
 
 @dataclass
 class ArbitrageProfitEvaluationResult:
     valid: bool
     profitable: bool = False
-    net_profit: float = 0.0
-    profit_percent: float = 0.0
+    net_profit: Optional[float] = None
+    profit_percent: Optional[float] = None
     reason: str = ""
 
 
