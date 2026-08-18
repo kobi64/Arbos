@@ -136,3 +136,25 @@ def test_rejects_when_no_conversion_quote_is_available():
 
     assert result["available"] is False
     assert result["reason"] == "conversion_quote_unavailable"
+
+
+def test_unavailable_conversion_quote_preserves_output_as_unknown():
+    class NoQuoteProvider:
+        def quote(self, **kwargs):
+            return None
+
+    engine = BridgeConversionQuoteEngine(
+        spot_quote_provider=NoQuoteProvider(),
+        convert_quote_provider=NoQuoteProvider(),
+    )
+
+    result = engine.quote(
+        from_asset="USDT",
+        to_asset="USDC",
+        amount=100.0,
+    )
+
+    assert result["available"] is False
+    assert result["input_amount"] == 100.0
+    assert result["output_amount"] is None
+    assert result["reason"] == "conversion_quote_unavailable"

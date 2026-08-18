@@ -761,3 +761,46 @@ def test_bridge_destination_transfer_unverified_fails_closed():
     assert candidate["reason"] == (
         "transfer_verification_unavailable"
     )
+
+
+def test_transfer_verification_unavailable_preserves_transfer_amount_unknown():
+    class TransferEvaluator:
+        def evaluate(self, **kwargs):
+            raise AssertionError(
+                "transfer evaluator must not run "
+                "when verification is unavailable"
+            )
+
+    generator = CrossExchangeRouteCandidateGenerator(
+        transfer_evaluator=TransferEvaluator(),
+    )
+
+    candidates = generator.generate(
+        source_exchange="HTX",
+        destination_exchange="Gate",
+        coin_asset="BTC",
+        coin_amount=1.0,
+        source_networks={"BTC": []},
+        destination_networks={"BTC": []},
+        bridge_quotes={},
+        source_network_metadata={
+            "BTC": {
+                "transfer_verification_available": False,
+                "network_metadata_reason": "metadata_unavailable",
+            }
+        },
+        destination_network_metadata={
+            "BTC": {
+                "transfer_verification_available": True,
+            }
+        },
+    )
+
+    candidate = candidates[0]
+
+    assert candidate["executable"] is False
+    assert candidate["transfer_amount"] is None
+    assert (
+        candidate["reason"]
+        == "transfer_verification_unavailable"
+    )
