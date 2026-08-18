@@ -24,6 +24,9 @@ from core.live_paper_repeat_scale_result_feedback import (
 from core.controlled_repeat_scale_continuation import (
     ControlledRepeatScaleContinuation,
 )
+from core.repeat_scale_market_provenance import (
+    RepeatScaleMarketProvenance,
+)
 
 
 class EndToEndLiveMarketPaperCycleController:
@@ -32,6 +35,12 @@ class EndToEndLiveMarketPaperCycleController:
             raise ValueError(
                 "snapshot_engine is required"
             )
+
+        self._market_provenance = (
+            RepeatScaleMarketProvenance(
+                snapshot_engine
+            )
+        )
 
         self._execution = (
             LivePaperRepeatScaleCycleOrchestration(
@@ -182,6 +191,74 @@ class EndToEndLiveMarketPaperCycleController:
                 ),
             })
 
+        decision_record = (
+            feedback_result.get(
+                "decision_result"
+            )
+            or {}
+        )
+
+        decision_name = str(
+            decision_record.get(
+                "decision",
+                "",
+            )
+        ).strip().upper()
+
+        market_provenance = None
+
+        revalidation_available_liquidity = (
+            available_liquidity
+        )
+        revalidation_expected_price = (
+            expected_price
+        )
+        revalidation_current_price = (
+            current_price
+        )
+
+        if (
+            decision_record.get("allowed")
+            is True
+            and decision_name
+            in {
+                "REPEAT_SAME_SIZE",
+                "SCALE_UP",
+            }
+        ):
+            fresh_market = (
+                self._market_provenance.capture(
+                    route=route,
+                    trade_amount=(
+                        decision_record.get(
+                            "next_trade_size",
+                            starting_value,
+                        )
+                    ),
+                )
+            )
+
+            revalidation_available_liquidity = (
+                fresh_market[
+                    "available_liquidity"
+                ]
+            )
+            revalidation_expected_price = (
+                fresh_market[
+                    "expected_price"
+                ]
+            )
+            revalidation_current_price = (
+                fresh_market[
+                    "current_price"
+                ]
+            )
+            market_provenance = (
+                fresh_market[
+                    "market_provenance"
+                ]
+            )
+
         continuation_result = (
             self._continuation.prepare_next(
                 feedback_result=(
@@ -221,13 +298,17 @@ class EndToEndLiveMarketPaperCycleController:
                     transfer_amount
                 ),
                 available_liquidity=(
-                    available_liquidity
+                    revalidation_available_liquidity
                 ),
                 minimum_liquidity_ratio=(
                     minimum_liquidity_ratio
                 ),
-                expected_price=expected_price,
-                current_price=current_price,
+                expected_price=(
+                    revalidation_expected_price
+                ),
+                current_price=(
+                    revalidation_current_price
+                ),
                 max_slippage_percent=(
                     max_slippage_percent
                 ),
@@ -241,6 +322,16 @@ class EndToEndLiveMarketPaperCycleController:
                 ),
             )
         )
+
+        if market_provenance is not None:
+            continuation_result = dict(
+                continuation_result
+            )
+            continuation_result[
+                "market_provenance"
+            ] = dict(
+                market_provenance
+            )
 
         return self._record({
             "cycle_complete": True,
