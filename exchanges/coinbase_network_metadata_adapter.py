@@ -160,6 +160,10 @@ class CoinbaseNetworkMetadataAdapter:
                         or network_id
                     ),
                     "active": True,
+                    "deposit_enabled": None,
+                    "withdraw_enabled": None,
+                    "withdraw_fee": None,
+                    "transfer_verification_available": False,
                     "default": (
                         network_id
                         == default_network
