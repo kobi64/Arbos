@@ -65,11 +65,31 @@ class ExchangeOrderManagementEngine:
 
             return None
 
-        self._orders[order_id]["status"] = status
+        order = self._orders[order_id]
 
-        return dict(
-            self._orders[order_id]
-        )
+        valid_statuses = {
+            "CREATED",
+            "FILLED",
+            "CANCELLED",
+        }
+
+        if (
+            not isinstance(status, str)
+            or status not in valid_statuses
+        ):
+            return dict(order)
+
+        terminal_statuses = {
+            "FILLED",
+            "CANCELLED",
+        }
+
+        if order["status"] in terminal_statuses:
+            return dict(order)
+
+        order["status"] = status
+
+        return dict(order)
 
     def cancel_order(
         self,

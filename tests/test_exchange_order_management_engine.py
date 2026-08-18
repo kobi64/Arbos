@@ -311,3 +311,222 @@ def test_history_returns_snapshots_not_internal_records():
     assert stored["side"] == "BUY"
     assert stored["amount"] == 100
     assert stored["status"] == "CREATED"
+
+
+# EX-334 — order status transition integrity audit
+
+
+def test_created_order_can_transition_to_filled():
+
+    engine = ExchangeOrderManagementEngine()
+
+    created = engine.create_order(
+        "HTX",
+        "BTC/USDT",
+        "BUY",
+        100,
+    )
+
+    result = engine.update_status(
+        created["order_id"],
+        "FILLED",
+    )
+
+    assert result["status"] == "FILLED"
+
+
+def test_created_order_can_transition_to_cancelled():
+
+    engine = ExchangeOrderManagementEngine()
+
+    created = engine.create_order(
+        "HTX",
+        "BTC/USDT",
+        "BUY",
+        100,
+    )
+
+    result = engine.update_status(
+        created["order_id"],
+        "CANCELLED",
+    )
+
+    assert result["status"] == "CANCELLED"
+
+
+def test_filled_order_cannot_transition_to_cancelled():
+
+    engine = ExchangeOrderManagementEngine()
+
+    created = engine.create_order(
+        "HTX",
+        "BTC/USDT",
+        "BUY",
+        100,
+    )
+
+    order_id = created["order_id"]
+
+    engine.update_status(
+        order_id,
+        "FILLED",
+    )
+
+    result = engine.update_status(
+        order_id,
+        "CANCELLED",
+    )
+
+    assert result["status"] == "FILLED"
+
+    stored = engine.get_order(order_id)
+
+    assert stored["status"] == "FILLED"
+
+
+def test_cancelled_order_cannot_transition_to_filled():
+
+    engine = ExchangeOrderManagementEngine()
+
+    created = engine.create_order(
+        "HTX",
+        "BTC/USDT",
+        "BUY",
+        100,
+    )
+
+    order_id = created["order_id"]
+
+    engine.update_status(
+        order_id,
+        "CANCELLED",
+    )
+
+    result = engine.update_status(
+        order_id,
+        "FILLED",
+    )
+
+    assert result["status"] == "CANCELLED"
+
+    stored = engine.get_order(order_id)
+
+    assert stored["status"] == "CANCELLED"
+
+
+def test_terminal_status_cannot_return_to_created():
+
+    for terminal_status in (
+        "FILLED",
+        "CANCELLED",
+    ):
+        engine = ExchangeOrderManagementEngine()
+
+        created = engine.create_order(
+            "HTX",
+            "BTC/USDT",
+            "BUY",
+            100,
+        )
+
+        order_id = created["order_id"]
+
+        engine.update_status(
+            order_id,
+            terminal_status,
+        )
+
+        result = engine.update_status(
+            order_id,
+            "CREATED",
+        )
+
+        assert result["status"] == terminal_status
+
+        stored = engine.get_order(order_id)
+
+        assert stored["status"] == terminal_status
+
+
+def test_unknown_status_does_not_mutate_order():
+
+    engine = ExchangeOrderManagementEngine()
+
+    created = engine.create_order(
+        "HTX",
+        "BTC/USDT",
+        "BUY",
+        100,
+    )
+
+    order_id = created["order_id"]
+
+    result = engine.update_status(
+        order_id,
+        "CORRUPTED",
+    )
+
+    assert result["status"] == "CREATED"
+
+    stored = engine.get_order(order_id)
+
+    assert stored["status"] == "CREATED"
+
+
+def test_blank_status_does_not_mutate_order():
+
+    engine = ExchangeOrderManagementEngine()
+
+    created = engine.create_order(
+        "HTX",
+        "BTC/USDT",
+        "BUY",
+        100,
+    )
+
+    order_id = created["order_id"]
+
+    for status in (
+        None,
+        "",
+        "   ",
+        False,
+        0,
+    ):
+        result = engine.update_status(
+            order_id,
+            status,
+        )
+
+        assert result["status"] == "CREATED"
+
+        stored = engine.get_order(order_id)
+
+        assert stored["status"] == "CREATED"
+
+
+def test_cancel_filled_order_preserves_filled_status():
+
+    engine = ExchangeOrderManagementEngine()
+
+    created = engine.create_order(
+        "HTX",
+        "BTC/USDT",
+        "BUY",
+        100,
+    )
+
+    order_id = created["order_id"]
+
+    engine.update_status(
+        order_id,
+        "FILLED",
+    )
+
+    result = engine.cancel_order(order_id)
+
+    assert result["status"] == "FILLED"
+
+    stored = engine.get_order(order_id)
+
+    assert stored["status"] == "FILLED"
