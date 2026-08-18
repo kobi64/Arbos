@@ -75,3 +75,117 @@ def test_invalid_side_is_rejected(engine):
 
     with pytest.raises(ValueError, match="invalid side"):
         engine.evaluate(route=route, starting_value=1000.0)
+
+
+@pytest.mark.parametrize(
+    "starting_value",
+    [
+        None,
+        "not-a-number",
+        float("nan"),
+        float("inf"),
+        float("-inf"),
+        0.0,
+        -1.0,
+    ],
+)
+def test_invalid_numeric_starting_values_are_rejected(
+    engine,
+    starting_value,
+):
+    with pytest.raises(
+        ValueError,
+        match="starting_value must be positive",
+    ):
+        engine.evaluate(
+            route=valid_route(),
+            starting_value=starting_value,
+        )
+
+
+@pytest.mark.parametrize(
+    "market_price",
+    [
+        None,
+        "not-a-number",
+        float("nan"),
+        float("inf"),
+        float("-inf"),
+        0.0,
+        -1.0,
+    ],
+)
+@pytest.mark.parametrize(
+    "side,price_field",
+    [
+        ("buy", "ask"),
+        ("sell", "bid"),
+    ],
+)
+def test_invalid_numeric_market_prices_are_rejected(
+    side,
+    price_field,
+    market_price,
+):
+    class Provider:
+        def get_ask(self, symbol):
+            if price_field == "ask":
+                return market_price
+            return 62000.0
+
+        def get_bid(self, symbol):
+            if price_field == "bid":
+                return market_price
+            return 62000.0
+
+    engine = LiveRouteValuationEngine(Provider())
+
+    route = {
+        "route_id": "ROUTE-NUMERIC-AUDIT",
+        "legs": [
+            {
+                "symbol": "BTC/USDT",
+                "side": side,
+            }
+        ],
+    }
+
+    with pytest.raises(
+        ValueError,
+        match="market price unavailable",
+    ):
+        engine.evaluate(
+            route=route,
+            starting_value=1000.0,
+        )
+
+
+def test_numeric_strings_are_normalized(engine):
+    result = engine.evaluate(
+        route=valid_route(),
+        starting_value="1000",
+    )
+
+    assert result["starting_value"] == 1000.0
+    assert isinstance(result["starting_value"], float)
+
+    for leg in result["legs"]:
+        assert isinstance(leg["input_amount"], float)
+        assert isinstance(leg["price"], float)
+        assert isinstance(leg["output_amount"], float)
+
+    assert isinstance(result["gross_final_value"], float)
+
+
+def test_empty_route_preserves_finite_starting_value(engine):
+    result = engine.evaluate(
+        route={
+            "route_id": "EMPTY",
+            "legs": [],
+        },
+        starting_value="1000",
+    )
+
+    assert result["starting_value"] == 1000.0
+    assert result["gross_final_value"] == 1000.0
+    assert result["legs"] == []
