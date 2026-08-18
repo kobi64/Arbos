@@ -48,7 +48,12 @@ class ExchangeOrderManagementEngine:
         order_id
     ):
 
-        return self._orders.get(order_id)
+        order = self._orders.get(order_id)
+
+        if order is None:
+            return None
+
+        return dict(order)
 
     def update_status(
         self,
@@ -62,7 +67,9 @@ class ExchangeOrderManagementEngine:
 
         self._orders[order_id]["status"] = status
 
-        return self._orders[order_id]
+        return dict(
+            self._orders[order_id]
+        )
 
     def cancel_order(
         self,
@@ -76,6 +83,7 @@ class ExchangeOrderManagementEngine:
 
     def get_history(self):
 
-        return list(
-            self._orders.values()
-        )
+        return [
+            dict(order)
+            for order in self._orders.values()
+        ]
