@@ -139,3 +139,60 @@ def test_invalid_max_queue_size_is_rejected(clock):
             max_queue_size=0,
             clock=clock.now,
         )
+
+
+@pytest.mark.parametrize(
+    "priority",
+    [
+        None,
+        True,
+        False,
+        "not-a-number",
+        float("nan"),
+        float("inf"),
+        float("-inf"),
+    ],
+)
+def test_rejects_invalid_priority_values(manager, priority):
+    with pytest.raises(
+        ValueError,
+        match="priority must be a finite number",
+    ):
+        manager.enqueue({
+            "request_id": "REQ-INVALID",
+            "exchange_id": "kraken",
+            "operation": "fetch_balance",
+            "priority": priority,
+        })
+
+
+def test_missing_priority_defaults_to_zero(manager):
+    result = manager.enqueue({
+        "request_id": "REQ-DEFAULT",
+        "exchange_id": "kraken",
+        "operation": "fetch_balance",
+    })
+
+    assert result["priority"] == 0.0
+
+
+def test_numeric_string_priority_is_normalized(manager):
+    result = manager.enqueue({
+        "request_id": "REQ-STRING",
+        "exchange_id": "kraken",
+        "operation": "fetch_balance",
+        "priority": "5.5",
+    })
+
+    assert result["priority"] == 5.5
+
+
+def test_negative_finite_priority_is_allowed(manager):
+    result = manager.enqueue({
+        "request_id": "REQ-NEGATIVE",
+        "exchange_id": "kraken",
+        "operation": "fetch_balance",
+        "priority": -2.5,
+    })
+
+    assert result["priority"] == -2.5

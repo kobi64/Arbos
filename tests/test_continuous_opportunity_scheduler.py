@@ -55,3 +55,52 @@ def test_process_next_returns_none_when_queue_empty(scheduler):
 def test_missing_opportunity_id_is_rejected(scheduler):
     with pytest.raises(ValueError, match="opportunity_id is required"):
         scheduler.enqueue({"priority": 1})
+
+
+@pytest.mark.parametrize(
+    "priority",
+    [
+        None,
+        True,
+        False,
+        "not-a-number",
+        float("nan"),
+        float("inf"),
+        float("-inf"),
+    ],
+)
+def test_rejects_invalid_priority_values(scheduler, priority):
+    with pytest.raises(
+        ValueError,
+        match="priority must be a finite number",
+    ):
+        scheduler.enqueue({
+            "opportunity_id": "OPP-INVALID",
+            "priority": priority,
+        })
+
+
+def test_missing_priority_defaults_to_zero(scheduler):
+    result = scheduler.enqueue({
+        "opportunity_id": "OPP-DEFAULT",
+    })
+
+    assert result["priority"] == 0.0
+
+
+def test_numeric_string_priority_is_normalized(scheduler):
+    result = scheduler.enqueue({
+        "opportunity_id": "OPP-STRING",
+        "priority": "5.5",
+    })
+
+    assert result["priority"] == 5.5
+
+
+def test_negative_finite_priority_is_allowed(scheduler):
+    result = scheduler.enqueue({
+        "opportunity_id": "OPP-NEGATIVE",
+        "priority": -2.5,
+    })
+
+    assert result["priority"] == -2.5
