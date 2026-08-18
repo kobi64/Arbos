@@ -17,8 +17,11 @@ EX-349 guarantees:
 - market inputs derived from order-book depth
 - caller-supplied market values are not authoritative
 
-Wall-clock snapshot-age verification and cross-venue binding are
-separate live-market concerns and are not claimed here.
+EX-350 extends these guarantees with:
+- wall-clock snapshot-age verification
+- future-dated snapshot rejection
+- epoch-second / epoch-millisecond timestamp normalization
+- entry-venue identity binding for repeat/scale revalidation
 """
 
 import math
@@ -29,6 +32,9 @@ from exchanges.multi_leg_atomic_market_snapshot import (
 from exchanges.order_book_liquidity_slippage_engine import (
     OrderBookLiquiditySlippageEngine,
 )
+from core.market_data_freshness_guard import (
+    MarketDataFreshnessGuard,
+)
 
 
 class RepeatScaleMarketProvenance:
@@ -36,6 +42,8 @@ class RepeatScaleMarketProvenance:
         self,
         snapshot_engine,
         max_snapshot_spread_ms=250,
+        max_snapshot_age_seconds=5.0,
+        clock=None,
     ):
         if snapshot_engine is None:
             raise ValueError(
@@ -55,10 +63,20 @@ class RepeatScaleMarketProvenance:
             OrderBookLiquiditySlippageEngine()
         )
 
+        self._freshness = (
+            MarketDataFreshnessGuard(
+                max_age_seconds=(
+                    max_snapshot_age_seconds
+                ),
+                clock=clock,
+            )
+        )
+
     def capture(
         self,
         route,
         trade_amount,
+        expected_entry_exchange=None,
     ):
         if not isinstance(route, dict):
             raise ValueError(
@@ -238,6 +256,26 @@ class RepeatScaleMarketProvenance:
                     "invalid snapshot timestamp"
                 )
 
+            # ArbOS market timestamps use epoch seconds at
+            # the freshness boundary. CCXT/native feeds may
+            # supply epoch milliseconds, so normalize them.
+            timestamp_seconds = timestamp
+
+            if timestamp_seconds > 100000000000.0:
+                timestamp_seconds = (
+                    timestamp_seconds / 1000.0
+                )
+
+            freshness = self._freshness.evaluate(
+                symbol=symbol,
+                timestamp=timestamp_seconds,
+            )
+
+            if freshness.get("fresh") is not True:
+                raise ValueError(
+                    "fresh market snapshot required"
+                )
+
             symbols.append(symbol)
 
             exchange_id = str(
@@ -255,6 +293,37 @@ class RepeatScaleMarketProvenance:
 
         entry_leg = legs[0]
         entry_snapshot = snapshots[0]
+
+        expected_entry_exchange = str(
+            expected_entry_exchange
+            or route.get(
+                "source_exchange",
+                "",
+            )
+            or ""
+        ).strip().lower()
+
+        captured_entry_exchange = str(
+            entry_snapshot.get(
+                "exchange_id",
+                "",
+            )
+            or ""
+        ).strip().lower()
+
+        if expected_entry_exchange:
+            if not captured_entry_exchange:
+                raise ValueError(
+                    "snapshot exchange_id required"
+                )
+
+            if (
+                captured_entry_exchange
+                != expected_entry_exchange
+            ):
+                raise ValueError(
+                    "snapshot exchange mismatch"
+                )
 
         entry_side = str(
             entry_leg.get(
@@ -338,7 +407,19 @@ class RepeatScaleMarketProvenance:
         provenance = {
             "route_id": route_id,
             "independent_revalidation_capture": True,
-            "snapshot_age_verified": False,
+            "snapshot_age_verified": True,
+            "timestamp_unit": "epoch_seconds",
+            "entry_exchange_expected": (
+                expected_entry_exchange or None
+            ),
+            "entry_exchange_captured": (
+                captured_entry_exchange or None
+            ),
+            "entry_exchange_verified": bool(
+                expected_entry_exchange
+                and captured_entry_exchange
+                == expected_entry_exchange
+            ),
             "snapshot_count": len(
                 snapshots
             ),

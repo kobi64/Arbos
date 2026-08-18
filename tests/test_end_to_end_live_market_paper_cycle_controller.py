@@ -1,3 +1,5 @@
+import time
+
 import pytest
 
 from core.end_to_end_live_market_paper_cycle_controller import (
@@ -8,14 +10,17 @@ from exchanges.network_registry import NetworkInfo
 
 class FakeSnapshotEngine:
     def __init__(self):
-        self.timestamp = 1000
+        # Keep synthetic observations recent but safely
+        # behind wall-clock time. Incrementing from
+        # time.time() would manufacture future market data.
+        self.timestamp = time.time() - 1.0
 
     def snapshot(
         self,
         symbol,
         limit=None,
     ):
-        self.timestamp += 1
+        self.timestamp += 0.001
 
         books = {
             "BTC/USDT": {
@@ -35,6 +40,7 @@ class FakeSnapshotEngine:
         book = books[symbol]
 
         return {
+            "exchange_id": "kucoin",
             "symbol": symbol,
             "bids": book["bids"],
             "asks": book["asks"],
@@ -631,7 +637,10 @@ class ChangingMarketSnapshotEngine:
         second_market_liquidity=True,
     ):
         self.calls = []
-        self.timestamp = 1000
+        # Two three-leg captures require six monotonically
+        # increasing timestamps. Start one second behind
+        # wall clock and advance by only one millisecond.
+        self.timestamp = time.time() - 1.0
         self.second_market_liquidity = (
             second_market_liquidity
         )
@@ -642,7 +651,7 @@ class ChangingMarketSnapshotEngine:
         limit=None,
     ):
         self.calls.append(symbol)
-        self.timestamp += 1
+        self.timestamp += 0.001
 
         capture_number = (
             (len(self.calls) - 1) // 3
@@ -871,7 +880,7 @@ def test_repeat_scale_result_contains_market_provenance():
 
     assert provenance[
         "snapshot_age_verified"
-    ] is False
+    ] is True
 
     assert provenance[
         "snapshot_count"
@@ -949,3 +958,184 @@ def test_market_provenance_remains_paper_only():
 
     assert provenance["paper_only"] is True
     assert provenance["live_order_submitted"] is False
+
+
+class EX350Clock:
+    def __init__(self, value):
+        self.value = float(value)
+
+    def now(self):
+        return self.value
+
+
+class EX350SnapshotEngine:
+    def __init__(
+        self,
+        *,
+        timestamp,
+        exchange_id="kucoin",
+    ):
+        self.timestamp = timestamp
+        self.exchange_id = exchange_id
+
+    def snapshot(self, symbol, limit=None):
+        books = {
+            "BTC/USDT": {
+                "bids": [[61900.0, 10.0]],
+                "asks": [[62000.0, 10.0]],
+            },
+            "ETH/BTC": {
+                "bids": [[0.049, 100.0]],
+                "asks": [[0.05, 100.0]],
+            },
+            "ETH/USDT": {
+                "bids": [[3300.0, 100.0]],
+                "asks": [[3310.0, 100.0]],
+            },
+        }
+
+        book = books[symbol]
+
+        return {
+            "exchange_id": self.exchange_id,
+            "symbol": symbol,
+            "bids": book["bids"],
+            "asks": book["asks"],
+            "timestamp": self.timestamp,
+            "paper_only": True,
+            "live_order_submitted": False,
+        }
+
+
+def test_ex350_provenance_accepts_fresh_epoch_seconds():
+    from core.repeat_scale_market_provenance import (
+        RepeatScaleMarketProvenance,
+    )
+
+    clock = EX350Clock(2000.0)
+
+    service = RepeatScaleMarketProvenance(
+        EX350SnapshotEngine(
+            timestamp=1998.0,
+        ),
+        clock=clock.now,
+    )
+
+    result = service.capture(
+        route=route(),
+        trade_amount=250.0,
+        expected_entry_exchange="kucoin",
+    )
+
+    provenance = result["market_provenance"]
+
+    assert provenance["snapshot_age_verified"] is True
+    assert provenance["timestamp_unit"] == "epoch_seconds"
+    assert provenance["entry_exchange_verified"] is True
+    assert provenance["entry_exchange_expected"] == "kucoin"
+    assert provenance["entry_exchange_captured"] == "kucoin"
+
+
+def test_ex350_provenance_accepts_fresh_epoch_milliseconds():
+    from core.repeat_scale_market_provenance import (
+        RepeatScaleMarketProvenance,
+    )
+
+    clock = EX350Clock(1700000000.0)
+
+    service = RepeatScaleMarketProvenance(
+        EX350SnapshotEngine(
+            timestamp=1699999998000.0,
+        ),
+        clock=clock.now,
+    )
+
+    result = service.capture(
+        route=route(),
+        trade_amount=250.0,
+        expected_entry_exchange="kucoin",
+    )
+
+    assert (
+        result["market_provenance"][
+            "snapshot_age_verified"
+        ]
+        is True
+    )
+
+
+def test_ex350_rejects_stale_revalidation_snapshot():
+    from core.repeat_scale_market_provenance import (
+        RepeatScaleMarketProvenance,
+    )
+
+    clock = EX350Clock(2000.0)
+
+    service = RepeatScaleMarketProvenance(
+        EX350SnapshotEngine(
+            timestamp=1900.0,
+        ),
+        clock=clock.now,
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="fresh market snapshot required",
+    ):
+        service.capture(
+            route=route(),
+            trade_amount=250.0,
+            expected_entry_exchange="kucoin",
+        )
+
+
+def test_ex350_rejects_wrong_entry_exchange():
+    from core.repeat_scale_market_provenance import (
+        RepeatScaleMarketProvenance,
+    )
+
+    clock = EX350Clock(2000.0)
+
+    service = RepeatScaleMarketProvenance(
+        EX350SnapshotEngine(
+            timestamp=1999.0,
+            exchange_id="gate",
+        ),
+        clock=clock.now,
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="snapshot exchange mismatch",
+    ):
+        service.capture(
+            route=route(),
+            trade_amount=250.0,
+            expected_entry_exchange="kucoin",
+        )
+
+
+def test_ex350_rejects_missing_entry_exchange_identity():
+    from core.repeat_scale_market_provenance import (
+        RepeatScaleMarketProvenance,
+    )
+
+    clock = EX350Clock(2000.0)
+
+    service = RepeatScaleMarketProvenance(
+        EX350SnapshotEngine(
+            timestamp=1999.0,
+            exchange_id="",
+        ),
+        clock=clock.now,
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="snapshot exchange_id required",
+    ):
+        service.capture(
+            route=route(),
+            trade_amount=250.0,
+            expected_entry_exchange="kucoin",
+        )
