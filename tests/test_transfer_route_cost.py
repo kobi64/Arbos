@@ -144,3 +144,124 @@ def test_rejects_invalid_amount():
 
     assert result.executable is False
     assert result.reason == "invalid_amount"
+
+
+def test_no_compatible_network_does_not_report_zero_withdraw_fee():
+    source = [
+        NetworkInfo(
+            "USDT",
+            "ERC20",
+            withdraw_fee=5.0,
+        ),
+    ]
+
+    destination = [
+        NetworkInfo(
+            "USDT",
+            "TRC20",
+        ),
+    ]
+
+    result = TransferRouteCost.evaluate(
+        amount=100.0,
+        source_networks=source,
+        destination_networks=destination,
+        max_cost_percent=10.0,
+    )
+
+    assert result.executable is False
+    assert result.network is None
+    assert result.withdraw_fee is None
+    assert result.reason == "no_compatible_network"
+
+
+def test_unknown_withdraw_fee_does_not_report_zero_cost_route():
+    source = [
+        NetworkInfo(
+            "USDT",
+            "TRC20",
+            withdraw_fee=None,
+            min_withdraw=1.0,
+        ),
+    ]
+
+    destination = [
+        NetworkInfo(
+            "USDT",
+            "TRC20",
+        ),
+    ]
+
+    result = TransferRouteCost.evaluate(
+        amount=100.0,
+        source_networks=source,
+        destination_networks=destination,
+        max_cost_percent=10.0,
+    )
+
+    assert result.executable is False
+    assert result.network is None
+    assert result.withdraw_fee is None
+    assert result.reason == (
+        "no_economically_acceptable_route"
+    )
+
+
+def test_invalid_amount_does_not_report_zero_withdraw_fee():
+    source = [
+        NetworkInfo(
+            "USDT",
+            "TRC20",
+            withdraw_fee=1.0,
+        ),
+    ]
+
+    destination = [
+        NetworkInfo(
+            "USDT",
+            "TRC20",
+        ),
+    ]
+
+    result = TransferRouteCost.evaluate(
+        amount=0.0,
+        source_networks=source,
+        destination_networks=destination,
+        max_cost_percent=10.0,
+    )
+
+    assert result.executable is False
+    assert result.withdraw_fee is None
+    assert result.reason == "invalid_amount"
+
+
+def test_genuine_zero_fee_route_preserves_zero():
+    source = [
+        NetworkInfo(
+            "USDT",
+            "TRC20",
+            withdraw_fee=0.0,
+            min_withdraw=1.0,
+        ),
+    ]
+
+    destination = [
+        NetworkInfo(
+            "USDT",
+            "TRC20",
+        ),
+    ]
+
+    result = TransferRouteCost.evaluate(
+        amount=100.0,
+        source_networks=source,
+        destination_networks=destination,
+        max_cost_percent=10.0,
+    )
+
+    assert result.executable is True
+    assert result.network == "TRC20"
+    assert result.withdraw_fee == 0.0
+    assert result.cost_percent == 0.0
+    assert result.net_amount == 100.0
+    assert result.reason == "ok"
