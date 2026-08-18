@@ -97,3 +97,98 @@ def test_each_execution_gets_unique_paper_order_id(bridge):
     second = bridge.execute(valid_order())
 
     assert first["paper_order_id"] != second["paper_order_id"]
+
+
+@pytest.mark.parametrize(
+    "quantity",
+    [
+        None,
+        "not-a-number",
+        float("nan"),
+        float("inf"),
+        float("-inf"),
+        0.0,
+        -1.0,
+    ],
+)
+def test_invalid_numeric_quantity_values_are_rejected(
+    bridge,
+    quantity,
+):
+    order = valid_order()
+    order["quantity"] = quantity
+
+    with pytest.raises(
+        ValueError,
+        match="quantity must be positive",
+    ):
+        bridge.execute(order)
+
+
+def test_missing_quantity_is_rejected(bridge):
+    order = valid_order()
+    del order["quantity"]
+
+    with pytest.raises(
+        ValueError,
+        match="quantity must be positive",
+    ):
+        bridge.execute(order)
+
+
+@pytest.mark.parametrize(
+    "market_price",
+    [
+        None,
+        "not-a-number",
+        float("nan"),
+        float("inf"),
+        float("-inf"),
+        0.0,
+        -1.0,
+    ],
+)
+def test_invalid_numeric_market_prices_are_rejected(
+    market_price,
+):
+    provider = FakeMarketDataProvider(
+        {
+            "BTC/USDT": market_price,
+        }
+    )
+
+    paper_bridge = LiveMarketPaperBridge(
+        provider
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="market price unavailable",
+    ):
+        paper_bridge.execute(
+            valid_order()
+        )
+
+
+def test_numeric_strings_are_normalized():
+    provider = FakeMarketDataProvider(
+        {
+            "BTC/USDT": "62000",
+        }
+    )
+
+    paper_bridge = LiveMarketPaperBridge(
+        provider
+    )
+
+    order = valid_order()
+    order["quantity"] = "0.01"
+
+    result = paper_bridge.execute(
+        order
+    )
+
+    assert result["filled_quantity"] == 0.01
+    assert result["average_price"] == 62000.0
+    assert result["notional"] == 620.0
+    assert result["market_price"] == 62000.0
