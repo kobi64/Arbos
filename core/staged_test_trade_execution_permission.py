@@ -9,6 +9,8 @@ approved staged test-trade handoff.
 This module does not execute trades or submit live orders.
 """
 
+import math
+
 
 class StagedTestTradeExecutionPermission:
     def __init__(self):
@@ -44,6 +46,73 @@ class StagedTestTradeExecutionPermission:
                 "live_order_submitted": False,
             }
 
+        identity = {}
+
+        for field in (
+            "route_id",
+            "approval_id",
+            "asset",
+        ):
+            value = handoff_result.get(field)
+
+            if (
+                not isinstance(value, str)
+                or not value.strip()
+            ):
+                return {
+                    "permission_granted": False,
+                    "status": "blocked",
+                    "reason": f"{field}_required",
+                    "live_order_submitted": False,
+                }
+
+            normalized = value.strip()
+
+            if field == "asset":
+                normalized = normalized.upper()
+
+            identity[field] = normalized
+
+        raw_trade_amount = handoff_result.get(
+            "trade_amount",
+            0.0,
+        )
+
+        if isinstance(raw_trade_amount, bool):
+            return {
+                "permission_granted": False,
+                "status": "blocked",
+                "reason": "invalid_trade_amount",
+                "live_order_submitted": False,
+            }
+
+        try:
+            trade_amount = float(
+                raw_trade_amount
+            )
+        except (
+            TypeError,
+            ValueError,
+            OverflowError,
+        ):
+            return {
+                "permission_granted": False,
+                "status": "blocked",
+                "reason": "invalid_trade_amount",
+                "live_order_submitted": False,
+            }
+
+        if (
+            not math.isfinite(trade_amount)
+            or trade_amount <= 0
+        ):
+            return {
+                "permission_granted": False,
+                "status": "blocked",
+                "reason": "invalid_trade_amount",
+                "live_order_submitted": False,
+            }
+
         self._counter += 1
 
         permission_id = (
@@ -52,21 +121,10 @@ class StagedTestTradeExecutionPermission:
 
         record = {
             "permission_id": permission_id,
-            "route_id": handoff_result.get(
-                "route_id"
-            ),
-            "approval_id": handoff_result.get(
-                "approval_id"
-            ),
-            "asset": handoff_result.get(
-                "asset"
-            ),
-            "trade_amount": float(
-                handoff_result.get(
-                    "trade_amount",
-                    0.0,
-                )
-            ),
+            "route_id": identity["route_id"],
+            "approval_id": identity["approval_id"],
+            "asset": identity["asset"],
+            "trade_amount": trade_amount,
         }
 
         self._pending[
@@ -99,13 +157,47 @@ class StagedTestTradeExecutionPermission:
             permission_id
         ]
 
-        expected_amount = float(
-            record["trade_amount"]
-        )
+        expected_amount = record[
+            "trade_amount"
+        ]
 
-        supplied_amount = float(
-            trade_amount
-        )
+        if isinstance(trade_amount, bool):
+            return {
+                **record,
+                "permission_granted": False,
+                "status": "blocked",
+                "reason": "invalid_trade_amount",
+                "live_order_submitted": False,
+            }
+
+        try:
+            supplied_amount = float(
+                trade_amount
+            )
+        except (
+            TypeError,
+            ValueError,
+            OverflowError,
+        ):
+            return {
+                **record,
+                "permission_granted": False,
+                "status": "blocked",
+                "reason": "invalid_trade_amount",
+                "live_order_submitted": False,
+            }
+
+        if (
+            not math.isfinite(supplied_amount)
+            or supplied_amount <= 0
+        ):
+            return {
+                **record,
+                "permission_granted": False,
+                "status": "blocked",
+                "reason": "invalid_trade_amount",
+                "live_order_submitted": False,
+            }
 
         if supplied_amount != expected_amount:
             return {

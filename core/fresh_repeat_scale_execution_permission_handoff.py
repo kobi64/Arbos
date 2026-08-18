@@ -13,6 +13,8 @@ only and cannot authorize this trade.
 This module does not grant execution permission or submit orders.
 """
 
+import math
+
 
 class FreshRepeatScaleExecutionPermissionHandoff:
     def prepare(
@@ -97,24 +99,77 @@ class FreshRepeatScaleExecutionPermissionHandoff:
             {},
         )
 
-        requested_amount = float(
-            request.get(
-                "trade_amount",
-                0.0,
-            )
+        raw_requested_amount = request.get(
+            "trade_amount",
+            0.0,
         )
 
-        approved_amount = float(
-            approval_summary.get(
-                "trade_amount",
-                0.0,
-            )
-        )
-
-        if requested_amount <= 0:
+        if isinstance(raw_requested_amount, bool):
             return {
                 "handoff_ready": False,
                 "reason": "invalid_requested_trade_amount",
+                "live_order_submitted": False,
+            }
+
+        try:
+            requested_amount = float(
+                raw_requested_amount
+            )
+        except (
+            TypeError,
+            ValueError,
+            OverflowError,
+        ):
+            return {
+                "handoff_ready": False,
+                "reason": "invalid_requested_trade_amount",
+                "live_order_submitted": False,
+            }
+
+        if (
+            not math.isfinite(requested_amount)
+            or requested_amount <= 0
+        ):
+            return {
+                "handoff_ready": False,
+                "reason": "invalid_requested_trade_amount",
+                "live_order_submitted": False,
+            }
+
+        raw_approved_amount = approval_summary.get(
+            "trade_amount",
+            0.0,
+        )
+
+        if isinstance(raw_approved_amount, bool):
+            return {
+                "handoff_ready": False,
+                "reason": "invalid_approved_trade_amount",
+                "live_order_submitted": False,
+            }
+
+        try:
+            approved_amount = float(
+                raw_approved_amount
+            )
+        except (
+            TypeError,
+            ValueError,
+            OverflowError,
+        ):
+            return {
+                "handoff_ready": False,
+                "reason": "invalid_approved_trade_amount",
+                "live_order_submitted": False,
+            }
+
+        if (
+            not math.isfinite(approved_amount)
+            or approved_amount <= 0
+        ):
+            return {
+                "handoff_ready": False,
+                "reason": "invalid_approved_trade_amount",
                 "live_order_submitted": False,
             }
 
@@ -125,19 +180,24 @@ class FreshRepeatScaleExecutionPermissionHandoff:
                 "live_order_submitted": False,
             }
 
-        requested_asset = str(
-            request.get(
-                "asset",
-                "",
-            )
-        ).strip().upper()
+        raw_requested_asset = request.get(
+            "asset",
+            "",
+        )
 
-        approved_asset = str(
-            approval_summary.get(
-                "asset",
-                "",
-            )
-        ).strip().upper()
+        if not isinstance(
+            raw_requested_asset,
+            str,
+        ):
+            return {
+                "handoff_ready": False,
+                "reason": "requested_asset_required",
+                "live_order_submitted": False,
+            }
+
+        requested_asset = (
+            raw_requested_asset.strip().upper()
+        )
 
         if not requested_asset:
             return {
@@ -146,6 +206,25 @@ class FreshRepeatScaleExecutionPermissionHandoff:
                 "live_order_submitted": False,
             }
 
+        raw_approved_asset = approval_summary.get(
+            "asset",
+            "",
+        )
+
+        if not isinstance(
+            raw_approved_asset,
+            str,
+        ):
+            return {
+                "handoff_ready": False,
+                "reason": "approved_asset_mismatch",
+                "live_order_submitted": False,
+            }
+
+        approved_asset = (
+            raw_approved_asset.strip().upper()
+        )
+
         if requested_asset != approved_asset:
             return {
                 "handoff_ready": False,
@@ -153,13 +232,35 @@ class FreshRepeatScaleExecutionPermissionHandoff:
                 "live_order_submitted": False,
             }
 
-        route_id = approval_handoff.get(
+        raw_route_id = approval_handoff.get(
             "route_id"
         )
 
-        approved_route_id = approval_result.get(
+        if not isinstance(raw_route_id, str):
+            return {
+                "handoff_ready": False,
+                "reason": "route_id_required",
+                "live_order_submitted": False,
+            }
+
+        route_id = raw_route_id.strip()
+
+        if not route_id:
+            return {
+                "handoff_ready": False,
+                "reason": "route_id_required",
+                "live_order_submitted": False,
+            }
+
+        raw_approved_route_id = approval_result.get(
             "route_id",
             route_id,
+        )
+
+        approved_route_id = (
+            raw_approved_route_id.strip()
+            if isinstance(raw_approved_route_id, str)
+            else raw_approved_route_id
         )
 
         if approved_route_id != route_id:
@@ -169,8 +270,22 @@ class FreshRepeatScaleExecutionPermissionHandoff:
                 "live_order_submitted": False,
             }
 
-        fresh_approval_id = approval_result.get(
+        raw_fresh_approval_id = approval_result.get(
             "approval_id"
+        )
+
+        if not isinstance(
+            raw_fresh_approval_id,
+            str,
+        ):
+            return {
+                "handoff_ready": False,
+                "reason": "fresh_approval_id_required",
+                "live_order_submitted": False,
+            }
+
+        fresh_approval_id = (
+            raw_fresh_approval_id.strip()
         )
 
         if not fresh_approval_id:
@@ -186,10 +301,16 @@ class FreshRepeatScaleExecutionPermissionHandoff:
             )
         )
 
+        normalized_previous_approval_id = (
+            previous_approval_id.strip()
+            if isinstance(previous_approval_id, str)
+            else previous_approval_id
+        )
+
         if (
-            previous_approval_id is not None
+            normalized_previous_approval_id is not None
             and fresh_approval_id
-            == previous_approval_id
+            == normalized_previous_approval_id
         ):
             return {
                 "handoff_ready": False,
@@ -210,7 +331,7 @@ class FreshRepeatScaleExecutionPermissionHandoff:
             "asset": requested_asset,
             "trade_amount": requested_amount,
             "previous_approval_id": (
-                previous_approval_id
+                normalized_previous_approval_id
             ),
             "previous_permission_id": (
                 approval_handoff.get(
