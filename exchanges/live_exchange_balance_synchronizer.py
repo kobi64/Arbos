@@ -25,9 +25,25 @@ class LiveExchangeBalanceSynchronizer:
         balances = {}
 
         for asset in assets:
-            free_amount = float(free.get(asset, 0.0) or 0.0)
-            used_amount = float(used.get(asset, 0.0) or 0.0)
-            total_amount = float(total.get(asset, 0.0) or 0.0)
+            free_value = free.get(asset)
+            used_value = used.get(asset)
+            total_value = total.get(asset)
+
+            free_amount = (
+                float(free_value)
+                if free_value is not None
+                else None
+            )
+            used_amount = (
+                float(used_value)
+                if used_value is not None
+                else None
+            )
+            total_amount = (
+                float(total_value)
+                if total_value is not None
+                else None
+            )
 
             balances[asset] = {
                 "free": free_amount,
@@ -35,11 +51,12 @@ class LiveExchangeBalanceSynchronizer:
                 "total": total_amount,
             }
 
-            self._state_manager.update_balance(
-                exchange,
-                asset,
-                total_amount,
-            )
+            if total_amount is not None:
+                self._state_manager.update_balance(
+                    exchange,
+                    asset,
+                    total_amount,
+                )
 
         return {
             "exchange": exchange,

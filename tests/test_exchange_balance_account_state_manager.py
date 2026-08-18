@@ -115,4 +115,74 @@ def test_missing_balance():
         "USDT"
     )
 
+    assert result is None
+
+
+
+def test_missing_asset_balance_remains_unknown():
+
+    manager = ExchangeBalanceAccountStateManager()
+
+    manager.update_balance(
+        "HTX",
+        "BTC",
+        1.0
+    )
+
+    result = manager.get_balance(
+        "HTX",
+        "USDT"
+    )
+
+    assert result is None
+
+
+def test_unknown_balance_fails_funds_validation_closed():
+
+    manager = ExchangeBalanceAccountStateManager()
+
+    result = manager.validate_funds(
+        "HTX",
+        "USDT",
+        100
+    )
+
+    assert result is False
+
+
+def test_genuine_zero_balance_remains_numeric_zero():
+
+    manager = ExchangeBalanceAccountStateManager()
+
+    manager.update_balance(
+        "HTX",
+        "USDT",
+        0
+    )
+
+    result = manager.get_balance(
+        "HTX",
+        "USDT"
+    )
+
     assert result == 0
+    assert result is not None
+
+
+def test_genuine_zero_balance_fails_positive_funds_requirement():
+
+    manager = ExchangeBalanceAccountStateManager()
+
+    manager.update_balance(
+        "HTX",
+        "USDT",
+        0
+    )
+
+    result = manager.validate_funds(
+        "HTX",
+        "USDT",
+        1
+    )
+
+    assert result is False

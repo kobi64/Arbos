@@ -45,8 +45,7 @@ class ExchangeBalanceAccountStateManager:
             exchange,
             {}
         ).get(
-            asset,
-            0
+            asset
         )
 
     def validate_funds(
@@ -60,6 +59,9 @@ class ExchangeBalanceAccountStateManager:
             exchange,
             asset
         )
+
+        if balance is None:
+            return False
 
         return balance >= required_amount
 
