@@ -8,6 +8,7 @@ to determine whether an arbitrage opportunity is executable.
 """
 
 from dataclasses import dataclass
+from typing import Optional
 
 from exchanges.arbitrage_profit_evaluation import (
     ArbitrageProfitEvaluation,
@@ -18,8 +19,8 @@ from exchanges.arbitrage_profit_evaluation import (
 class ArbitrageOpportunityEvaluationResult:
     valid: bool
     executable: bool = False
-    net_profit: float = 0.0
-    profit_percent: float = 0.0
+    net_profit: Optional[float] = None
+    profit_percent: Optional[float] = None
     reason: str = ""
 
 
