@@ -424,3 +424,133 @@ def test_live_market_execution_never_submits_live_order():
         result["execution"]["live_order_submitted"]
         is False
     )
+
+
+@pytest.mark.parametrize(
+    "trade_amount",
+    [
+        None,
+        "not-a-number",
+        float("nan"),
+        float("inf"),
+        float("-inf"),
+        0.0,
+        -1.0,
+    ],
+)
+def test_invalid_permitted_trade_amount_values_are_blocked(
+    trade_amount,
+):
+    permission = granted_permission()
+    permission["trade_amount"] = trade_amount
+
+    result = bridge().execute(
+        permission_result=permission,
+        order=valid_order(),
+    )
+
+    assert result["executed"] is False
+    assert (
+        result["reason"]
+        == "invalid_permitted_trade_amount"
+    )
+    assert result["live_order_submitted"] is False
+
+
+def test_missing_permitted_trade_amount_is_blocked():
+    permission = granted_permission()
+    del permission["trade_amount"]
+
+    result = bridge().execute(
+        permission_result=permission,
+        order=valid_order(),
+    )
+
+    assert result["executed"] is False
+    assert (
+        result["reason"]
+        == "invalid_permitted_trade_amount"
+    )
+
+
+@pytest.mark.parametrize(
+    "order_amount",
+    [
+        None,
+        "not-a-number",
+        float("nan"),
+        float("inf"),
+        float("-inf"),
+        0.0,
+        -1.0,
+    ],
+)
+def test_invalid_order_trade_amount_values_are_blocked(
+    order_amount,
+):
+    order = valid_order()
+    order["quantity"] = order_amount
+
+    result = bridge().execute(
+        permission_result=granted_permission(),
+        order=order,
+    )
+
+    assert result["executed"] is False
+    assert (
+        result["reason"]
+        == "invalid_order_trade_amount"
+    )
+    assert result["live_order_submitted"] is False
+
+
+def test_missing_order_amount_is_blocked():
+    order = valid_order()
+    order.pop("quantity", None)
+    order.pop("trade_amount", None)
+
+    result = bridge().execute(
+        permission_result=granted_permission(),
+        order=order,
+    )
+
+    assert result["executed"] is False
+    assert (
+        result["reason"]
+        == "invalid_order_trade_amount"
+    )
+
+
+def test_explicit_none_trade_amount_does_not_fallback_to_quantity():
+    order = valid_order()
+    order["trade_amount"] = None
+    order["quantity"] = granted_permission()[
+        "trade_amount"
+    ]
+
+    result = bridge().execute(
+        permission_result=granted_permission(),
+        order=order,
+    )
+
+    assert result["executed"] is False
+    assert (
+        result["reason"]
+        == "invalid_order_trade_amount"
+    )
+
+
+def test_numeric_string_amounts_are_normalized():
+    permission = granted_permission()
+    permission["trade_amount"] = "0.2"
+
+    order = valid_order()
+    order["quantity"] = "0.2"
+
+    result = bridge().execute(
+        permission_result=permission,
+        order=order,
+    )
+
+    assert result["executed"] is True
+    assert result["trade_amount"] == 0.2
