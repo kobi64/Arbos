@@ -24,6 +24,9 @@ class FakeProvider:
             "exchange": "weex",
             "coin": coin,
             "available": True,
+            "network_metadata_available": True,
+            "network_metadata_reason": None,
+            "transfer_verification_available": True,
             "deposit_enabled": True,
             "withdraw_enabled": True,
             "networks": [
@@ -261,3 +264,38 @@ def test_unknown_minimum_withdrawal_is_preserved():
 
     assert len(networks) == 1
     assert networks[0].min_withdraw is None
+
+
+def test_network_metadata_does_not_imply_transfer_verification():
+    class MetadataOnlyProvider:
+        def get_coin(
+            self,
+            coin,
+        ):
+            return {
+                "exchange": "weex",
+                "coin": coin,
+                "available": True,
+                "network_metadata_available": True,
+                "networks": [
+                    {
+                        "network": "TRC20",
+                        "deposit_enabled": True,
+                        "withdraw_enabled": True,
+                    },
+                ],
+            }
+
+    result = WeexNetworkMetadataAdapter(
+        provider=MetadataOnlyProvider(),
+    ).describe_networks(
+        "USDT"
+    )
+
+    assert result[
+        "network_metadata_available"
+    ] is True
+
+    assert result[
+        "transfer_verification_available"
+    ] is False
