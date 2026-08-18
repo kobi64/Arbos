@@ -232,6 +232,121 @@ class FreshRepeatScaleExecutionPermissionHandoff:
                 "live_order_submitted": False,
             }
 
+        raw_requested_buy_exchange = request.get(
+            "buy_exchange",
+            "",
+        )
+
+        if not isinstance(
+            raw_requested_buy_exchange,
+            str,
+        ):
+            return {
+                "handoff_ready": False,
+                "reason": "requested_buy_exchange_required",
+                "live_order_submitted": False,
+            }
+
+        requested_buy_exchange = (
+            raw_requested_buy_exchange.strip()
+        )
+
+        if not requested_buy_exchange:
+            return {
+                "handoff_ready": False,
+                "reason": "requested_buy_exchange_required",
+                "live_order_submitted": False,
+            }
+
+        raw_requested_sell_exchange = request.get(
+            "sell_exchange",
+            "",
+        )
+
+        if not isinstance(
+            raw_requested_sell_exchange,
+            str,
+        ):
+            return {
+                "handoff_ready": False,
+                "reason": "requested_sell_exchange_required",
+                "live_order_submitted": False,
+            }
+
+        requested_sell_exchange = (
+            raw_requested_sell_exchange.strip()
+        )
+
+        if not requested_sell_exchange:
+            return {
+                "handoff_ready": False,
+                "reason": "requested_sell_exchange_required",
+                "live_order_submitted": False,
+            }
+
+        raw_approved_route = approval_summary.get(
+            "route",
+            "",
+        )
+
+        if not isinstance(
+            raw_approved_route,
+            str,
+        ):
+            return {
+                "handoff_ready": False,
+                "reason": "approved_route_required",
+                "live_order_submitted": False,
+            }
+
+        approved_route = raw_approved_route.strip()
+
+        if not approved_route:
+            return {
+                "handoff_ready": False,
+                "reason": "approved_route_required",
+                "live_order_submitted": False,
+            }
+
+        route_parts = [
+            part.strip()
+            for part in approved_route.split("->")
+        ]
+
+        if (
+            len(route_parts) != 2
+            or not route_parts[0]
+            or not route_parts[1]
+        ):
+            return {
+                "handoff_ready": False,
+                "reason": "approved_route_required",
+                "live_order_submitted": False,
+            }
+
+        approved_buy_exchange = route_parts[0]
+        approved_sell_exchange = route_parts[1]
+
+        if (
+            requested_buy_exchange
+            != approved_buy_exchange
+        ):
+            return {
+                "handoff_ready": False,
+                "reason": "approved_buy_exchange_mismatch",
+                "live_order_submitted": False,
+            }
+
+        if (
+            requested_sell_exchange
+            != approved_sell_exchange
+        ):
+            return {
+                "handoff_ready": False,
+                "reason": "approved_sell_exchange_mismatch",
+                "live_order_submitted": False,
+            }
+
         raw_route_id = approval_handoff.get(
             "route_id"
         )
