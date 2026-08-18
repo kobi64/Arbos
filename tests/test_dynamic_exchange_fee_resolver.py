@@ -66,7 +66,83 @@ def test_invalid_fee_type_is_rejected():
 
 
 def test_negative_fee_configuration_is_rejected():
-    with pytest.raises(ValueError, match="fee rates must be non-negative"):
+    with pytest.raises(
+        ValueError,
+        match="fee rates must be finite non-negative numbers",
+    ):
         DynamicExchangeFeeResolver({
             "kraken": {"maker": -0.001, "taker": 0.0040},
         })
+
+
+@pytest.mark.parametrize(
+    "fees",
+    [
+        {},
+        {"maker": 0.001},
+        {"taker": 0.002},
+        {"maker": None, "taker": 0.002},
+        {"maker": 0.001, "taker": None},
+    ],
+)
+def test_missing_fee_configuration_is_rejected(fees):
+    with pytest.raises(
+        ValueError,
+        match="maker and taker fee rates are required",
+    ):
+        DynamicExchangeFeeResolver(
+            {"kraken": fees}
+        )
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("maker", "not-a-number"),
+        ("taker", "not-a-number"),
+        ("maker", float("nan")),
+        ("taker", float("nan")),
+        ("maker", float("inf")),
+        ("taker", float("inf")),
+        ("maker", float("-inf")),
+        ("taker", float("-inf")),
+    ],
+)
+def test_invalid_fee_numeric_values_are_rejected(
+    field,
+    value,
+):
+    fees = {
+        "maker": 0.001,
+        "taker": 0.002,
+    }
+    fees[field] = value
+
+    with pytest.raises(
+        ValueError,
+        match="fee rates must be finite non-negative numbers",
+    ):
+        DynamicExchangeFeeResolver(
+            {"kraken": fees}
+        )
+
+
+def test_explicit_zero_fee_is_allowed():
+    resolver = DynamicExchangeFeeResolver(
+        {
+            "kraken": {
+                "maker": 0.0,
+                "taker": 0.0,
+            }
+        }
+    )
+
+    assert resolver.resolve(
+        "kraken",
+        "maker",
+    )["fee_rate"] == 0.0
+
+    assert resolver.resolve(
+        "kraken",
+        "taker",
+    )["fee_rate"] == 0.0
