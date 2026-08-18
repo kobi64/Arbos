@@ -276,3 +276,121 @@ def test_scale_multiplier_must_exceed_one():
         decide(
             scale_multiplier=1.0
         )
+
+
+# EX-339 — repeat/scale decision identity integrity audit
+
+
+@pytest.mark.parametrize(
+    "field",
+    [
+        "route_id",
+        "approval_id",
+        "permission_id",
+    ],
+)
+@pytest.mark.parametrize(
+    "value",
+    [
+        None,
+        "",
+        "   ",
+        0,
+        False,
+    ],
+)
+def test_invalid_validation_control_identity_stops_decision(
+    field,
+    value,
+):
+    record = successful_validation()
+    record[field] = value
+
+    result = decide(
+        validation_result=record,
+    )
+
+    assert result["decision"] == "STOP"
+    assert result["allowed"] is False
+    assert (
+        result["reason"]
+        == "invalid_validation_identity"
+    )
+    assert result["live_order_submitted"] is False
+
+
+def test_repeat_decision_normalizes_control_identity():
+    record = successful_validation()
+    record["route_id"] = "  ROUTE-001  "
+    record["approval_id"] = "  ARB-001  "
+    record["permission_id"] = "  PERM-001  "
+
+    result = decide(
+        validation_result=record,
+        successful_test_count=1,
+        required_successes_for_scale=2,
+    )
+
+    assert result["decision"] == "REPEAT_SAME_SIZE"
+    assert result["allowed"] is True
+    assert result["route_id"] == "ROUTE-001"
+    assert result["approval_id"] == "ARB-001"
+    assert result["permission_id"] == "PERM-001"
+
+
+def test_scale_decision_normalizes_control_identity():
+    record = successful_validation()
+    record["route_id"] = "  ROUTE-001  "
+    record["approval_id"] = "  ARB-001  "
+    record["permission_id"] = "  PERM-001  "
+
+    result = decide(
+        validation_result=record,
+        successful_test_count=2,
+        required_successes_for_scale=2,
+    )
+
+    assert result["decision"] == "SCALE_UP"
+    assert result["allowed"] is True
+    assert result["route_id"] == "ROUTE-001"
+    assert result["approval_id"] == "ARB-001"
+    assert result["permission_id"] == "PERM-001"
+
+
+def test_decision_identity_normalization_does_not_mutate_validation():
+    record = successful_validation()
+    record["route_id"] = "  ROUTE-001  "
+    record["approval_id"] = "  ARB-001  "
+    record["permission_id"] = "  PERM-001  "
+
+    decide(
+        validation_result=record,
+    )
+
+    assert record["route_id"] == "  ROUTE-001  "
+    assert record["approval_id"] == "  ARB-001  "
+    assert record["permission_id"] == "  PERM-001  "
+
+
+def test_identity_normalization_does_not_change_scale_accounting():
+    record = successful_validation()
+    record["route_id"] = " ROUTE-001 "
+    record["approval_id"] = " ARB-001 "
+    record["permission_id"] = " PERM-001 "
+
+    result = decide(
+        validation_result=record,
+        current_trade_size=250.0,
+        successful_test_count=2,
+        required_successes_for_scale=2,
+        scale_multiplier=2.0,
+        min_trade_size=100.0,
+        max_trade_size=1000.0,
+    )
+
+    assert result["decision"] == "SCALE_UP"
+    assert result["allowed"] is True
+    assert result["current_trade_size"] == 250.0
+    assert result["next_trade_size"] == 500.0
+    assert result["proposed_trade_size"] == 500.0
+    assert result["scale_applied"] is True

@@ -81,6 +81,35 @@ class ControlledRepeatScaleDecision:
                 "live_order_submitted": False,
             }
 
+        route_id = validation_result.get(
+            "route_id"
+        )
+        approval_id = validation_result.get(
+            "approval_id"
+        )
+        permission_id = validation_result.get(
+            "permission_id"
+        )
+
+        if (
+            not isinstance(route_id, str)
+            or not route_id.strip()
+            or not isinstance(approval_id, str)
+            or not approval_id.strip()
+            or not isinstance(permission_id, str)
+            or not permission_id.strip()
+        ):
+            return {
+                "decision": "STOP",
+                "allowed": False,
+                "reason": "invalid_validation_identity",
+                "live_order_submitted": False,
+            }
+
+        route_id = route_id.strip()
+        approval_id = approval_id.strip()
+        permission_id = permission_id.strip()
+
         current_trade_size = float(
             current_trade_size
         )
@@ -135,15 +164,9 @@ class ControlledRepeatScaleDecision:
             }
 
         common = {
-            "route_id": validation_result.get(
-                "route_id"
-            ),
-            "approval_id": validation_result.get(
-                "approval_id"
-            ),
-            "permission_id": validation_result.get(
-                "permission_id"
-            ),
+            "route_id": route_id,
+            "approval_id": approval_id,
+            "permission_id": permission_id,
             "current_trade_size": (
                 current_trade_size
             ),
