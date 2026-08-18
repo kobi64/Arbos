@@ -74,30 +74,42 @@ class LiveMarketRepeatScalePaperBridge:
         )
 
         if (
-            permission_id is None
-            or not str(permission_id).strip()
+            not isinstance(permission_id, str)
+            or not permission_id.strip()
         ):
             return self._blocked(
                 "permission_id_required"
             )
+
+        permission_id = permission_id.strip()
 
         approval_id = permission_result.get(
             "approval_id"
         )
 
         if (
-            approval_id is None
-            or not str(approval_id).strip()
+            not isinstance(approval_id, str)
+            or not approval_id.strip()
         ):
             return self._blocked(
                 "approval_id_required"
             )
+
+        approval_id = approval_id.strip()
 
         raw_permitted_amount = (
             permission_result.get(
                 "trade_amount"
             )
         )
+
+        if isinstance(
+            raw_permitted_amount,
+            bool,
+        ):
+            return self._blocked(
+                "invalid_permitted_trade_amount"
+            )
 
         try:
             permitted_amount = float(
@@ -125,6 +137,14 @@ class LiveMarketRepeatScalePaperBridge:
         else:
             raw_order_amount = order.get(
                 "quantity"
+            )
+
+        if isinstance(
+            raw_order_amount,
+            bool,
+        ):
+            return self._blocked(
+                "invalid_order_trade_amount"
             )
 
         try:

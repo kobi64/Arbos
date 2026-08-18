@@ -555,3 +555,103 @@ def test_numeric_string_amounts_are_normalized():
 
     assert result["executed"] is True
     assert result["trade_amount"] == 0.2
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("permission_id", None),
+        ("permission_id", ""),
+        ("permission_id", "   "),
+        ("permission_id", 0),
+        ("permission_id", False),
+        ("permission_id", []),
+        ("permission_id", {}),
+        ("approval_id", None),
+        ("approval_id", ""),
+        ("approval_id", "   "),
+        ("approval_id", 0),
+        ("approval_id", False),
+        ("approval_id", []),
+        ("approval_id", {}),
+    ],
+)
+def test_bridge_requires_real_string_control_ids(
+    field,
+    value,
+):
+    permission = granted_permission()
+    permission[field] = value
+
+    result = bridge().execute(
+        permission_result=permission,
+        order=valid_order(),
+    )
+
+    assert result["executed"] is False
+    assert result["reason"] == f"{field}_required"
+
+
+def test_bridge_normalizes_control_ids():
+    permission = granted_permission()
+    permission["permission_id"] = "  PERM-002  "
+    permission["approval_id"] = "  ARB-002  "
+
+    result = bridge().execute(
+        permission_result=permission,
+        order=valid_order(),
+    )
+
+    assert result["executed"] is True
+    assert result["permission_id"] == "PERM-002"
+    assert result["approval_id"] == "ARB-002"
+
+
+@pytest.mark.parametrize(
+    "trade_amount",
+    [
+        True,
+        False,
+    ],
+)
+def test_boolean_permitted_amount_is_blocked(
+    trade_amount,
+):
+    permission = granted_permission()
+    permission["trade_amount"] = trade_amount
+
+    result = bridge().execute(
+        permission_result=permission,
+        order=valid_order(),
+    )
+
+    assert result["executed"] is False
+    assert (
+        result["reason"]
+        == "invalid_permitted_trade_amount"
+    )
+
+
+@pytest.mark.parametrize(
+    "order_amount",
+    [
+        True,
+        False,
+    ],
+)
+def test_boolean_order_amount_is_blocked(
+    order_amount,
+):
+    order = valid_order()
+    order["quantity"] = order_amount
+
+    result = bridge().execute(
+        permission_result=granted_permission(),
+        order=order,
+    )
+
+    assert result["executed"] is False
+    assert (
+        result["reason"]
+        == "invalid_order_trade_amount"
+    )
