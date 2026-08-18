@@ -613,3 +613,148 @@ def test_whitespace_requested_asset_is_blocked():
 
     assert result["handoff_ready"] is False
     assert result["reason"] == "requested_asset_required"
+
+
+# EX-328 — fresh approval request identity binding
+
+
+def test_requested_buy_exchange_must_match_fresh_approval():
+    handoff = approval_handoff()
+    handoff["approval_request"]["buy_exchange"] = "kucoin"
+
+    approval = fresh_approval()
+    approval["trade_summary"]["route"] = "gate -> gate"
+
+    result = prepare(
+        handoff=handoff,
+        approval=approval,
+    )
+
+    assert result["handoff_ready"] is False
+    assert result["reason"] == "approved_buy_exchange_mismatch"
+
+
+def test_requested_sell_exchange_must_match_fresh_approval():
+    handoff = approval_handoff()
+    handoff["approval_request"]["sell_exchange"] = "gate"
+
+    approval = fresh_approval()
+    approval["trade_summary"]["route"] = "kucoin -> bitget"
+
+    result = prepare(
+        handoff=handoff,
+        approval=approval,
+    )
+
+    assert result["handoff_ready"] is False
+    assert result["reason"] == "approved_sell_exchange_mismatch"
+
+
+def test_matching_approval_route_is_accepted():
+    handoff = approval_handoff()
+    handoff["approval_request"]["buy_exchange"] = "kucoin"
+    handoff["approval_request"]["sell_exchange"] = "gate"
+
+    approval = fresh_approval()
+    approval["trade_summary"]["route"] = "kucoin -> gate"
+
+    result = prepare(
+        handoff=handoff,
+        approval=approval,
+    )
+
+    assert result["handoff_ready"] is True
+
+
+@pytest.mark.parametrize(
+    "buy_exchange",
+    [
+        None,
+        "",
+        "   ",
+        0,
+        False,
+        [],
+        {},
+    ],
+)
+def test_requested_buy_exchange_requires_real_non_empty_string(
+    buy_exchange,
+):
+    handoff = approval_handoff()
+    handoff["approval_request"]["buy_exchange"] = buy_exchange
+
+    result = prepare(
+        handoff=handoff,
+    )
+
+    assert result["handoff_ready"] is False
+    assert result["reason"] == "requested_buy_exchange_required"
+
+
+@pytest.mark.parametrize(
+    "sell_exchange",
+    [
+        None,
+        "",
+        "   ",
+        0,
+        False,
+        [],
+        {},
+    ],
+)
+def test_requested_sell_exchange_requires_real_non_empty_string(
+    sell_exchange,
+):
+    handoff = approval_handoff()
+    handoff["approval_request"]["sell_exchange"] = sell_exchange
+
+    result = prepare(
+        handoff=handoff,
+    )
+
+    assert result["handoff_ready"] is False
+    assert result["reason"] == "requested_sell_exchange_required"
+
+
+@pytest.mark.parametrize(
+    "route",
+    [
+        None,
+        "",
+        "   ",
+        0,
+        False,
+        [],
+        {},
+    ],
+)
+def test_approved_route_requires_real_non_empty_string(
+    route,
+):
+    approval = fresh_approval()
+    approval["trade_summary"]["route"] = route
+
+    result = prepare(
+        approval=approval,
+    )
+
+    assert result["handoff_ready"] is False
+    assert result["reason"] == "approved_route_required"
+
+
+def test_exchange_whitespace_is_normalized_for_identity_match():
+    handoff = approval_handoff()
+    handoff["approval_request"]["buy_exchange"] = "  kucoin  "
+    handoff["approval_request"]["sell_exchange"] = "  gate  "
+
+    approval = fresh_approval()
+    approval["trade_summary"]["route"] = "  kucoin -> gate  "
+
+    result = prepare(
+        handoff=handoff,
+        approval=approval,
+    )
+
+    assert result["handoff_ready"] is True
