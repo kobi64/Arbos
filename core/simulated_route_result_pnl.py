@@ -68,12 +68,41 @@ class SimulatedRouteResultPnL:
                 "live_order_submitted": False,
             }
 
-        gross_final_value = float(
+        raw_final_output_amount = (
             completion_record.get(
-                "final_output_amount",
-                0.0,
+                "final_output_amount"
             )
         )
+
+        if raw_final_output_amount is None:
+            return {
+                "evaluated": False,
+                "reason": "final_output_amount_required",
+                "live_order_submitted": False,
+            }
+
+        try:
+            gross_final_value = float(
+                raw_final_output_amount
+            )
+        except (TypeError, ValueError):
+            return {
+                "evaluated": False,
+                "reason": "final_output_amount_invalid",
+                "live_order_submitted": False,
+            }
+
+        from math import isfinite
+
+        if (
+            not isfinite(gross_final_value)
+            or gross_final_value < 0
+        ):
+            return {
+                "evaluated": False,
+                "reason": "final_output_amount_invalid",
+                "live_order_submitted": False,
+            }
 
         pnl = self._pnl.evaluate(
             starting_value=starting_value,

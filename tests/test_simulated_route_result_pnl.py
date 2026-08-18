@@ -237,3 +237,93 @@ def test_negative_cost_uses_existing_validation():
             starting_value=1000.0,
             trading_fees=-1.0,
         )
+
+
+def test_missing_final_output_amount_does_not_masquerade_as_zero():
+    evaluator = SimulatedRouteResultPnL()
+
+    record = completed_route()
+    del record["final_output_amount"]
+
+    result = evaluator.evaluate(
+        completion_record=record,
+        starting_value=1000.0,
+    )
+
+    assert result["evaluated"] is False
+    assert result["reason"] == "final_output_amount_required"
+    assert result["live_order_submitted"] is False
+
+
+def test_explicit_none_final_output_amount_is_rejected():
+    evaluator = SimulatedRouteResultPnL()
+
+    record = completed_route()
+    record["final_output_amount"] = None
+
+    result = evaluator.evaluate(
+        completion_record=record,
+        starting_value=1000.0,
+    )
+
+    assert result["evaluated"] is False
+    assert result["reason"] == "final_output_amount_required"
+    assert result["live_order_submitted"] is False
+
+
+def test_invalid_final_output_amount_is_rejected():
+    evaluator = SimulatedRouteResultPnL()
+
+    record = completed_route()
+    record["final_output_amount"] = "not-a-number"
+
+    result = evaluator.evaluate(
+        completion_record=record,
+        starting_value=1000.0,
+    )
+
+    assert result["evaluated"] is False
+    assert result["reason"] == "final_output_amount_invalid"
+    assert result["live_order_submitted"] is False
+
+
+@pytest.mark.parametrize(
+    "final_output_amount",
+    [
+        float("nan"),
+        float("inf"),
+        float("-inf"),
+        -1.0,
+    ],
+)
+def test_non_finite_or_negative_final_output_amount_is_rejected(
+    final_output_amount,
+):
+    evaluator = SimulatedRouteResultPnL()
+
+    record = completed_route()
+    record["final_output_amount"] = final_output_amount
+
+    result = evaluator.evaluate(
+        completion_record=record,
+        starting_value=1000.0,
+    )
+
+    assert result["evaluated"] is False
+    assert result["reason"] == "final_output_amount_invalid"
+    assert result["live_order_submitted"] is False
+
+
+def test_genuine_zero_final_output_amount_remains_numeric_zero():
+    evaluator = SimulatedRouteResultPnL()
+
+    record = completed_route()
+    record["final_output_amount"] = 0.0
+
+    result = evaluator.evaluate(
+        completion_record=record,
+        starting_value=1000.0,
+    )
+
+    assert result["evaluated"] is True
+    assert result["pnl"]["gross_final_value"] == 0.0
