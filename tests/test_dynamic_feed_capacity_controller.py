@@ -335,3 +335,68 @@ def test_confirmation_thresholds_must_be_positive():
             profile=profile(),
             healthy_confirmations=0,
         )
+
+
+@pytest.mark.parametrize(
+    "snapshot",
+    [
+        {},
+        {"unhealthy_symbol_count": None},
+    ],
+)
+def test_missing_unhealthy_count_is_rejected(snapshot):
+    controller = DynamicFeedCapacityController(
+        profile=profile()
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="unhealthy_symbol_count is required",
+    ):
+        controller.decide(
+            current_capacity=160,
+            health_snapshot=snapshot,
+        )
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "not-a-number",
+        -1,
+        1.5,
+        "1.5",
+        True,
+    ],
+)
+def test_invalid_unhealthy_count_is_rejected(value):
+    controller = DynamicFeedCapacityController(
+        profile=profile()
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="unhealthy_symbol_count must be a non-negative integer",
+    ):
+        controller.decide(
+            current_capacity=160,
+            health_snapshot={
+                "unhealthy_symbol_count": value,
+            },
+        )
+
+
+def test_explicit_zero_unhealthy_count_remains_healthy():
+    controller = DynamicFeedCapacityController(
+        profile=profile()
+    )
+
+    result = controller.decide(
+        current_capacity=160,
+        health_snapshot={
+            "unhealthy_symbol_count": 0,
+        },
+    )
+
+    assert result["unhealthy_symbol_count"] == 0
+    assert result["action"] == "scale_up"

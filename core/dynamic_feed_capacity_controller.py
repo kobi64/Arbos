@@ -99,13 +99,46 @@ class DynamicFeedCapacityController:
                 "health_snapshot is required"
             )
 
-        unhealthy_count = int(
-            health_snapshot.get(
-                "unhealthy_symbol_count",
-                0,
+        if (
+            "unhealthy_symbol_count"
+            not in health_snapshot
+            or health_snapshot[
+                "unhealthy_symbol_count"
+            ] is None
+        ):
+            raise ValueError(
+                "unhealthy_symbol_count is required"
             )
-            or 0
-        )
+
+        raw_unhealthy_count = health_snapshot[
+            "unhealthy_symbol_count"
+        ]
+
+        if isinstance(raw_unhealthy_count, bool):
+            raise ValueError(
+                "unhealthy_symbol_count must be a non-negative integer"
+            )
+
+        try:
+            unhealthy_count = int(
+                raw_unhealthy_count
+            )
+            numeric_unhealthy_count = float(
+                raw_unhealthy_count
+            )
+        except (TypeError, ValueError, OverflowError):
+            raise ValueError(
+                "unhealthy_symbol_count must be a non-negative integer"
+            )
+
+        if (
+            unhealthy_count < 0
+            or not numeric_unhealthy_count.is_integer()
+            or unhealthy_count != numeric_unhealthy_count
+        ):
+            raise ValueError(
+                "unhealthy_symbol_count must be a non-negative integer"
+            )
 
         if unhealthy_count > 0:
             self._consecutive_unhealthy += 1
