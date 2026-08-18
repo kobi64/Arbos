@@ -91,3 +91,67 @@ def test_missing_reservation_id_is_rejected(manager):
 def test_non_positive_amount_is_rejected(manager):
     with pytest.raises(ValueError, match="amount must be positive"):
         manager.reserve("RES-008", 0.0, 1000.0)
+
+
+@pytest.mark.parametrize(
+    "amount",
+    [
+        None,
+        "not-a-number",
+        float("nan"),
+        float("inf"),
+        float("-inf"),
+        True,
+    ],
+)
+def test_invalid_reservation_amount_numeric_contract(
+    manager,
+    amount,
+):
+    with pytest.raises(
+        ValueError,
+        match="amount must be a finite positive number",
+    ):
+        manager.reserve(
+            "RES-NUMERIC",
+            amount,
+            1000.0,
+        )
+
+
+@pytest.mark.parametrize(
+    "available_capital",
+    [
+        None,
+        "not-a-number",
+        float("nan"),
+        float("inf"),
+        float("-inf"),
+        True,
+    ],
+)
+def test_invalid_available_capital_numeric_contract(
+    manager,
+    available_capital,
+):
+    with pytest.raises(
+        ValueError,
+        match="available_capital must be a finite non-negative number",
+    ):
+        manager.reserve(
+            "RES-CAPITAL",
+            100.0,
+            available_capital,
+        )
+
+
+def test_numeric_string_capital_is_normalized(manager):
+    result = manager.reserve(
+        "RES-STRING",
+        "100",
+        "1000",
+    )
+
+    assert result["reserved"] is True
+    assert result["amount"] == 100.0
+    assert result["remaining_available_capital"] == 900.0

@@ -124,3 +124,89 @@ def test_rejects_invalid_confidence_range():
             failed_attempts=0,
             maximum_failed_attempts=3,
         )
+
+
+@pytest.mark.parametrize(
+    "field",
+    [
+        "expected_profit",
+        "minimum_profit",
+        "trade_size",
+        "maximum_exposure",
+        "confidence_score",
+        "minimum_confidence",
+    ],
+)
+@pytest.mark.parametrize(
+    "value",
+    [
+        None,
+        "not-a-number",
+        float("nan"),
+        float("inf"),
+        float("-inf"),
+        True,
+    ],
+)
+def test_invalid_numeric_risk_values_are_rejected(
+    field,
+    value,
+):
+    kwargs = {
+        "expected_profit": 100.0,
+        "minimum_profit": 20.0,
+        "trade_size": 1000.0,
+        "maximum_exposure": 5000.0,
+        "confidence_score": 0.95,
+        "minimum_confidence": 0.80,
+        "failed_attempts": 0,
+        "maximum_failed_attempts": 3,
+    }
+    kwargs[field] = value
+
+    with pytest.raises(ValueError):
+        RiskGateValidation.validate(**kwargs)
+
+
+@pytest.mark.parametrize(
+    "field",
+    [
+        "failed_attempts",
+        "maximum_failed_attempts",
+    ],
+)
+@pytest.mark.parametrize(
+    "value",
+    [
+        None,
+        "not-a-number",
+        -1,
+        1.5,
+        "1.5",
+        True,
+        float("nan"),
+        float("inf"),
+        float("-inf"),
+    ],
+)
+def test_invalid_failure_count_contract(
+    field,
+    value,
+):
+    kwargs = {
+        "expected_profit": 100.0,
+        "minimum_profit": 20.0,
+        "trade_size": 1000.0,
+        "maximum_exposure": 5000.0,
+        "confidence_score": 0.95,
+        "minimum_confidence": 0.80,
+        "failed_attempts": 0,
+        "maximum_failed_attempts": 3,
+    }
+    kwargs[field] = value
+
+    with pytest.raises(
+        ValueError,
+        match="failed attempt counts must be non-negative integers",
+    ):
+        RiskGateValidation.validate(**kwargs)
