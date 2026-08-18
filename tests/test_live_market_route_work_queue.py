@@ -385,3 +385,88 @@ def test_concurrent_dequeue_returns_each_route_at_most_once():
     ) == route_count
 
     assert queue.pending_count() == 0
+
+
+def test_missing_priority_defaults_to_zero():
+    queue = LiveMarketRouteWorkQueue(
+        max_queue_size=10
+    )
+
+    work = request("R-ZERO", 100)
+    work.pop("priority")
+
+    result = queue.enqueue(work)
+
+    assert result["queued"] is True
+    assert result["priority"] == 0.0
+
+    item = queue.dequeue()
+    assert item["priority"] == 0.0
+
+
+@pytest.mark.parametrize(
+    "priority",
+    [
+        None,
+        "not-a-number",
+        float("nan"),
+        float("inf"),
+        float("-inf"),
+    ],
+)
+def test_invalid_explicit_priority_is_rejected(
+    priority,
+):
+    queue = LiveMarketRouteWorkQueue(
+        max_queue_size=10
+    )
+
+    work = request(
+        "R-INVALID",
+        100,
+        priority=priority,
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="priority must be a finite number",
+    ):
+        queue.enqueue(work)
+
+    assert queue.pending_count() == 0
+
+
+def test_numeric_string_priority_is_normalized():
+    queue = LiveMarketRouteWorkQueue(
+        max_queue_size=10
+    )
+
+    result = queue.enqueue(
+        request(
+            "R-NUMERIC",
+            100,
+            priority="5.5",
+        )
+    )
+
+    assert result["priority"] == 5.5
+
+    item = queue.dequeue()
+
+    assert item["priority"] == 5.5
+
+
+def test_explicit_zero_priority_is_preserved():
+    queue = LiveMarketRouteWorkQueue(
+        max_queue_size=10
+    )
+
+    result = queue.enqueue(
+        request(
+            "R-ZERO",
+            100,
+            priority=0.0,
+        )
+    )
+
+    assert result["priority"] == 0.0
