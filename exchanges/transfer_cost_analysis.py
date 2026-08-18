@@ -18,8 +18,8 @@ from exchanges.network_registry import NetworkInfo
 class TransferCostAnalysisResult:
     acceptable: bool
     withdraw_fee: Optional[float] = None
-    cost_percent: float = 0.0
-    net_amount: float = 0.0
+    cost_percent: Optional[float] = None
+    net_amount: Optional[float] = None
     reason: str = ""
 
 
@@ -43,7 +43,6 @@ class TransferCostAnalysis:
             return TransferCostAnalysisResult(
                 acceptable=False,
                 withdraw_fee=None,
-                net_amount=0.0,
                 reason="withdrawal_fee_unknown",
             )
 
