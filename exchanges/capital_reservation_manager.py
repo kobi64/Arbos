@@ -4,6 +4,42 @@ EX-098
 Capital Reservation Manager
 """
 
+import math
+
+
+def _finite_number(value, field, *, positive=False, non_negative=False):
+    if isinstance(value, bool):
+        raise ValueError(
+            f"{field} must be a finite "
+            f"{'positive' if positive else 'non-negative'} number"
+        )
+
+    try:
+        number = float(value)
+    except (TypeError, ValueError, OverflowError):
+        raise ValueError(
+            f"{field} must be a finite "
+            f"{'positive' if positive else 'non-negative'} number"
+        ) from None
+
+    if not math.isfinite(number):
+        raise ValueError(
+            f"{field} must be a finite "
+            f"{'positive' if positive else 'non-negative'} number"
+        )
+
+    if positive and number <= 0:
+        raise ValueError(
+            f"{field} must be positive"
+        )
+
+    if non_negative and number < 0:
+        raise ValueError(
+            f"{field} must be a finite non-negative number"
+        )
+
+    return number
+
 
 class CapitalReservationManager:
     def __init__(self):
@@ -13,8 +49,16 @@ class CapitalReservationManager:
         if reservation_id is None or not str(reservation_id).strip():
             raise ValueError("reservation_id is required")
 
-        if amount <= 0:
-            raise ValueError("amount must be positive")
+        amount = _finite_number(
+            amount,
+            "amount",
+            positive=True,
+        )
+        available_capital = _finite_number(
+            available_capital,
+            "available_capital",
+            non_negative=True,
+        )
 
         reservation_id = str(reservation_id).strip()
 
@@ -29,7 +73,7 @@ class CapitalReservationManager:
 
         record = {
             "reservation_id": reservation_id,
-            "amount": float(amount),
+            "amount": amount,
         }
 
         self._reservations[reservation_id] = record
@@ -38,9 +82,9 @@ class CapitalReservationManager:
             "reserved": True,
             "reason": None,
             "reservation_id": reservation_id,
-            "amount": float(amount),
+            "amount": amount,
             "remaining_available_capital": (
-                float(available_capital) - float(amount)
+                available_capital - amount
             ),
         }
 
