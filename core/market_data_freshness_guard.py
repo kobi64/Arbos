@@ -21,12 +21,24 @@ class MarketDataFreshnessGuard:
 
         now = float(self._clock())
         age_seconds = now - float(timestamp)
-        fresh = age_seconds < self._max_age_seconds
+
+        future_timestamp = age_seconds < 0
+        fresh = (
+            not future_timestamp
+            and age_seconds < self._max_age_seconds
+        )
+
+        if future_timestamp:
+            reason = "market_data_timestamp_in_future"
+        elif fresh:
+            reason = None
+        else:
+            reason = "market_data_stale"
 
         return {
             "symbol": str(symbol).strip(),
             "fresh": fresh,
-            "reason": None if fresh else "market_data_stale",
+            "reason": reason,
             "age_seconds": age_seconds,
             "max_age_seconds": self._max_age_seconds,
         }

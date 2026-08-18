@@ -235,6 +235,9 @@ class EndToEndLiveMarketPaperCycleController:
                             starting_value,
                         )
                     ),
+                    expected_entry_exchange=(
+                        buy_exchange
+                    ),
                 )
             )
 

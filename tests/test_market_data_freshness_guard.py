@@ -60,6 +60,21 @@ def test_rejects_market_data_at_age_boundary(guard):
     assert result["age_seconds"] == 5.0
 
 
+def test_rejects_future_dated_market_data(guard):
+    result = guard.evaluate(
+        symbol="BTC/USDT",
+        timestamp=1001.0,
+    )
+
+    assert result["fresh"] is False
+    assert (
+        result["reason"]
+        == "market_data_timestamp_in_future"
+    )
+    assert result["age_seconds"] == -1.0
+
+
+
 def test_missing_symbol_is_rejected(guard):
     with pytest.raises(ValueError, match="symbol is required"):
         guard.evaluate(
