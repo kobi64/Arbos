@@ -10,6 +10,8 @@ progress toward fresh approval.
 This module does not approve, authorize, or submit orders.
 """
 
+import math
+
 from exchanges.route_validator import RouteValidator
 from exchanges.transfer_feasibility import TransferFeasibility
 from exchanges.liquidity_validation import LiquidityValidation
@@ -86,19 +88,121 @@ class FreshRepeatScaleRevalidation:
                 "live_order_submitted": False,
             }
 
-        next_trade_size = float(
-            decision_result.get(
-                "next_trade_size",
-                0.0,
-            )
+        raw_next_trade_size = decision_result.get(
+            "next_trade_size",
+            0.0,
         )
 
-        if next_trade_size <= 0:
+        if isinstance(raw_next_trade_size, bool):
             return {
                 "revalidated": False,
                 "allowed": False,
                 "status": "BLOCKED",
                 "reason": "invalid_next_trade_size",
+                "live_order_submitted": False,
+            }
+
+        try:
+            next_trade_size = float(raw_next_trade_size)
+        except (TypeError, ValueError, OverflowError):
+            return {
+                "revalidated": False,
+                "allowed": False,
+                "status": "BLOCKED",
+                "reason": "invalid_next_trade_size",
+                "live_order_submitted": False,
+            }
+
+        if (
+            not math.isfinite(next_trade_size)
+            or next_trade_size <= 0
+        ):
+            return {
+                "revalidated": False,
+                "allowed": False,
+                "status": "BLOCKED",
+                "reason": "invalid_next_trade_size",
+                "live_order_submitted": False,
+            }
+
+        raw_numeric_inputs = (
+            ("transfer_amount", transfer_amount),
+            ("available_liquidity", available_liquidity),
+            (
+                "minimum_liquidity_ratio",
+                minimum_liquidity_ratio,
+            ),
+            ("expected_price", expected_price),
+            ("current_price", current_price),
+            (
+                "max_slippage_percent",
+                max_slippage_percent,
+            ),
+        )
+
+        normalized = {}
+
+        for field, value in raw_numeric_inputs:
+            reason = (
+                "invalid_transfer_amount"
+                if field == "transfer_amount"
+                else "invalid_revalidation_input"
+            )
+
+            if isinstance(value, bool):
+                return {
+                    "revalidated": False,
+                    "allowed": False,
+                    "status": "BLOCKED",
+                    "reason": reason,
+                    "live_order_submitted": False,
+                }
+
+            try:
+                number = float(value)
+            except (
+                TypeError,
+                ValueError,
+                OverflowError,
+            ):
+                return {
+                    "revalidated": False,
+                    "allowed": False,
+                    "status": "BLOCKED",
+                    "reason": reason,
+                    "live_order_submitted": False,
+                }
+
+            if not math.isfinite(number):
+                return {
+                    "revalidated": False,
+                    "allowed": False,
+                    "status": "BLOCKED",
+                    "reason": reason,
+                    "live_order_submitted": False,
+                }
+
+            normalized[field] = number
+
+        transfer_amount = normalized["transfer_amount"]
+        available_liquidity = normalized[
+            "available_liquidity"
+        ]
+        minimum_liquidity_ratio = normalized[
+            "minimum_liquidity_ratio"
+        ]
+        expected_price = normalized["expected_price"]
+        current_price = normalized["current_price"]
+        max_slippage_percent = normalized[
+            "max_slippage_percent"
+        ]
+
+        if transfer_amount <= 0:
+            return {
+                "revalidated": False,
+                "allowed": False,
+                "status": "BLOCKED",
+                "reason": "invalid_transfer_amount",
                 "live_order_submitted": False,
             }
 
@@ -147,9 +251,7 @@ class FreshRepeatScaleRevalidation:
 
         transfer_result = (
             TransferFeasibility.evaluate(
-                amount=float(
-                    transfer_amount
-                ),
+                amount=transfer_amount,
                 network=selected_network,
             )
         )
@@ -174,12 +276,8 @@ class FreshRepeatScaleRevalidation:
         liquidity_result = (
             LiquidityValidation.validate(
                 trade_size=next_trade_size,
-                available_liquidity=float(
-                    available_liquidity
-                ),
-                minimum_liquidity_ratio=float(
-                    minimum_liquidity_ratio
-                ),
+                available_liquidity=available_liquidity,
+                minimum_liquidity_ratio=minimum_liquidity_ratio,
             )
         )
 
@@ -202,15 +300,9 @@ class FreshRepeatScaleRevalidation:
 
         slippage_result = (
             SlippageValidation.validate(
-                expected_price=float(
-                    expected_price
-                ),
-                execution_price=float(
-                    current_price
-                ),
-                max_slippage_percent=float(
-                    max_slippage_percent
-                ),
+                expected_price=expected_price,
+                execution_price=current_price,
+                max_slippage_percent=max_slippage_percent,
             )
         )
 

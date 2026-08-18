@@ -84,3 +84,121 @@ def test_uses_convert_swap_when_spot_conversion_unavailable():
     assert result["route_type"] == "CONVERT_SWAP_BRIDGE"
     assert result["bridge_asset"] == "BTC"
     assert result["conversion_method"] == "convert_swap"
+
+
+def test_spot_bridge_requires_withdrawable_btc_network():
+    planner = WithdrawalAwareBridgeConversionPlanner()
+
+    blocked_btc = NetworkInfo(
+        coin="BTC",
+        network="BTC",
+        withdraw_enabled=False,
+    )
+
+    result = planner.plan(
+        coin="COINX",
+        amount=100.0,
+        coin_network=blocked_coin_network(),
+        btc_network=blocked_btc,
+        spot_conversion_available=True,
+        convert_quote_available=False,
+    )
+
+    assert result["route_type"] == "REJECTED"
+    assert result["reason"] == "no_transfer_or_conversion_path"
+
+
+def test_convert_bridge_requires_withdrawable_btc_network():
+    planner = WithdrawalAwareBridgeConversionPlanner()
+
+    blocked_btc = NetworkInfo(
+        coin="BTC",
+        network="BTC",
+        withdraw_enabled=False,
+    )
+
+    result = planner.plan(
+        coin="COINX",
+        amount=100.0,
+        coin_network=blocked_coin_network(),
+        btc_network=blocked_btc,
+        spot_conversion_available=False,
+        convert_quote_available=True,
+    )
+
+    assert result["route_type"] == "REJECTED"
+    assert result["reason"] == "no_transfer_or_conversion_path"
+
+
+@pytest.mark.parametrize(
+    "flag_name",
+    [
+        "spot_conversion_available",
+        "convert_quote_available",
+    ],
+)
+@pytest.mark.parametrize(
+    "flag_value",
+    [
+        None,
+        0,
+        1,
+        "true",
+        "false",
+    ],
+)
+def test_conversion_availability_flags_require_real_booleans(
+    flag_name,
+    flag_value,
+):
+    planner = WithdrawalAwareBridgeConversionPlanner()
+
+    kwargs = {
+        "coin": "COINX",
+        "amount": 100.0,
+        "coin_network": blocked_coin_network(),
+        "btc_network": withdrawable_btc_network(),
+        "spot_conversion_available": False,
+        "convert_quote_available": False,
+    }
+    kwargs[flag_name] = flag_value
+
+    with pytest.raises(
+        ValueError,
+        match="conversion availability flags must be booleans",
+    ):
+        planner.plan(**kwargs)
+
+
+def test_valid_btc_network_still_allows_spot_bridge():
+    planner = WithdrawalAwareBridgeConversionPlanner()
+
+    result = planner.plan(
+        coin="COINX",
+        amount=100.0,
+        coin_network=blocked_coin_network(),
+        btc_network=withdrawable_btc_network(),
+        spot_conversion_available=True,
+        convert_quote_available=False,
+    )
+
+    assert result["route_type"] == "SPOT_BRIDGE_CONVERSION"
+    assert result["bridge_asset"] == "BTC"
+    assert result["conversion_method"] == "spot"
+
+
+def test_valid_btc_network_still_allows_convert_bridge():
+    planner = WithdrawalAwareBridgeConversionPlanner()
+
+    result = planner.plan(
+        coin="COINX",
+        amount=100.0,
+        coin_network=blocked_coin_network(),
+        btc_network=withdrawable_btc_network(),
+        spot_conversion_available=False,
+        convert_quote_available=True,
+    )
+
+    assert result["route_type"] == "CONVERT_SWAP_BRIDGE"
+    assert result["bridge_asset"] == "BTC"
+    assert result["conversion_method"] == "convert_swap"
