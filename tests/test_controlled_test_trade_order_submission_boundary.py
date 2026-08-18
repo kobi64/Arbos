@@ -10,6 +10,8 @@ def ready_intent():
         "intent_ready": True,
         "reason": "order_intent_ready",
         "exchange": "HTX",
+        "buy_exchange": "htx",
+        "sell_exchange": "htx",
         "symbol": "ETH/USDT",
         "side": "buy",
         "amount": 250.0,
@@ -290,3 +292,165 @@ def test_numeric_string_and_numeric_amount_duplicate_is_blocked():
     assert accepted["accepted"] is True
     assert duplicate["accepted"] is False
     assert duplicate["reason"] == "duplicate_order_intent_blocked"
+
+
+# EX-331 — submission destination identity audit
+
+
+def destination_bound_intent(
+    *,
+    side="buy",
+    exchange=None,
+):
+    intent = ready_intent()
+    intent["buy_exchange"] = "kucoin"
+    intent["sell_exchange"] = "gate"
+    intent["side"] = side
+
+    if exchange is None:
+        intent["exchange"] = (
+            "kucoin"
+            if side == "buy"
+            else "gate"
+        )
+    else:
+        intent["exchange"] = exchange
+
+    return intent
+
+
+def test_submission_accepts_bound_buy_destination():
+    boundary = ControlledTestTradeOrderSubmissionBoundary()
+
+    result = boundary.submit(
+        destination_bound_intent(
+            side="buy",
+        )
+    )
+
+    assert result["accepted"] is True
+
+    order = boundary.get_order(
+        result["order_id"]
+    )
+
+    assert order["exchange"] == "KUCOIN"
+    assert order["buy_exchange"] == "KUCOIN"
+    assert order["sell_exchange"] == "GATE"
+
+
+def test_submission_accepts_bound_sell_destination():
+    boundary = ControlledTestTradeOrderSubmissionBoundary()
+
+    result = boundary.submit(
+        destination_bound_intent(
+            side="sell",
+        )
+    )
+
+    assert result["accepted"] is True
+
+    order = boundary.get_order(
+        result["order_id"]
+    )
+
+    assert order["exchange"] == "GATE"
+    assert order["buy_exchange"] == "KUCOIN"
+    assert order["sell_exchange"] == "GATE"
+
+
+def test_submission_blocks_buy_destination_substitution():
+    boundary = ControlledTestTradeOrderSubmissionBoundary()
+
+    result = boundary.submit(
+        destination_bound_intent(
+            side="buy",
+            exchange="gate",
+        )
+    )
+
+    assert result["accepted"] is False
+    assert result["reason"] == "buy_exchange_mismatch"
+    assert result["live_order_submitted"] is False
+
+
+def test_submission_blocks_sell_destination_substitution():
+    boundary = ControlledTestTradeOrderSubmissionBoundary()
+
+    result = boundary.submit(
+        destination_bound_intent(
+            side="sell",
+            exchange="kucoin",
+        )
+    )
+
+    assert result["accepted"] is False
+    assert result["reason"] == "sell_exchange_mismatch"
+    assert result["live_order_submitted"] is False
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("buy_exchange", None),
+        ("buy_exchange", ""),
+        ("buy_exchange", "   "),
+        ("buy_exchange", 0),
+        ("buy_exchange", False),
+        ("sell_exchange", None),
+        ("sell_exchange", ""),
+        ("sell_exchange", "   "),
+        ("sell_exchange", 0),
+        ("sell_exchange", False),
+    ],
+)
+def test_submission_requires_approved_destination_identity(
+    field,
+    value,
+):
+    boundary = ControlledTestTradeOrderSubmissionBoundary()
+
+    intent = destination_bound_intent()
+    intent[field] = value
+
+    result = boundary.submit(intent)
+
+    assert result["accepted"] is False
+    assert result["reason"] == f"{field}_required"
+    assert result["live_order_submitted"] is False
+
+
+def test_submission_destination_comparison_is_normalized():
+    boundary = ControlledTestTradeOrderSubmissionBoundary()
+
+    intent = destination_bound_intent()
+    intent["exchange"] = " KUCOIN "
+    intent["buy_exchange"] = " kucoin "
+    intent["sell_exchange"] = " gate "
+
+    result = boundary.submit(intent)
+
+    assert result["accepted"] is True
+
+    order = boundary.get_order(
+        result["order_id"]
+    )
+
+    assert order["exchange"] == "KUCOIN"
+    assert order["buy_exchange"] == "KUCOIN"
+    assert order["sell_exchange"] == "GATE"
+
+
+def test_submission_destination_mismatch_creates_no_order():
+    boundary = ControlledTestTradeOrderSubmissionBoundary()
+
+    result = boundary.submit(
+        destination_bound_intent(
+            side="buy",
+            exchange="gate",
+        )
+    )
+
+    assert result["accepted"] is False
+    assert result["live_order_submitted"] is False
+    assert "order_id" not in result
