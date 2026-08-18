@@ -113,3 +113,48 @@ def test_rejects_loss_making_opportunity():
     assert result.net_profit == -50.0
     assert result.profit_percent == -5.0
     assert result.reason == "below_minimum_profit"
+
+
+def test_infeasible_route_does_not_report_zero_profit():
+    result = ArbitrageOpportunityEvaluation.evaluate(
+        route_feasible=False,
+        starting_value=1000.0,
+        final_value=1050.0,
+        minimum_profit_percent=2.0,
+    )
+
+    assert result.valid is True
+    assert result.executable is False
+    assert result.net_profit is None
+    assert result.profit_percent is None
+    assert result.reason == "route_not_feasible"
+
+
+def test_invalid_input_does_not_report_zero_profit():
+    result = ArbitrageOpportunityEvaluation.evaluate(
+        route_feasible=True,
+        starting_value=0.0,
+        final_value=1050.0,
+        minimum_profit_percent=2.0,
+    )
+
+    assert result.valid is False
+    assert result.executable is False
+    assert result.net_profit is None
+    assert result.profit_percent is None
+    assert result.reason == "invalid_starting_value"
+
+
+def test_calculated_break_even_preserves_zero_profit():
+    result = ArbitrageOpportunityEvaluation.evaluate(
+        route_feasible=True,
+        starting_value=1000.0,
+        final_value=1000.0,
+        minimum_profit_percent=0.0,
+    )
+
+    assert result.valid is True
+    assert result.executable is True
+    assert result.net_profit == 0.0
+    assert result.profit_percent == 0.0
+    assert result.reason == "ok"
