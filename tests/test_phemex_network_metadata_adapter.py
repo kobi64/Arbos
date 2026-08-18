@@ -221,3 +221,79 @@ def test_coin_is_required():
         match="coin is required",
     ):
         adapter.describe_networks("")
+
+
+def test_public_metadata_does_not_claim_transfer_verification():
+    adapter = PhemexNetworkMetadataAdapter(
+        client=FakeClient(),
+    )
+
+    result = adapter.describe_networks(
+        "USDT"
+    )
+
+    assert result[
+        "transfer_verification_available"
+    ] is False
+
+    for network in result["networks"]:
+        assert network[
+            "deposit_enabled"
+        ] is None
+        assert network[
+            "withdraw_enabled"
+        ] is None
+
+
+def test_public_metadata_cannot_be_mistaken_for_network_info():
+    from exchanges.network_registry import NetworkInfo
+
+    adapter = PhemexNetworkMetadataAdapter(
+        client=FakeClient(),
+    )
+
+    networks = adapter.get_networks(
+        "USDT"
+    )
+
+    assert networks
+
+    assert all(
+        not isinstance(
+            network,
+            NetworkInfo,
+        )
+        for network in networks
+    )
+
+
+def test_operational_status_does_not_imply_transfer_capability():
+    adapter = PhemexNetworkMetadataAdapter(
+        client=FakeClient(),
+    )
+
+    networks = adapter.get_networks(
+        "USDT"
+    )
+
+    trx = networks[0]
+
+    assert trx["operational"] is True
+    assert trx["deposit_enabled"] is None
+    assert trx["withdraw_enabled"] is None
+
+
+def test_closed_network_also_remains_transfer_unverified():
+    adapter = PhemexNetworkMetadataAdapter(
+        client=FakeClient(),
+    )
+
+    networks = adapter.get_networks(
+        "USDT"
+    )
+
+    ftm = networks[1]
+
+    assert ftm["operational"] is False
+    assert ftm["deposit_enabled"] is None
+    assert ftm["withdraw_enabled"] is None
