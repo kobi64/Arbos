@@ -298,3 +298,96 @@ def test_no_compatible_network_has_no_feasibility_diagnostics():
     assert result.executable is False
     assert result.reason == "no_compatible_network"
     assert result.feasibility_diagnostics is None
+
+
+def test_no_compatible_network_does_not_report_zero_withdraw_fee():
+    source = [
+        NetworkInfo(
+            "USDT",
+            "ERC20",
+            withdraw_fee=5.0,
+            min_withdraw=1.0,
+        ),
+    ]
+
+    destination = [
+        NetworkInfo(
+            "USDT",
+            "TRC20",
+        ),
+    ]
+
+    result = TransferRouteEvaluation.evaluate(
+        amount=100.0,
+        source_networks=source,
+        destination_networks=destination,
+    )
+
+    assert result.executable is False
+    assert result.network is None
+    assert result.withdraw_fee is None
+
+
+def test_unknown_withdraw_fee_remains_unknown_on_failed_route():
+    source = [
+        NetworkInfo(
+            "USDT",
+            "TRC20",
+            withdraw_fee=None,
+            min_withdraw=1.0,
+        ),
+    ]
+
+    destination = [
+        NetworkInfo(
+            "USDT",
+            "TRC20",
+        ),
+    ]
+
+    result = TransferRouteEvaluation.evaluate(
+        amount=100.0,
+        source_networks=source,
+        destination_networks=destination,
+    )
+
+    assert result.executable is False
+    assert result.withdraw_fee is None
+
+    diagnostics = result.feasibility_diagnostics
+
+    assert diagnostics is not None
+    assert diagnostics[
+        "failures_by_reason"
+    ] == {
+        "withdrawal_fee_unknown": 1,
+    }
+
+
+def test_genuine_zero_fee_executable_route_preserves_zero():
+    source = [
+        NetworkInfo(
+            "USDT",
+            "TRC20",
+            withdraw_fee=0.0,
+            min_withdraw=1.0,
+        ),
+    ]
+
+    destination = [
+        NetworkInfo(
+            "USDT",
+            "TRC20",
+        ),
+    ]
+
+    result = TransferRouteEvaluation.evaluate(
+        amount=100.0,
+        source_networks=source,
+        destination_networks=destination,
+    )
+
+    assert result.executable is True
+    assert result.network == "TRC20"
+    assert result.withdraw_fee == 0.0
+    assert result.net_amount == 100.0
