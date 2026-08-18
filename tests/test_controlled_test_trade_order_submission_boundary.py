@@ -140,3 +140,153 @@ def test_boundary_does_not_submit_live_order():
     assert result["accepted"] is True
     assert result["live_order_submitted"] is False
     assert "exchange_order_id" not in result
+
+
+@pytest.mark.parametrize(
+    "amount",
+    [
+        None,
+        "bad",
+        float("nan"),
+        float("inf"),
+        float("-inf"),
+        True,
+        0.0,
+        -1.0,
+    ],
+)
+def test_submission_rejects_invalid_order_amount(
+    amount,
+):
+    boundary = ControlledTestTradeOrderSubmissionBoundary()
+
+    intent = ready_intent()
+    intent["amount"] = amount
+
+    result = boundary.submit(intent)
+
+    assert result["accepted"] is False
+    assert result["reason"] == "invalid_order_amount"
+
+
+def test_submission_supports_numeric_string_amount():
+    boundary = ControlledTestTradeOrderSubmissionBoundary()
+
+    intent = ready_intent()
+    intent["amount"] = "250"
+
+    result = boundary.submit(intent)
+
+    assert result["accepted"] is True
+
+    order = boundary.get_order(
+        result["order_id"]
+    )
+
+    assert order["amount"] == 250.0
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("route_id", None),
+        ("route_id", ""),
+        ("route_id", "   "),
+        ("route_id", 0),
+        ("route_id", False),
+        ("approval_id", None),
+        ("approval_id", ""),
+        ("approval_id", "   "),
+        ("approval_id", 0),
+        ("approval_id", False),
+        ("permission_id", None),
+        ("permission_id", ""),
+        ("permission_id", "   "),
+        ("permission_id", 0),
+        ("permission_id", False),
+        ("asset", None),
+        ("asset", ""),
+        ("asset", "   "),
+        ("asset", 0),
+        ("asset", False),
+    ],
+)
+def test_submission_requires_bound_identity(
+    field,
+    value,
+):
+    boundary = ControlledTestTradeOrderSubmissionBoundary()
+
+    intent = ready_intent()
+    intent[field] = value
+
+    result = boundary.submit(intent)
+
+    assert result["accepted"] is False
+    assert result["reason"] == f"{field}_required"
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("exchange", None),
+        ("exchange", ""),
+        ("exchange", "   "),
+        ("exchange", 0),
+        ("exchange", False),
+        ("symbol", None),
+        ("symbol", ""),
+        ("symbol", "   "),
+        ("symbol", 0),
+        ("symbol", False),
+    ],
+)
+def test_submission_requires_order_destination(
+    field,
+    value,
+):
+    boundary = ControlledTestTradeOrderSubmissionBoundary()
+
+    intent = ready_intent()
+    intent[field] = value
+
+    result = boundary.submit(intent)
+
+    assert result["accepted"] is False
+    assert result["reason"] == f"{field}_required"
+
+
+def test_submission_normalizes_identity_before_order_creation():
+    boundary = ControlledTestTradeOrderSubmissionBoundary()
+
+    intent = ready_intent()
+    intent["route_id"] = "  DIRECT-ETH  "
+    intent["approval_id"] = "  ARB-001  "
+    intent["permission_id"] = "  PERM-001  "
+    intent["asset"] = " eth "
+    intent["exchange"] = " htx "
+    intent["symbol"] = " eth/usdt "
+
+    result = boundary.submit(intent)
+
+    assert result["accepted"] is True
+    assert result["route_id"] == "DIRECT-ETH"
+    assert result["approval_id"] == "ARB-001"
+    assert result["permission_id"] == "PERM-001"
+
+
+def test_numeric_string_and_numeric_amount_duplicate_is_blocked():
+    boundary = ControlledTestTradeOrderSubmissionBoundary()
+
+    first = ready_intent()
+    first["amount"] = "250"
+
+    second = ready_intent()
+    second["amount"] = 250.0
+
+    accepted = boundary.submit(first)
+    duplicate = boundary.submit(second)
+
+    assert accepted["accepted"] is True
+    assert duplicate["accepted"] is False
+    assert duplicate["reason"] == "duplicate_order_intent_blocked"
