@@ -64,3 +64,38 @@ def test_rejects_fee_that_consumes_trade_value():
     assert result.fee_amount == 100.0
     assert result.net_value == 0.0
     assert result.reason == "fee_consumes_trade_value"
+
+
+def test_invalid_trade_value_preserves_uncalculated_costs_as_unknown():
+    result = TradeCostAnalysis.evaluate(
+        trade_value=0.0,
+        fee_percent=0.1,
+    )
+
+    assert result.valid is False
+    assert result.fee_amount is None
+    assert result.net_value is None
+    assert result.reason == "invalid_trade_value"
+
+
+def test_invalid_fee_percent_preserves_uncalculated_costs_as_unknown():
+    result = TradeCostAnalysis.evaluate(
+        trade_value=1000.0,
+        fee_percent=-0.1,
+    )
+
+    assert result.valid is False
+    assert result.fee_amount is None
+    assert result.net_value is None
+    assert result.reason == "invalid_fee_percent"
+
+
+def test_calculated_zero_fee_remains_numeric_zero():
+    result = TradeCostAnalysis.evaluate(
+        trade_value=1000.0,
+        fee_percent=0.0,
+    )
+
+    assert result.valid is True
+    assert result.fee_amount == 0.0
+    assert result.net_value == 1000.0
