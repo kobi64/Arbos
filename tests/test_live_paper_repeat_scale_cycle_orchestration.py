@@ -500,3 +500,246 @@ def test_entire_orchestration_remains_paper_only():
     assert result["simulated"] is True
     assert result["paper_trade"] is True
     assert result["live_order_submitted"] is False
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("permission_id", None),
+        ("permission_id", ""),
+        ("permission_id", "   "),
+        ("permission_id", 0),
+        ("permission_id", False),
+        ("permission_id", []),
+        ("permission_id", {}),
+        ("approval_id", None),
+        ("approval_id", ""),
+        ("approval_id", "   "),
+        ("approval_id", 0),
+        ("approval_id", False),
+        ("approval_id", []),
+        ("approval_id", {}),
+    ],
+)
+def test_orchestration_requires_real_string_control_ids(
+    field,
+    value,
+):
+    granted = permission()
+    granted[field] = value
+
+    result = execute(
+        permission_result=granted
+    )
+
+    assert result["executed"] is False
+    assert result["reason"] == f"{field}_required"
+
+
+def test_orchestration_normalizes_control_ids():
+    granted = permission()
+    granted["permission_id"] = "  PERM-002  "
+    granted["approval_id"] = "  ARB-002  "
+
+    result = execute(
+        permission_result=granted
+    )
+
+    assert result["executed"] is True
+    assert result["permission_id"] == "PERM-002"
+    assert result["approval_id"] == "ARB-002"
+
+
+@pytest.mark.parametrize(
+    "route_id",
+    [
+        None,
+        "",
+        "   ",
+        0,
+        False,
+        [],
+        {},
+    ],
+)
+def test_orchestration_requires_real_route_id(
+    route_id,
+):
+    current_route = route()
+    current_route["route_id"] = route_id
+
+    result = orchestrator().execute(
+        permission_result=permission(),
+        execution_id="EXEC-326-001",
+        route=current_route,
+        portfolio=portfolio(),
+        asset="BTC",
+        additional_exposure=0.05,
+        starting_value=250.0,
+    )
+
+    assert result["executed"] is False
+    assert result["reason"] == "route_id_required"
+
+
+def test_permission_route_must_match_execution_route():
+    granted = permission()
+    granted["route_id"] = "OTHER-ROUTE"
+
+    result = execute(
+        permission_result=granted
+    )
+
+    assert result["executed"] is False
+    assert (
+        result["reason"]
+        == "permitted_route_id_mismatch"
+    )
+
+
+def test_whitespace_route_ids_are_normalized_before_match():
+    granted = permission()
+    granted["route_id"] = "  ROUTE-001  "
+
+    current_route = route()
+    current_route["route_id"] = " ROUTE-001 "
+
+    result = orchestrator().execute(
+        permission_result=granted,
+        execution_id="EXEC-326-002",
+        route=current_route,
+        portfolio=portfolio(),
+        asset="BTC",
+        additional_exposure=0.05,
+        starting_value=250.0,
+    )
+
+    assert result["executed"] is True
+    assert result["route_id"] == "ROUTE-001"
+
+
+@pytest.mark.parametrize(
+    "asset",
+    [
+        None,
+        "",
+        "   ",
+        0,
+        False,
+        [],
+        {},
+    ],
+)
+def test_execution_asset_must_be_real_string(
+    asset,
+):
+    result = orchestrator().execute(
+        permission_result=permission(),
+        execution_id="EXEC-326-003",
+        route=route(),
+        portfolio=portfolio(),
+        asset=asset,
+        additional_exposure=0.05,
+        starting_value=250.0,
+    )
+
+    assert result["executed"] is False
+    assert result["reason"] == "asset_required"
+
+
+def test_permission_asset_must_match_execution_asset():
+    granted = permission()
+    granted["asset"] = "ETH"
+
+    result = execute(
+        permission_result=granted
+    )
+
+    assert result["executed"] is False
+    assert (
+        result["reason"]
+        == "permitted_asset_mismatch"
+    )
+
+
+def test_asset_match_is_case_and_whitespace_normalized():
+    granted = permission()
+    granted["asset"] = " btc "
+
+    result = orchestrator().execute(
+        permission_result=granted,
+        execution_id="EXEC-326-004",
+        route=route(),
+        portfolio=portfolio(),
+        asset=" BTC ",
+        additional_exposure=0.05,
+        starting_value=250.0,
+    )
+
+    assert result["executed"] is True
+
+
+@pytest.mark.parametrize(
+    "trade_amount",
+    [
+        None,
+        "bad",
+        float("nan"),
+        float("inf"),
+        float("-inf"),
+        True,
+        False,
+        0.0,
+        -1.0,
+    ],
+)
+def test_invalid_orchestration_permitted_amount_is_blocked(
+    trade_amount,
+):
+    granted = permission(
+        trade_amount=trade_amount
+    )
+
+    result = execute(
+        permission_result=granted
+    )
+
+    assert result["executed"] is False
+    assert (
+        result["reason"]
+        == "invalid_permitted_trade_amount"
+    )
+
+
+@pytest.mark.parametrize(
+    "starting_value",
+    [
+        None,
+        "bad",
+        float("nan"),
+        float("inf"),
+        float("-inf"),
+        True,
+        False,
+        0.0,
+        -1.0,
+    ],
+)
+def test_invalid_starting_value_contract(
+    starting_value,
+):
+    service = orchestrator()
+
+    with pytest.raises(
+        ValueError,
+        match="starting_value must be positive",
+    ):
+        service.execute(
+            permission_result=permission(),
+            execution_id="EXEC-326-005",
+            route=route(),
+            portfolio=portfolio(),
+            asset="BTC",
+            additional_exposure=0.05,
+            starting_value=starting_value,
+        )

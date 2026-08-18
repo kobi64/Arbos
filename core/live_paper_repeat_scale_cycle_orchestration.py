@@ -14,6 +14,8 @@ All execution remains simulated and paper-only.
 This module never submits a live exchange order.
 """
 
+import math
+
 from exchanges.live_paper_trading_orchestrator import (
     LivePaperTradingOrchestrator,
 )
@@ -82,42 +84,86 @@ class LivePaperRepeatScaleCycleOrchestration:
         )
 
         if (
-            permission_id is None
-            or not str(permission_id).strip()
+            not isinstance(permission_id, str)
+            or not permission_id.strip()
         ):
             return self._blocked(
                 reason="permission_id_required"
             )
+
+        permission_id = permission_id.strip()
 
         approval_id = permission_result.get(
             "approval_id"
         )
 
         if (
-            approval_id is None
-            or not str(approval_id).strip()
+            not isinstance(approval_id, str)
+            or not approval_id.strip()
         ):
             return self._blocked(
                 reason="approval_id_required"
             )
 
-        permitted_amount = float(
+        approval_id = approval_id.strip()
+
+        raw_permitted_amount = (
             permission_result.get(
-                "trade_amount",
-                0.0,
+                "trade_amount"
             )
         )
 
-        starting_value = float(
-            starting_value
-        )
-
-        if permitted_amount <= 0:
+        if isinstance(
+            raw_permitted_amount,
+            bool,
+        ):
             return self._blocked(
                 reason="invalid_permitted_trade_amount"
             )
 
-        if starting_value <= 0:
+        try:
+            permitted_amount = float(
+                raw_permitted_amount
+            )
+        except (
+            TypeError,
+            ValueError,
+            OverflowError,
+        ):
+            return self._blocked(
+                reason="invalid_permitted_trade_amount"
+            )
+
+        if (
+            not math.isfinite(permitted_amount)
+            or permitted_amount <= 0
+        ):
+            return self._blocked(
+                reason="invalid_permitted_trade_amount"
+            )
+
+        if isinstance(starting_value, bool):
+            raise ValueError(
+                "starting_value must be positive"
+            )
+
+        try:
+            starting_value = float(
+                starting_value
+            )
+        except (
+            TypeError,
+            ValueError,
+            OverflowError,
+        ):
+            raise ValueError(
+                "starting_value must be positive"
+            ) from None
+
+        if (
+            not math.isfinite(starting_value)
+            or starting_value <= 0
+        ):
             raise ValueError(
                 "starting_value must be positive"
             )
@@ -129,16 +175,80 @@ class LivePaperRepeatScaleCycleOrchestration:
                 )
             )
 
-        route_id = str(
-            route.get(
-                "route_id",
-                "",
-            )
-        ).strip()
+        raw_route_id = route.get(
+            "route_id"
+        )
 
-        if not route_id:
-            raise ValueError(
-                "route_id is required"
+        if (
+            not isinstance(raw_route_id, str)
+            or not raw_route_id.strip()
+        ):
+            return self._blocked(
+                reason="route_id_required"
+            )
+
+        route_id = raw_route_id.strip()
+
+        permitted_route_id = (
+            permission_result.get(
+                "route_id"
+            )
+        )
+
+        if (
+            not isinstance(
+                permitted_route_id,
+                str,
+            )
+            or not permitted_route_id.strip()
+        ):
+            return self._blocked(
+                reason="route_id_required"
+            )
+
+        permitted_route_id = (
+            permitted_route_id.strip()
+        )
+
+        if permitted_route_id != route_id:
+            return self._blocked(
+                reason="permitted_route_id_mismatch"
+            )
+
+        if (
+            not isinstance(asset, str)
+            or not asset.strip()
+        ):
+            return self._blocked(
+                reason="asset_required"
+            )
+
+        asset = asset.strip().upper()
+
+        permitted_asset = (
+            permission_result.get(
+                "asset"
+            )
+        )
+
+        if (
+            not isinstance(
+                permitted_asset,
+                str,
+            )
+            or not permitted_asset.strip()
+        ):
+            return self._blocked(
+                reason="asset_required"
+            )
+
+        permitted_asset = (
+            permitted_asset.strip().upper()
+        )
+
+        if permitted_asset != asset:
+            return self._blocked(
+                reason="permitted_asset_mismatch"
             )
 
         result = self._orchestrator.execute(
