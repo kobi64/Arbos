@@ -234,3 +234,175 @@ def test_missing_route_is_rejected():
             route=None,
             completed_leg_number=3,
         )
+
+
+@pytest.mark.parametrize(
+    "field",
+    [
+        "filled_quantity",
+        "notional",
+    ],
+)
+def test_missing_terminal_fill_values_do_not_masquerade_as_zero(
+    field,
+):
+    completer = SimulatedMultiLegRouteCompletion()
+
+    fill = final_fill()
+    del fill[field]
+
+    result = completer.complete(
+        final_fill=fill,
+        route=route(),
+        completed_leg_number=3,
+    )
+
+    assert result["completed"] is False
+    assert result["route_complete"] is False
+    assert result["reason"] == "invalid_final_fill_values"
+    assert result["live_order_submitted"] is False
+
+
+@pytest.mark.parametrize(
+    "field",
+    [
+        "filled_quantity",
+        "notional",
+    ],
+)
+def test_none_terminal_fill_values_are_rejected(field):
+    completer = SimulatedMultiLegRouteCompletion()
+
+    fill = final_fill()
+    fill[field] = None
+
+    result = completer.complete(
+        final_fill=fill,
+        route=route(),
+        completed_leg_number=3,
+    )
+
+    assert result["completed"] is False
+    assert result["route_complete"] is False
+    assert result["reason"] == "invalid_final_fill_values"
+
+
+@pytest.mark.parametrize(
+    "field",
+    [
+        "filled_quantity",
+        "notional",
+    ],
+)
+def test_non_numeric_terminal_fill_values_are_rejected(field):
+    completer = SimulatedMultiLegRouteCompletion()
+
+    fill = final_fill()
+    fill[field] = "not-a-number"
+
+    result = completer.complete(
+        final_fill=fill,
+        route=route(),
+        completed_leg_number=3,
+    )
+
+    assert result["completed"] is False
+    assert result["route_complete"] is False
+    assert result["reason"] == "invalid_final_fill_values"
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("filled_quantity", 0.0),
+        ("filled_quantity", -1.0),
+        ("notional", -1.0),
+    ],
+)
+def test_invalid_terminal_numeric_values_are_rejected(
+    field,
+    value,
+):
+    completer = SimulatedMultiLegRouteCompletion()
+
+    fill = final_fill()
+    fill[field] = value
+
+    result = completer.complete(
+        final_fill=fill,
+        route=route(),
+        completed_leg_number=3,
+    )
+
+    assert result["completed"] is False
+    assert result["route_complete"] is False
+    assert result["reason"] == "invalid_final_fill_values"
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("filled_quantity", float("nan")),
+        ("filled_quantity", float("inf")),
+        ("filled_quantity", float("-inf")),
+        ("notional", float("nan")),
+        ("notional", float("inf")),
+        ("notional", float("-inf")),
+    ],
+)
+def test_non_finite_terminal_fill_values_are_rejected(
+    field,
+    value,
+):
+    completer = SimulatedMultiLegRouteCompletion()
+
+    fill = final_fill()
+    fill[field] = value
+
+    result = completer.complete(
+        final_fill=fill,
+        route=route(),
+        completed_leg_number=3,
+    )
+
+    assert result["completed"] is False
+    assert result["route_complete"] is False
+    assert result["reason"] == "invalid_final_fill_values"
+
+
+def test_genuine_zero_notional_is_preserved_for_buy_completion():
+    completer = SimulatedMultiLegRouteCompletion()
+
+    test_route = route()
+    test_route["legs"][-1]["side"] = "buy"
+
+    fill = final_fill()
+    fill["notional"] = 0.0
+
+    result = completer.complete(
+        final_fill=fill,
+        route=test_route,
+        completed_leg_number=3,
+    )
+
+    assert result["completed"] is True
+    assert result["final_filled_quantity"] == 0.2
+    assert result["final_notional"] == 0.0
+    assert result["final_output_amount"] == 0.2
+
+
+def test_zero_notional_cannot_complete_final_sell():
+    completer = SimulatedMultiLegRouteCompletion()
+
+    fill = final_fill()
+    fill["notional"] = 0.0
+
+    result = completer.complete(
+        final_fill=fill,
+        route=route(),
+        completed_leg_number=3,
+    )
+
+    assert result["completed"] is False
+    assert result["route_complete"] is False
+    assert result["reason"] == "invalid_final_fill_values"

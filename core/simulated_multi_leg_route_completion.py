@@ -9,6 +9,8 @@ arbitrage route after the final leg fill has been captured.
 This module does not submit live exchange orders.
 """
 
+import math
+
 
 class SimulatedMultiLegRouteCompletion:
     def complete(
@@ -106,20 +108,49 @@ class SimulatedMultiLegRouteCompletion:
             )
         ).strip().lower()
 
+        try:
+            filled_quantity = float(
+                final_fill["filled_quantity"]
+            )
+            notional = float(
+                final_fill["notional"]
+            )
+        except (KeyError, TypeError, ValueError):
+            return {
+                "completed": False,
+                "route_complete": False,
+                "reason": "invalid_final_fill_values",
+                "route_id": route_id,
+                "live_order_submitted": False,
+            }
+
+        if (
+            not math.isfinite(filled_quantity)
+            or not math.isfinite(notional)
+            or filled_quantity <= 0
+            or notional < 0
+        ):
+            return {
+                "completed": False,
+                "route_complete": False,
+                "reason": "invalid_final_fill_values",
+                "route_id": route_id,
+                "live_order_submitted": False,
+            }
+
         if final_side == "sell":
-            final_output_amount = float(
-                final_fill.get(
-                    "notional",
-                    0.0,
-                )
-            )
+            if notional <= 0:
+                return {
+                    "completed": False,
+                    "route_complete": False,
+                    "reason": "invalid_final_fill_values",
+                    "route_id": route_id,
+                    "live_order_submitted": False,
+                }
+
+            final_output_amount = notional
         else:
-            final_output_amount = float(
-                final_fill.get(
-                    "filled_quantity",
-                    0.0,
-                )
-            )
+            final_output_amount = filled_quantity
 
         return {
             "completed": True,
@@ -140,17 +171,11 @@ class SimulatedMultiLegRouteCompletion:
                 "symbol"
             ),
             "final_side": final_side,
-            "final_filled_quantity": float(
-                final_fill.get(
-                    "filled_quantity",
-                    0.0,
-                )
+            "final_filled_quantity": (
+                filled_quantity
             ),
-            "final_notional": float(
-                final_fill.get(
-                    "notional",
-                    0.0,
-                )
+            "final_notional": (
+                notional
             ),
             "final_output_amount": (
                 final_output_amount
