@@ -468,3 +468,69 @@ def test_non_positive_expected_profit_is_not_approval_ready(
     assert result["approval_ready"] is False
     assert result["reason"] == "non_positive_expected_profit"
     assert result["live_order_submitted"] is False
+
+
+# EX-327 — approval handoff identity audit
+
+
+def test_route_identity_is_preserved_into_approval_request():
+    result = prepare()
+
+    assert result["prepared"] is True
+    assert result["route_id"] == "ROUTE-001"
+    assert (
+        result["approval_request"]["route_id"]
+        == "ROUTE-001"
+    )
+
+
+def test_route_identity_whitespace_is_normalized():
+    record = revalidated_result()
+    record["route_id"] = "  ROUTE-001  "
+
+    result = prepare(
+        result=record
+    )
+
+    assert result["prepared"] is True
+    assert result["route_id"] == "ROUTE-001"
+    assert (
+        result["approval_request"]["route_id"]
+        == "ROUTE-001"
+    )
+
+
+@pytest.mark.parametrize(
+    "route_id",
+    [
+        None,
+        "",
+        "   ",
+        0,
+        False,
+    ],
+)
+def test_invalid_revalidated_route_identity_is_blocked(
+    route_id,
+):
+    record = revalidated_result()
+    record["route_id"] = route_id
+
+    result = prepare(
+        result=record
+    )
+
+    assert result["prepared"] is False
+    assert result["approval_ready"] is False
+    assert result["reason"] == "route_id_required"
+
+
+def test_previous_control_ids_remain_lineage_only():
+    result = prepare()
+
+    assert result["previous_approval_id"] == "ARB-001"
+    assert result["previous_permission_id"] == "PERM-001"
+    assert result["approval_granted"] is False
+    assert result["permission_granted"] is False
+    assert "approval_id" not in result
+    assert "permission_id" not in result
