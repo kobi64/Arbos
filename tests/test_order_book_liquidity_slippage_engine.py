@@ -179,3 +179,138 @@ def test_single_level_fill_can_have_genuine_zero_slippage(engine):
 
     # Successful evaluation has no failure reason.
     assert result["reason"] is None
+
+
+@pytest.mark.parametrize(
+    "quantity",
+    [
+        "nan",
+        "inf",
+        "-inf",
+        float("nan"),
+        float("inf"),
+        float("-inf"),
+    ],
+)
+def test_non_finite_quantity_is_rejected(engine, quantity):
+    with pytest.raises(
+        ValueError,
+        match="quantity must be positive",
+    ):
+        engine.evaluate(
+            side="buy",
+            quantity=quantity,
+            order_book=sample_book(),
+        )
+
+
+@pytest.mark.parametrize(
+    "price",
+    [
+        0.0,
+        -1.0,
+        float("nan"),
+        float("inf"),
+        float("-inf"),
+    ],
+)
+def test_invalid_order_book_price_is_rejected(engine, price):
+    book = sample_book()
+    book["asks"][0][0] = price
+
+    with pytest.raises(
+        ValueError,
+        match="invalid order book level",
+    ):
+        engine.evaluate(
+            side="buy",
+            quantity=1.0,
+            order_book=book,
+        )
+
+
+@pytest.mark.parametrize(
+    "available",
+    [
+        -1.0,
+        float("nan"),
+        float("inf"),
+        float("-inf"),
+    ],
+)
+def test_invalid_order_book_available_quantity_is_rejected(
+    engine,
+    available,
+):
+    book = sample_book()
+    book["asks"][0][1] = available
+
+    with pytest.raises(
+        ValueError,
+        match="invalid order book level",
+    ):
+        engine.evaluate(
+            side="buy",
+            quantity=1.0,
+            order_book=book,
+        )
+
+
+def test_numeric_string_depth_values_are_normalized(engine):
+    result = engine.evaluate(
+        side="buy",
+        quantity="2",
+        order_book={
+            "asks": [
+                ["100", "1"],
+                ["101", "2"],
+            ],
+            "bids": [],
+        },
+    )
+
+    assert result["requested_quantity"] == 2.0
+    assert result["filled_quantity"] == 2.0
+    assert result["best_price"] == 100.0
+    assert result["average_price"] == 100.5
+    assert result["total_value"] == 201.0
+
+
+def test_zero_available_level_is_valid_but_not_executed(engine):
+    result = engine.evaluate(
+        side="buy",
+        quantity=1.0,
+        order_book={
+            "asks": [
+                [100.0, 0.0],
+                [101.0, 2.0],
+            ],
+            "bids": [],
+        },
+    )
+
+    assert result["filled"] is True
+    assert result["filled_quantity"] == 1.0
+    assert result["average_price"] == 101.0
+    assert result["total_value"] == 101.0
+
+
+def test_no_executable_liquidity_preserves_numeric_zero_outputs(engine):
+    result = engine.evaluate(
+        side="buy",
+        quantity=1.0,
+        order_book={
+            "asks": [
+                [100.0, 0.0],
+                [101.0, 0.0],
+            ],
+            "bids": [],
+        },
+    )
+
+    assert result["filled"] is False
+    assert result["reason"] == "insufficient_liquidity"
+    assert result["filled_quantity"] == 0.0
+    assert result["average_price"] == 0.0
+    assert result["slippage_percent"] == 0.0
+    assert result["total_value"] == 0.0
