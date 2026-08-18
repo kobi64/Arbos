@@ -243,3 +243,146 @@ def test_authorised_execution_cannot_redirect_buy_destination():
     assert intent["intent_ready"] is False
     assert intent["reason"] == "buy_exchange_mismatch"
     assert intent["live_order_submitted"] is False
+
+
+# EX-343 — fresh permission controlled-execution identity integrity
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("permission_id", None),
+        ("permission_id", ""),
+        ("permission_id", "   "),
+        ("permission_id", 0),
+        ("permission_id", False),
+        ("route_id", None),
+        ("route_id", ""),
+        ("route_id", "   "),
+        ("route_id", 0),
+        ("route_id", False),
+        ("approval_id", None),
+        ("approval_id", ""),
+        ("approval_id", "   "),
+        ("approval_id", 0),
+        ("approval_id", False),
+        ("asset", None),
+        ("asset", ""),
+        ("asset", "   "),
+        ("asset", 0),
+        ("asset", False),
+    ],
+)
+def test_controlled_authorisation_requires_permission_identity(
+    field,
+    value,
+):
+    adapter = ControlledTestTradeExecutionAdapter(
+        max_trade_size=300.0
+    )
+
+    permission = granted_permission()
+    permission[field] = value
+
+    result = adapter.authorise(
+        permission_result=permission,
+    )
+
+    assert result["authorised"] is False
+    assert result["reason"] == f"{field}_required"
+    assert result["live_order_submitted"] is False
+
+
+def test_controlled_authorisation_normalizes_permission_identity():
+    adapter = ControlledTestTradeExecutionAdapter(
+        max_trade_size=300.0
+    )
+
+    permission = granted_permission()
+    permission["permission_id"] = "  PERM-001  "
+    permission["route_id"] = "  DIRECT-ETH  "
+    permission["approval_id"] = "  ARB-001  "
+    permission["asset"] = " eth "
+
+    result = adapter.authorise(
+        permission_result=permission,
+    )
+
+    assert result["authorised"] is True
+    assert result["permission_id"] == "PERM-001"
+    assert result["route_id"] == "DIRECT-ETH"
+    assert result["approval_id"] == "ARB-001"
+    assert result["asset"] == "ETH"
+
+
+@pytest.mark.parametrize(
+    "trade_amount",
+    [
+        None,
+        "bad",
+        float("nan"),
+        float("inf"),
+        float("-inf"),
+        True,
+        0.0,
+        -1.0,
+    ],
+)
+def test_invalid_permission_trade_amount_blocks_authorisation(
+    trade_amount,
+):
+    adapter = ControlledTestTradeExecutionAdapter(
+        max_trade_size=300.0
+    )
+
+    permission = granted_permission()
+    permission["trade_amount"] = trade_amount
+
+    result = adapter.authorise(
+        permission_result=permission,
+    )
+
+    assert result["authorised"] is False
+    assert result["reason"] == "invalid_trade_amount"
+    assert result["live_order_submitted"] is False
+
+
+def test_numeric_string_permission_trade_amount_remains_supported():
+    adapter = ControlledTestTradeExecutionAdapter(
+        max_trade_size=300.0
+    )
+
+    permission = granted_permission()
+    permission["trade_amount"] = "250"
+
+    result = adapter.authorise(
+        permission_result=permission,
+    )
+
+    assert result["authorised"] is True
+    assert result["trade_amount"] == 250.0
+
+
+def test_permission_normalization_does_not_mutate_granted_permission():
+    adapter = ControlledTestTradeExecutionAdapter(
+        max_trade_size=300.0
+    )
+
+    permission = granted_permission()
+    permission["permission_id"] = "  PERM-001  "
+    permission["route_id"] = "  DIRECT-ETH  "
+    permission["approval_id"] = "  ARB-001  "
+    permission["asset"] = " eth "
+    permission["buy_exchange"] = "  kucoin  "
+    permission["sell_exchange"] = "  gate  "
+
+    adapter.authorise(
+        permission_result=permission,
+    )
+
+    assert permission["permission_id"] == "  PERM-001  "
+    assert permission["route_id"] == "  DIRECT-ETH  "
+    assert permission["approval_id"] == "  ARB-001  "
+    assert permission["asset"] == " eth "
+    assert permission["buy_exchange"] == "  kucoin  "
+    assert permission["sell_exchange"] == "  gate  "
