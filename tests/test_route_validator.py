@@ -188,3 +188,81 @@ def test_only_unknown_withdraw_fee_is_not_executable():
     )
 
     assert result.executable is False
+
+
+def test_no_shared_network_preserves_unknown_withdraw_fee():
+    source = [
+        NetworkInfo(
+            "USDT",
+            "ERC20",
+            withdraw_fee=5.0,
+        ),
+    ]
+
+    destination = [
+        NetworkInfo(
+            "USDT",
+            "TRC20",
+        ),
+    ]
+
+    result = RouteValidator.validate_transfer_route(
+        source,
+        destination,
+    )
+
+    assert result.executable is False
+    assert result.network is None
+    assert result.withdraw_fee is None
+
+
+def test_only_unknown_fee_preserves_unknown_withdraw_fee():
+    source = [
+        NetworkInfo(
+            "USDT",
+            "TRC20",
+            withdraw_fee=None,
+        ),
+    ]
+
+    destination = [
+        NetworkInfo(
+            "USDT",
+            "TRC20",
+        ),
+    ]
+
+    result = RouteValidator.validate_transfer_route(
+        source,
+        destination,
+    )
+
+    assert result.executable is False
+    assert result.network is None
+    assert result.withdraw_fee is None
+
+
+def test_genuine_zero_fee_route_preserves_zero():
+    source = [
+        NetworkInfo(
+            "USDT",
+            "TRC20",
+            withdraw_fee=0.0,
+        ),
+    ]
+
+    destination = [
+        NetworkInfo(
+            "USDT",
+            "TRC20",
+        ),
+    ]
+
+    result = RouteValidator.validate_transfer_route(
+        source,
+        destination,
+    )
+
+    assert result.executable is True
+    assert result.network == "TRC20"
+    assert result.withdraw_fee == 0.0

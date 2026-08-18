@@ -18,7 +18,7 @@ from exchanges.network_registry import NetworkInfo
 class RouteValidationResult:
     executable: bool
     network: Optional[str] = None
-    withdraw_fee: float = 0.0
+    withdraw_fee: Optional[float] = None
 
 
 class RouteValidator:
@@ -38,7 +38,7 @@ class RouteValidator:
             return RouteValidationResult(
                 executable=False,
                 network=None,
-                withdraw_fee=0.0,
+                withdraw_fee=None,
             )
 
         known_fee_networks = [
@@ -51,7 +51,7 @@ class RouteValidator:
             return RouteValidationResult(
                 executable=False,
                 network=None,
-                withdraw_fee=0.0,
+                withdraw_fee=None,
             )
 
         best_network = min(
@@ -89,14 +89,14 @@ def _identity_verified_transfer_route(
         return RouteValidationResult(
             executable=False,
             network=None,
-            withdraw_fee=0.0,
+            withdraw_fee=None,
         )
 
     if not destination_network_records:
         return RouteValidationResult(
             executable=False,
             network=None,
-            withdraw_fee=0.0,
+            withdraw_fee=None,
         )
 
     validator = ExchangeNetworkIdentityValidator()
@@ -177,7 +177,7 @@ def _identity_verified_transfer_route(
         return RouteValidationResult(
             executable=False,
             network=None,
-            withdraw_fee=0.0,
+            withdraw_fee=None,
         )
 
     best = min(

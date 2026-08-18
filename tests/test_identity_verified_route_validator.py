@@ -211,3 +211,24 @@ def test_legacy_route_validator_remains_available():
 
     assert result.executable is True
     assert result.network == "TRC20"
+
+
+def test_identity_verified_missing_source_preserves_unknown_fee():
+    result = (
+        RouteValidator
+        .validate_identity_verified_transfer_route(
+            source_exchange="source",
+            destination_exchange="destination",
+            coin="USDT",
+            source_network_records=[],
+            destination_network_records=[
+                {
+                    "network": "TRC20",
+                },
+            ],
+        )
+    )
+
+    assert result.executable is False
+    assert result.network is None
+    assert result.withdraw_fee is None
