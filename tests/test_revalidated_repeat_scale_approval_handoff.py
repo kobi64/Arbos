@@ -534,3 +534,122 @@ def test_previous_control_ids_remain_lineage_only():
     assert result["permission_granted"] is False
     assert "approval_id" not in result
     assert "permission_id" not in result
+
+
+# EX-341 — previous authorization lineage integrity
+
+
+@pytest.mark.parametrize(
+    "field",
+    [
+        "previous_approval_id",
+        "previous_permission_id",
+    ],
+)
+@pytest.mark.parametrize(
+    "value",
+    [
+        None,
+        "",
+        "   ",
+        0,
+        False,
+    ],
+)
+def test_invalid_previous_authorization_identity_blocks_handoff(
+    field,
+    value,
+):
+    record = revalidated_result()
+    record[field] = value
+
+    result = prepare(
+        result=record
+    )
+
+    assert result["prepared"] is False
+    assert result["approval_ready"] is False
+    assert (
+        result["reason"]
+        == "invalid_previous_authorization_identity"
+    )
+    assert result["live_order_submitted"] is False
+
+
+def test_previous_authorization_identity_is_normalized():
+    record = revalidated_result()
+    record["previous_approval_id"] = "  ARB-001  "
+    record["previous_permission_id"] = "  PERM-001  "
+
+    result = prepare(
+        result=record
+    )
+
+    assert result["prepared"] is True
+    assert result["approval_ready"] is True
+    assert result["previous_approval_id"] == "ARB-001"
+    assert result["previous_permission_id"] == "PERM-001"
+
+
+def test_previous_identity_normalization_does_not_mutate_revalidation():
+    record = revalidated_result()
+    record["previous_approval_id"] = "  ARB-001  "
+    record["previous_permission_id"] = "  PERM-001  "
+
+    prepare(
+        result=record
+    )
+
+    assert (
+        record["previous_approval_id"]
+        == "  ARB-001  "
+    )
+    assert (
+        record["previous_permission_id"]
+        == "  PERM-001  "
+    )
+
+
+def test_previous_ids_remain_audit_only_after_normalization():
+    record = revalidated_result()
+    record["previous_approval_id"] = " ARB-001 "
+    record["previous_permission_id"] = " PERM-001 "
+
+    result = prepare(
+        result=record
+    )
+
+    assert result["prepared"] is True
+    assert result["approval_ready"] is True
+
+    assert result["previous_approval_id"] == "ARB-001"
+    assert result["previous_permission_id"] == "PERM-001"
+
+    assert result["fresh_approval_required"] is True
+    assert result["approval_granted"] is False
+
+    assert (
+        result["fresh_execution_permission_required"]
+        is True
+    )
+    assert result["permission_granted"] is False
+
+    assert "approval_id" not in result
+    assert "permission_id" not in result
+
+
+def test_normalized_previous_ids_do_not_enter_approval_request():
+    record = revalidated_result()
+    record["previous_approval_id"] = " ARB-001 "
+    record["previous_permission_id"] = " PERM-001 "
+
+    result = prepare(
+        result=record
+    )
+
+    request = result["approval_request"]
+
+    assert "previous_approval_id" not in request
+    assert "previous_permission_id" not in request
+    assert "approval_id" not in request
+    assert "permission_id" not in request

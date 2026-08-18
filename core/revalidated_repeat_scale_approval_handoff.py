@@ -239,6 +239,45 @@ class RevalidatedRepeatScaleApprovalHandoff:
 
         route_id = raw_route_id.strip()
 
+        raw_previous_approval_id = (
+            revalidation_result.get(
+                "previous_approval_id"
+            )
+        )
+        raw_previous_permission_id = (
+            revalidation_result.get(
+                "previous_permission_id"
+            )
+        )
+
+        if (
+            not isinstance(
+                raw_previous_approval_id,
+                str,
+            )
+            or not raw_previous_approval_id.strip()
+            or not isinstance(
+                raw_previous_permission_id,
+                str,
+            )
+            or not raw_previous_permission_id.strip()
+        ):
+            return {
+                "prepared": False,
+                "approval_ready": False,
+                "reason": (
+                    "invalid_previous_authorization_identity"
+                ),
+                "live_order_submitted": False,
+            }
+
+        previous_approval_id = (
+            raw_previous_approval_id.strip()
+        )
+        previous_permission_id = (
+            raw_previous_permission_id.strip()
+        )
+
         approval_request = {
             "route_id": route_id,
             "decision": revalidation_result.get(
@@ -277,14 +316,10 @@ class RevalidatedRepeatScaleApprovalHandoff:
             "trade_amount": trade_amount,
             "approval_request": approval_request,
             "previous_approval_id": (
-                revalidation_result.get(
-                    "previous_approval_id"
-                )
+                previous_approval_id
             ),
             "previous_permission_id": (
-                revalidation_result.get(
-                    "previous_permission_id"
-                )
+                previous_permission_id
             ),
             "manual_approval_required": True,
             "fresh_approval_required": True,
