@@ -23,7 +23,7 @@ class NetworkInfo:
     withdraw_fee: Optional[float] = None
     min_withdraw: Optional[float] = None
 
-    confirmations: int = 0
+    confirmations: Optional[int] = None
 
 
 class NetworkRegistry:

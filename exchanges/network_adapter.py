@@ -35,7 +35,11 @@ class ExchangeNetworkAdapter:
                 if raw.get("min_withdraw") is not None
                 else None
             ),
-            confirmations=int(raw.get("confirmations", 0) or 0),
+            confirmations=(
+                int(raw["confirmations"])
+                if raw.get("confirmations") is not None
+                else None
+            ),
         )
 
     @classmethod
