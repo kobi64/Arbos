@@ -124,7 +124,8 @@ def test_unknown_withdraw_fee_is_not_acceptable():
 
     assert result.acceptable is False
     assert result.withdraw_fee is None
-    assert result.net_amount == 0.0
+    assert result.cost_percent is None
+    assert result.net_amount is None
     assert result.reason == "withdrawal_fee_unknown"
 
 
@@ -167,3 +168,121 @@ def test_genuine_zero_withdraw_fee_remains_numeric_zero():
     assert result.cost_percent == 0.0
     assert result.net_amount == 100.0
     assert result.reason == "ok"
+
+
+def test_invalid_amount_preserves_uncalculated_results_as_unknown():
+    network = NetworkInfo(
+        coin="USDT",
+        network="TRC20",
+        withdraw_fee=1.0,
+        min_withdraw=1.0,
+    )
+
+    result = TransferCostAnalysis.evaluate(
+        amount=0.0,
+        network=network,
+        max_cost_percent=5.0,
+    )
+
+    assert result.acceptable is False
+
+    # Withdrawal fee is known network metadata.
+    assert result.withdraw_fee == 1.0
+
+    # Derived economics were not validly calculated.
+    assert result.cost_percent is None
+    assert result.net_amount is None
+    assert result.reason == "invalid_amount"
+
+
+def test_unknown_fee_preserves_derived_results_as_unknown():
+    network = NetworkInfo(
+        coin="USDT",
+        network="TRC20",
+        withdraw_fee=None,
+        min_withdraw=1.0,
+    )
+
+    result = TransferCostAnalysis.evaluate(
+        amount=100.0,
+        network=network,
+        max_cost_percent=5.0,
+    )
+
+    assert result.acceptable is False
+    assert result.withdraw_fee is None
+    assert result.cost_percent is None
+    assert result.net_amount is None
+    assert result.reason == "withdrawal_fee_unknown"
+
+
+def test_fee_consuming_amount_preserves_calculated_zero():
+    network = NetworkInfo(
+        coin="USDT",
+        network="TRC20",
+        withdraw_fee=100.0,
+        min_withdraw=1.0,
+    )
+
+    result = TransferCostAnalysis.evaluate(
+        amount=100.0,
+        network=network,
+        max_cost_percent=100.0,
+    )
+
+    assert result.acceptable is False
+    assert result.withdraw_fee == 100.0
+    assert result.cost_percent == 100.0
+
+    # This zero was actually calculated.
+    assert result.net_amount == 0.0
+    assert result.reason == "fee_consumes_amount"
+
+
+def test_threshold_rejection_preserves_calculated_values():
+    network = NetworkInfo(
+        coin="USDT",
+        network="ERC20",
+        withdraw_fee=8.0,
+        min_withdraw=1.0,
+    )
+
+    result = TransferCostAnalysis.evaluate(
+        amount=100.0,
+        network=network,
+        max_cost_percent=5.0,
+    )
+
+    assert result.acceptable is False
+    assert result.withdraw_fee == 8.0
+    assert result.cost_percent == 8.0
+    assert result.net_amount == 92.0
+    assert result.reason == "transfer_cost_too_high"
+
+
+def test_result_type_declares_derived_values_optional():
+    from typing import get_type_hints
+
+    from exchanges.transfer_cost_analysis import (
+        TransferCostAnalysisResult,
+    )
+
+    hints = get_type_hints(
+        TransferCostAnalysisResult
+    )
+
+    assert (
+        str(hints["cost_percent"])
+        in {
+            "typing.Optional[float]",
+            "float | None",
+        }
+    )
+
+    assert (
+        str(hints["net_amount"])
+        in {
+            "typing.Optional[float]",
+            "float | None",
+        }
+    )
