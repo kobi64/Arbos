@@ -429,3 +429,187 @@ def test_no_live_order_is_submitted():
     assert result["test_trade"] is True
     assert result["simulated"] is True
     assert result["live_order_submitted"] is False
+
+
+@pytest.mark.parametrize(
+    "trade_amount",
+    [
+        None,
+        "bad",
+        float("nan"),
+        float("inf"),
+        float("-inf"),
+        True,
+        0.0,
+        -1.0,
+    ],
+)
+def test_invalid_requested_trade_amount_contract(
+    trade_amount,
+):
+    handoff = approval_handoff(
+        trade_amount=trade_amount
+    )
+
+    result = prepare(
+        handoff=handoff,
+        approval=fresh_approval(
+            trade_amount=250.0,
+        ),
+    )
+
+    assert result["handoff_ready"] is False
+    assert (
+        result["reason"]
+        == "invalid_requested_trade_amount"
+    )
+
+
+@pytest.mark.parametrize(
+    "trade_amount",
+    [
+        None,
+        "bad",
+        float("nan"),
+        float("inf"),
+        float("-inf"),
+        True,
+        0.0,
+        -1.0,
+    ],
+)
+def test_invalid_approved_trade_amount_contract(
+    trade_amount,
+):
+    result = prepare(
+        approval=fresh_approval(
+            trade_amount=trade_amount
+        )
+    )
+
+    assert result["handoff_ready"] is False
+    assert (
+        result["reason"]
+        == "invalid_approved_trade_amount"
+    )
+
+
+def test_numeric_string_amounts_remain_supported():
+    result = prepare(
+        handoff=approval_handoff(
+            trade_amount="250"
+        ),
+        approval=fresh_approval(
+            trade_amount="250"
+        ),
+    )
+
+    assert result["handoff_ready"] is True
+    assert result["trade_amount"] == 250.0
+
+
+@pytest.mark.parametrize(
+    "approval_id",
+    [
+        "",
+        "   ",
+        0,
+        False,
+        [],
+        {},
+    ],
+)
+def test_fresh_approval_id_requires_non_empty_string(
+    approval_id,
+):
+    result = prepare(
+        approval=fresh_approval(
+            approval_id=approval_id
+        )
+    )
+
+    assert result["handoff_ready"] is False
+    assert result["reason"] == "fresh_approval_id_required"
+
+
+def test_whitespace_previous_approval_id_does_not_match_fresh_id():
+    handoff = approval_handoff()
+    handoff["previous_approval_id"] = " ARB-002 "
+
+    result = prepare(
+        handoff=handoff,
+        approval=fresh_approval(
+            approval_id="ARB-002"
+        ),
+    )
+
+    assert result["handoff_ready"] is False
+    assert (
+        result["reason"]
+        == "previous_approval_id_reuse_blocked"
+    )
+
+
+@pytest.mark.parametrize(
+    "route_id",
+    [
+        None,
+        "",
+        "   ",
+        0,
+        False,
+    ],
+)
+def test_requested_route_id_is_required(
+    route_id,
+):
+    handoff = approval_handoff()
+    handoff["route_id"] = route_id
+    handoff["approval_request"]["route_id"] = route_id
+
+    approval = fresh_approval()
+    approval["route_id"] = route_id
+
+    result = prepare(
+        handoff=handoff,
+        approval=approval,
+    )
+
+    assert result["handoff_ready"] is False
+    assert result["reason"] == "route_id_required"
+
+
+@pytest.mark.parametrize(
+    "asset",
+    [
+        None,
+        0,
+        False,
+        [],
+        {},
+    ],
+)
+def test_requested_asset_requires_real_non_empty_string(
+    asset,
+):
+    handoff = approval_handoff()
+    handoff["approval_request"]["asset"] = asset
+
+    result = prepare(
+        handoff=handoff,
+    )
+
+    assert result["handoff_ready"] is False
+    assert result["reason"] == "requested_asset_required"
+
+
+def test_whitespace_requested_asset_is_blocked():
+    handoff = approval_handoff()
+    handoff["approval_request"]["asset"] = "   "
+
+    result = prepare(
+        handoff=handoff,
+    )
+
+    assert result["handoff_ready"] is False
+    assert result["reason"] == "requested_asset_required"

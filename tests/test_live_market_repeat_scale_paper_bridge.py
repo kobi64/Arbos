@@ -391,6 +391,7 @@ def test_real_single_use_permission_output_is_accepted():
     permission = permission_gate.create(
         handoff_result={
             "handoff_ready": True,
+            "route_id": "ROUTE-001",
             "approval_id": "ARB-002",
             "asset": "ETH",
             "trade_amount": 0.2,
