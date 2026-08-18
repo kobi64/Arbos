@@ -20,6 +20,8 @@ class ExecutionApprovalGateway:
                 "timestamp": datetime.now(UTC).isoformat(),
             }
         ]
+        self._proposals = {}
+        self._proposal_sequence = 0
 
     def create_proposal(
         self,
@@ -52,7 +54,13 @@ class ExecutionApprovalGateway:
                 "net_profit must be positive"
             )
 
+        self._proposal_sequence += 1
+        proposal_id = (
+            f"TRADE-{self._proposal_sequence:06d}"
+        )
+
         proposal = {
+            "proposal_id": proposal_id,
             "route": route,
             "amount": amount,
             "expected_profit": expected_profit,
@@ -64,6 +72,10 @@ class ExecutionApprovalGateway:
             "risk": risk,
             "status": "pending",
         }
+
+        self._proposals[proposal_id] = dict(
+            proposal
+        )
 
         self._history.append(
             {
@@ -80,10 +92,31 @@ class ExecutionApprovalGateway:
         proposal_id,
     ):
 
+        proposal = self._proposals.get(
+            proposal_id
+        )
+
+        if proposal is None:
+            return {
+                "proposal_id": proposal_id,
+                "approved": False,
+                "status": "not_found",
+            }
+
+        if proposal["status"] != "pending":
+            return {
+                "proposal_id": proposal_id,
+                "approved": False,
+                "status": "not_pending",
+            }
+
+        proposal["status"] = "approved"
+
         result = {
             "proposal_id": proposal_id,
             "approved": True,
             "status": "approved",
+            "proposal": dict(proposal),
         }
 
         self._history.append(
@@ -102,11 +135,33 @@ class ExecutionApprovalGateway:
         reason,
     ):
 
+        proposal = self._proposals.get(
+            proposal_id
+        )
+
+        if proposal is None:
+            return {
+                "proposal_id": proposal_id,
+                "approved": False,
+                "status": "not_found",
+            }
+
+        if proposal["status"] != "pending":
+            return {
+                "proposal_id": proposal_id,
+                "approved": False,
+                "status": "not_pending",
+            }
+
+        proposal["status"] = "rejected"
+        proposal["rejection_reason"] = reason
+
         result = {
             "proposal_id": proposal_id,
             "approved": False,
             "status": "rejected",
             "reason": reason,
+            "proposal": dict(proposal),
         }
 
         self._history.append(
@@ -131,10 +186,29 @@ class ExecutionApprovalGateway:
             positive=True,
         )
 
+        proposal = self._proposals.get(
+            proposal_id
+        )
+
+        if proposal is None:
+            return {
+                "proposal_id": proposal_id,
+                "status": "not_found",
+            }
+
+        if proposal["status"] != "pending":
+            return {
+                "proposal_id": proposal_id,
+                "status": "not_pending",
+            }
+
+        proposal["amount"] = new_amount
+
         result = {
             "proposal_id": proposal_id,
             "amount": new_amount,
             "status": "modified",
+            "proposal": dict(proposal),
         }
 
         self._history.append(
