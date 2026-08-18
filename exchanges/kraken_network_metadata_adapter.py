@@ -78,63 +78,15 @@ class KrakenNetworkMetadataAdapter:
                 "live_transfer_submitted": False,
             }
 
-        currencies = result.get(
-            "currencies",
-            [],
-        )
-
-        if not isinstance(
-            currencies,
-            list,
-        ):
-            return {
-                "coin": coin,
-                "network_metadata_available": False,
-                "network_metadata_reason": (
-                    "invalid_currency_metadata"
-                ),
-                "transfer_verification_available": False,
-                "networks": [],
-                "paper_only": True,
-                "live_order_submitted": False,
-                "live_transfer_submitted": False,
-            }
-
-        networks = []
-
-        for item in currencies:
-            if not isinstance(
-                item,
-                dict,
-            ):
-                continue
-
-            asset = str(
-                item.get(
-                    "asset",
-                    item.get(
-                        "coin",
-                        "",
-                    ),
-                )
-                or ""
-            ).strip().upper()
-
-            if asset != coin:
-                continue
-
-            networks.append(
-                dict(item)
-            )
-
         return {
             "coin": coin,
-            "network_metadata_available": True,
-            "network_metadata_reason": None,
-            "transfer_verification_available": bool(
-                networks
+            "network_metadata_available": False,
+            "network_metadata_reason": (
+                "authenticated_metadata_"
+                "normalization_not_implemented"
             ),
-            "networks": networks,
+            "transfer_verification_available": False,
+            "networks": [],
             "paper_only": True,
             "live_order_submitted": False,
             "live_transfer_submitted": False,

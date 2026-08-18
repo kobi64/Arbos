@@ -86,3 +86,116 @@ def test_client_is_required():
         KrakenNetworkMetadataAdapter(
             client=None,
         )
+
+
+class TransportUnavailableClient:
+    def fetch_currencies(self):
+        return {
+            "fetch_complete": False,
+            "reason": (
+                "authenticated_metadata_transport_"
+                "not_implemented"
+            ),
+            "currencies": [],
+            "read_only": True,
+            "paper_only": True,
+            "live_order_submitted": False,
+            "live_transfer_submitted": False,
+        }
+
+
+def test_authenticated_transport_unavailable_fails_closed():
+    adapter = KrakenNetworkMetadataAdapter(
+        client=TransportUnavailableClient(),
+    )
+
+    result = adapter.describe_networks(
+        "USDT"
+    )
+
+    assert result[
+        "network_metadata_available"
+    ] is False
+
+    assert result[
+        "network_metadata_reason"
+    ] == (
+        "authenticated_metadata_transport_"
+        "not_implemented"
+    )
+
+    assert result[
+        "transfer_verification_available"
+    ] is False
+
+    assert result["networks"] == []
+
+
+class UnexpectedSuccessfulClient:
+    def fetch_currencies(self):
+        return {
+            "fetch_complete": True,
+            "reason": None,
+            "currencies": [
+                {
+                    "asset": "USDT",
+                    "network": "TRC20",
+                    "deposit_enabled": True,
+                    "withdraw_enabled": True,
+                    "withdraw_fee": "1.0",
+                },
+            ],
+            "read_only": True,
+            "paper_only": True,
+            "live_order_submitted": False,
+            "live_transfer_submitted": False,
+        }
+
+
+def test_unverified_successful_metadata_does_not_enable_transfer_verification():
+    adapter = KrakenNetworkMetadataAdapter(
+        client=UnexpectedSuccessfulClient(),
+    )
+
+    result = adapter.describe_networks(
+        "USDT"
+    )
+
+    assert result[
+        "transfer_verification_available"
+    ] is False
+
+
+def test_unverified_successful_metadata_is_not_exposed_as_networks():
+    adapter = KrakenNetworkMetadataAdapter(
+        client=UnexpectedSuccessfulClient(),
+    )
+
+    assert adapter.get_networks(
+        "USDT"
+    ) == []
+
+
+def test_unverified_successful_metadata_reports_normalization_unavailable():
+    adapter = KrakenNetworkMetadataAdapter(
+        client=UnexpectedSuccessfulClient(),
+    )
+
+    result = adapter.describe_networks(
+        "USDT"
+    )
+
+    assert result[
+        "network_metadata_available"
+    ] is False
+
+    assert result[
+        "network_metadata_reason"
+    ] == (
+        "authenticated_metadata_"
+        "normalization_not_implemented"
+    )
+
+    assert result["paper_only"] is True
+    assert result["live_order_submitted"] is False
+    assert result["live_transfer_submitted"] is False
