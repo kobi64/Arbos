@@ -20,7 +20,7 @@ class TransferRouteEvaluationResult:
     executable: bool
     network: Optional[str] = None
     withdraw_fee: Optional[float] = None
-    net_amount: float = 0.0
+    net_amount: Optional[float] = None
     reason: str = ""
     feasibility_diagnostics: Optional[Dict] = None
 

@@ -9,6 +9,7 @@ withdrawal fees, maintenance status, and withdrawal availability.
 """
 
 from dataclasses import dataclass
+from typing import Optional
 
 from exchanges.network_registry import NetworkInfo
 
@@ -16,7 +17,7 @@ from exchanges.network_registry import NetworkInfo
 @dataclass
 class TransferFeasibilityResult:
     feasible: bool
-    net_amount: float = 0.0
+    net_amount: Optional[float] = None
     reason: str = ""
 
 
@@ -31,35 +32,30 @@ class TransferFeasibility:
         if network.maintenance:
             return TransferFeasibilityResult(
                 feasible=False,
-                net_amount=0.0,
                 reason="network_in_maintenance",
             )
 
         if not network.withdraw_enabled:
             return TransferFeasibilityResult(
                 feasible=False,
-                net_amount=0.0,
                 reason="withdrawals_disabled",
             )
 
         if network.min_withdraw is None:
             return TransferFeasibilityResult(
                 feasible=False,
-                net_amount=0.0,
                 reason="minimum_withdrawal_unknown",
             )
 
         if amount < network.min_withdraw:
             return TransferFeasibilityResult(
                 feasible=False,
-                net_amount=0.0,
                 reason="below_minimum_withdrawal",
             )
 
         if network.withdraw_fee is None:
             return TransferFeasibilityResult(
                 feasible=False,
-                net_amount=0.0,
                 reason="withdrawal_fee_unknown",
             )
 

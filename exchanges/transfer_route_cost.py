@@ -22,8 +22,8 @@ class TransferRouteCostResult:
     executable: bool
     network: Optional[str] = None
     withdraw_fee: Optional[float] = None
-    cost_percent: float = 0.0
-    net_amount: float = 0.0
+    cost_percent: Optional[float] = None
+    net_amount: Optional[float] = None
     reason: str = ""
 
 
