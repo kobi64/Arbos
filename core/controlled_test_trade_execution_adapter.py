@@ -1,3 +1,5 @@
+import math
+
 """
 ArbOS™
 EX-155
@@ -41,9 +43,13 @@ class ControlledTestTradeExecutionAdapter:
                 "live_order_submitted": True,
             }
 
-        exchange_identity = {}
+        identity = {}
 
         for field in (
+            "permission_id",
+            "route_id",
+            "approval_id",
+            "asset",
             "buy_exchange",
             "sell_exchange",
         ):
@@ -61,16 +67,49 @@ class ControlledTestTradeExecutionAdapter:
                     "live_order_submitted": False,
                 }
 
-            exchange_identity[field] = (
-                value.strip()
-            )
+            normalized = value.strip()
 
-        trade_amount = float(
-            permission_result.get(
-                "trade_amount",
-                0.0,
-            )
+            if field == "asset":
+                normalized = normalized.upper()
+
+            identity[field] = normalized
+
+        raw_trade_amount = permission_result.get(
+            "trade_amount",
+            0.0,
         )
+
+        if isinstance(raw_trade_amount, bool):
+            return {
+                "authorised": False,
+                "reason": "invalid_trade_amount",
+                "live_order_submitted": False,
+            }
+
+        try:
+            trade_amount = float(
+                raw_trade_amount
+            )
+        except (
+            TypeError,
+            ValueError,
+            OverflowError,
+        ):
+            return {
+                "authorised": False,
+                "reason": "invalid_trade_amount",
+                "live_order_submitted": False,
+            }
+
+        if (
+            not math.isfinite(trade_amount)
+            or trade_amount <= 0
+        ):
+            return {
+                "authorised": False,
+                "reason": "invalid_trade_amount",
+                "live_order_submitted": False,
+            }
 
         permission_granted = (
             permission_result.get(
@@ -98,22 +137,14 @@ class ControlledTestTradeExecutionAdapter:
             "reason": execution.get(
                 "reason"
             ),
-            "permission_id": permission_result.get(
-                "permission_id"
-            ),
-            "route_id": permission_result.get(
-                "route_id"
-            ),
-            "approval_id": permission_result.get(
-                "approval_id"
-            ),
-            "asset": permission_result.get(
-                "asset"
-            ),
-            "buy_exchange": exchange_identity[
+            "permission_id": identity["permission_id"],
+            "route_id": identity["route_id"],
+            "approval_id": identity["approval_id"],
+            "asset": identity["asset"],
+            "buy_exchange": identity[
                 "buy_exchange"
             ],
-            "sell_exchange": exchange_identity[
+            "sell_exchange": identity[
                 "sell_exchange"
             ],
             "trade_amount": trade_amount,
