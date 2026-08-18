@@ -20,6 +20,7 @@ class ControlledTestTradeOrderSubmissionBoundary:
     def __init__(self):
         self._orders = ExchangeOrderManagementEngine()
         self._consumed_intents = set()
+        self._destination_bindings = {}
 
     def submit(
         self,
@@ -91,6 +92,8 @@ class ControlledTestTradeOrderSubmissionBoundary:
         for field in (
             "exchange",
             "symbol",
+            "buy_exchange",
+            "sell_exchange",
         ):
             value = order_intent.get(
                 field
@@ -108,7 +111,12 @@ class ControlledTestTradeOrderSubmissionBoundary:
 
             normalized = value.strip()
 
-            if field == "symbol":
+            if field in (
+                "exchange",
+                "buy_exchange",
+                "sell_exchange",
+                "symbol",
+            ):
                 normalized = normalized.upper()
 
             destination[field] = normalized
@@ -128,6 +136,30 @@ class ControlledTestTradeOrderSubmissionBoundary:
             }
 
         side = side_value.strip().upper()
+
+        exchange = destination["exchange"]
+        buy_exchange = destination["buy_exchange"]
+        sell_exchange = destination["sell_exchange"]
+
+        if (
+            side == "BUY"
+            and exchange != buy_exchange
+        ):
+            return {
+                "accepted": False,
+                "reason": "buy_exchange_mismatch",
+                "live_order_submitted": False,
+            }
+
+        if (
+            side == "SELL"
+            and exchange != sell_exchange
+        ):
+            return {
+                "accepted": False,
+                "reason": "sell_exchange_mismatch",
+                "live_order_submitted": False,
+            }
 
         raw_amount = order_intent.get(
             "amount",
@@ -166,7 +198,6 @@ class ControlledTestTradeOrderSubmissionBoundary:
                 "live_order_submitted": False,
             }
 
-        exchange = destination["exchange"]
         symbol = destination["symbol"]
 
         intent_key = (
@@ -193,6 +224,14 @@ class ControlledTestTradeOrderSubmissionBoundary:
             amount=amount,
         )
 
+        self._destination_bindings[
+            order["order_id"]
+        ] = {
+            "exchange": exchange,
+            "buy_exchange": buy_exchange,
+            "sell_exchange": sell_exchange,
+        }
+
         self._consumed_intents.add(
             intent_key
         )
@@ -212,6 +251,21 @@ class ControlledTestTradeOrderSubmissionBoundary:
         self,
         order_id,
     ):
-        return self._orders.get_order(
+        order = self._orders.get_order(
             order_id
         )
+
+        if order is None:
+            return None
+
+        binding = self._destination_bindings.get(
+            order_id
+        )
+
+        if binding is None:
+            return order
+
+        result = dict(order)
+        result.update(binding)
+
+        return result
