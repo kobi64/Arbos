@@ -83,3 +83,121 @@ def test_filled_quantity_matches_order_quantity(engine):
     result = engine.execute(valid_order())
 
     assert result["filled_quantity"] == 0.01
+
+
+@pytest.mark.parametrize(
+    "quantity",
+    [
+        None,
+        "not-a-number",
+        float("nan"),
+        float("inf"),
+        float("-inf"),
+        0.0,
+        -1.0,
+    ],
+)
+def test_invalid_numeric_quantity_values_are_rejected(
+    engine,
+    quantity,
+):
+    order = valid_order()
+    order["quantity"] = quantity
+
+    with pytest.raises(
+        ValueError,
+        match="quantity must be positive",
+    ):
+        engine.execute(order)
+
+
+@pytest.mark.parametrize(
+    "price",
+    [
+        float("nan"),
+        float("inf"),
+        float("-inf"),
+        0.0,
+        -1.0,
+    ],
+)
+def test_invalid_numeric_price_values_are_rejected(
+    engine,
+    price,
+):
+    order = valid_order()
+    order["price"] = price
+
+    with pytest.raises(
+        ValueError,
+        match="price must be positive",
+    ):
+        engine.execute(order)
+
+
+@pytest.mark.parametrize(
+    "price",
+    [
+        None,
+        "not-a-number",
+    ],
+)
+def test_missing_or_non_numeric_price_is_rejected(
+    engine,
+    price,
+):
+    order = valid_order()
+    order["price"] = price
+
+    with pytest.raises(
+        ValueError,
+        match="price is required",
+    ):
+        engine.execute(order)
+
+
+def test_numeric_strings_are_normalized_to_floats(engine):
+    order = valid_order()
+    order["quantity"] = "0.01"
+    order["price"] = "62000"
+
+    result = engine.execute(order)
+
+    assert result["filled_quantity"] == 0.01
+    assert result["average_price"] == 62000.0
+    assert result["notional"] == 620.0
+    assert isinstance(result["filled_quantity"], float)
+    assert isinstance(result["average_price"], float)
+    assert isinstance(result["notional"], float)
+
+
+def test_successful_execution_outputs_are_finite(engine):
+    import math
+
+    result = engine.execute(valid_order())
+
+    assert math.isfinite(result["filled_quantity"])
+    assert math.isfinite(result["average_price"])
+    assert math.isfinite(result["notional"])
+
+
+def test_rejected_execution_does_not_change_history(engine):
+    order = valid_order()
+    order["quantity"] = float("nan")
+
+    with pytest.raises(ValueError):
+        engine.execute(order)
+
+    assert engine.history() == []
+
+
+def test_rejected_execution_does_not_consume_order_id(engine):
+    invalid = valid_order()
+    invalid["price"] = float("inf")
+
+    with pytest.raises(ValueError):
+        engine.execute(invalid)
+
+    result = engine.execute(valid_order())
+
+    assert result["paper_order_id"] == "PAPER-000001"

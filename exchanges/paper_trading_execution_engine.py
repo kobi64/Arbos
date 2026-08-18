@@ -5,6 +5,7 @@ Paper Trading Execution Engine
 """
 
 from datetime import UTC, datetime
+import math
 
 
 class PaperTradingExecutionEngine:
@@ -28,7 +29,7 @@ class PaperTradingExecutionEngine:
         except (TypeError, ValueError):
             quantity = 0.0
 
-        if quantity <= 0:
+        if not math.isfinite(quantity) or quantity <= 0:
             raise ValueError("quantity must be positive")
 
         try:
@@ -36,7 +37,7 @@ class PaperTradingExecutionEngine:
         except (TypeError, ValueError):
             raise ValueError("price is required")
 
-        if price <= 0:
+        if not math.isfinite(price) or price <= 0:
             raise ValueError("price must be positive")
 
         self._sequence += 1
