@@ -9,6 +9,8 @@ is eligible to proceed to the staged execution workflow.
 This gate does not submit live orders.
 """
 
+import math
+
 from exchanges.exchange_execution_safety_gate import (
     ExchangeExecutionSafetyGate,
 )
@@ -67,6 +69,57 @@ class StagedExecutionReadinessGate:
                 "route": None,
                 "live_order_submitted": False,
             }
+
+        if route.get("executable") is not True:
+            return {
+                "ready_for_staged_execution": False,
+                "reason": "route_not_executable",
+                "route": route,
+                "live_order_submitted": False,
+            }
+
+        profitability = {}
+
+        for field in (
+            "net_profit",
+            "net_profit_percent",
+        ):
+            value = route.get(field)
+
+            if isinstance(value, bool):
+                return {
+                    "ready_for_staged_execution": False,
+                    "reason": "invalid_route_profitability",
+                    "route": route,
+                    "live_order_submitted": False,
+                }
+
+            try:
+                number = float(value)
+            except (
+                TypeError,
+                ValueError,
+                OverflowError,
+            ):
+                return {
+                    "ready_for_staged_execution": False,
+                    "reason": "invalid_route_profitability",
+                    "route": route,
+                    "live_order_submitted": False,
+                }
+
+            if (
+                not math.isfinite(number)
+                or number <= 0
+            ):
+                return {
+                    "ready_for_staged_execution": False,
+                    "reason": "invalid_route_profitability",
+                    "route": route,
+                    "live_order_submitted": False,
+                }
+
+            profitability[field] = number
 
         safety = self._safety_gate.evaluate(
             safety_context

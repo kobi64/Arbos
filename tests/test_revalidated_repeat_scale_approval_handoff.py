@@ -342,3 +342,129 @@ def test_no_live_order_is_submitted():
     assert result["test_trade"] is True
     assert result["simulated"] is True
     assert result["live_order_submitted"] is False
+
+
+@pytest.mark.parametrize(
+    "next_trade_size",
+    [
+        None,
+        "bad",
+        float("nan"),
+        float("inf"),
+        float("-inf"),
+        True,
+    ],
+)
+def test_invalid_trade_amount_numeric_contract(
+    next_trade_size,
+):
+    record = revalidated_result(
+        next_trade_size=next_trade_size
+    )
+
+    result = prepare(result=record)
+
+    assert result["prepared"] is False
+    assert result["approval_ready"] is False
+    assert result["reason"] == "invalid_trade_amount"
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("expected_profit", None),
+        ("expected_profit", "bad"),
+        ("expected_profit", float("nan")),
+        ("expected_profit", float("inf")),
+        ("expected_profit", float("-inf")),
+        ("expected_profit", True),
+        ("estimated_fees", None),
+        ("estimated_fees", "bad"),
+        ("estimated_fees", float("nan")),
+        ("estimated_fees", float("inf")),
+        ("estimated_fees", float("-inf")),
+        ("estimated_fees", True),
+        ("estimated_fees", -0.01),
+        ("slippage_allowance", None),
+        ("slippage_allowance", "bad"),
+        ("slippage_allowance", float("nan")),
+        ("slippage_allowance", float("inf")),
+        ("slippage_allowance", float("-inf")),
+        ("slippage_allowance", True),
+        ("slippage_allowance", -0.01),
+    ],
+)
+def test_invalid_approval_economic_input_is_rejected(
+    field,
+    value,
+):
+    kwargs = {
+        "expected_profit": 5.0,
+        "estimated_fees": 0.5,
+        "slippage_allowance": 0.25,
+    }
+    kwargs[field] = value
+
+    with pytest.raises(
+        ValueError,
+        match=(
+            f"{field} must be a finite "
+            + (
+                "non-negative number"
+                if field in {
+                    "estimated_fees",
+                    "slippage_allowance",
+                }
+                else "number"
+            )
+        ),
+    ):
+        prepare(**kwargs)
+
+
+def test_numeric_string_approval_economics_remain_supported():
+    result = prepare(
+        result=revalidated_result(
+            next_trade_size="250",
+        ),
+        expected_profit="5",
+        estimated_fees="0.5",
+        slippage_allowance="0.25",
+    )
+
+    assert result["prepared"] is True
+    assert result["approval_ready"] is True
+
+    request = result["approval_request"]
+
+    assert request["trade_amount"] == 250.0
+    assert request["expected_profit"] == 5.0
+    assert request["estimated_fees"] == 0.5
+    assert request["slippage_allowance"] == 0.25
+
+
+@pytest.mark.parametrize(
+    "expected_profit",
+    [
+        0.0,
+        -0.01,
+        "0",
+        "-1.0",
+    ],
+)
+def test_non_positive_expected_profit_is_not_approval_ready(
+    expected_profit,
+):
+    result = prepare(
+        result=revalidated_result(
+            next_trade_size=250.0,
+        ),
+        expected_profit=expected_profit,
+        estimated_fees=0.5,
+        slippage_allowance=0.25,
+    )
+
+    assert result["prepared"] is False
+    assert result["approval_ready"] is False
+    assert result["reason"] == "non_positive_expected_profit"
+    assert result["live_order_submitted"] is False
