@@ -7,6 +7,7 @@ Provides the final human control checkpoint
 before trade execution.
 """
 
+import math
 from datetime import datetime, UTC
 
 
@@ -29,13 +30,35 @@ class ExecutionApprovalGateway:
         risk,
     ):
 
+        amount = self._finite_number(
+            amount,
+            "amount",
+            positive=True,
+        )
+        expected_profit = self._finite_number(
+            expected_profit,
+            "expected_profit",
+        )
+        fees = self._finite_number(
+            fees,
+            "fees",
+            non_negative=True,
+        )
+
+        net_profit = expected_profit - fees
+
+        if net_profit <= 0:
+            raise ValueError(
+                "net_profit must be positive"
+            )
+
         proposal = {
             "route": route,
             "amount": amount,
             "expected_profit": expected_profit,
             "fees": fees,
             "net_profit": round(
-                expected_profit - fees,
+                net_profit,
                 2,
             ),
             "risk": risk,
@@ -102,6 +125,12 @@ class ExecutionApprovalGateway:
         new_amount,
     ):
 
+        new_amount = self._finite_number(
+            new_amount,
+            "new_amount",
+            positive=True,
+        )
+
         result = {
             "proposal_id": proposal_id,
             "amount": new_amount,
@@ -121,3 +150,51 @@ class ExecutionApprovalGateway:
     def get_history(self):
 
         return self._history
+
+    @staticmethod
+    def _finite_number(
+        value,
+        field,
+        *,
+        positive=False,
+        non_negative=False,
+    ):
+        if positive:
+            requirement = "positive finite number"
+        elif non_negative:
+            requirement = "finite non-negative number"
+        else:
+            requirement = "finite number"
+
+        if isinstance(value, bool):
+            raise ValueError(
+                f"{field} must be a {requirement}"
+            )
+
+        try:
+            number = float(value)
+        except (
+            TypeError,
+            ValueError,
+            OverflowError,
+        ):
+            raise ValueError(
+                f"{field} must be a {requirement}"
+            ) from None
+
+        if not math.isfinite(number):
+            raise ValueError(
+                f"{field} must be a {requirement}"
+            )
+
+        if positive and number <= 0:
+            raise ValueError(
+                f"{field} must be a {requirement}"
+            )
+
+        if non_negative and number < 0:
+            raise ValueError(
+                f"{field} must be a {requirement}"
+            )
+
+        return number

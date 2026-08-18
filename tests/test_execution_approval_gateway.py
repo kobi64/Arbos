@@ -93,3 +93,164 @@ def test_proposal_contains_risk_information():
     )
 
     assert proposal["risk"] == "medium"
+
+
+@pytest.mark.parametrize(
+    "amount",
+    [
+        None,
+        "bad",
+        float("nan"),
+        float("inf"),
+        float("-inf"),
+        True,
+        0.0,
+        -1.0,
+    ],
+)
+def test_create_proposal_requires_positive_finite_amount(
+    amount,
+):
+    gateway = ExecutionApprovalGateway()
+
+    with pytest.raises(
+        ValueError,
+        match="amount must be a positive finite number",
+    ):
+        gateway.create_proposal(
+            route="ROUTE-001",
+            amount=amount,
+            expected_profit=10.0,
+            fees=1.0,
+            risk="low",
+        )
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("expected_profit", None),
+        ("expected_profit", "bad"),
+        ("expected_profit", float("nan")),
+        ("expected_profit", float("inf")),
+        ("expected_profit", float("-inf")),
+        ("expected_profit", True),
+        ("fees", None),
+        ("fees", "bad"),
+        ("fees", float("nan")),
+        ("fees", float("inf")),
+        ("fees", float("-inf")),
+        ("fees", True),
+        ("fees", -0.01),
+    ],
+)
+def test_create_proposal_rejects_invalid_economics(
+    field,
+    value,
+):
+    gateway = ExecutionApprovalGateway()
+
+    kwargs = {
+        "route": "ROUTE-001",
+        "amount": 100.0,
+        "expected_profit": 10.0,
+        "fees": 1.0,
+        "risk": "low",
+    }
+    kwargs[field] = value
+
+    requirement = (
+        "finite non-negative number"
+        if field == "fees"
+        else "finite number"
+    )
+
+    with pytest.raises(
+        ValueError,
+        match=f"{field} must be a {requirement}",
+    ):
+        gateway.create_proposal(**kwargs)
+
+
+@pytest.mark.parametrize(
+    "expected_profit,fees",
+    [
+        (0.0, 0.0),
+        (-1.0, 0.0),
+        (1.0, 1.0),
+        (1.0, 2.0),
+    ],
+)
+def test_non_positive_net_profit_cannot_create_proposal(
+    expected_profit,
+    fees,
+):
+    gateway = ExecutionApprovalGateway()
+
+    with pytest.raises(
+        ValueError,
+        match="net_profit must be positive",
+    ):
+        gateway.create_proposal(
+            route="ROUTE-001",
+            amount=100.0,
+            expected_profit=expected_profit,
+            fees=fees,
+            risk="low",
+        )
+
+
+@pytest.mark.parametrize(
+    "new_amount",
+    [
+        None,
+        "bad",
+        float("nan"),
+        float("inf"),
+        float("-inf"),
+        True,
+        0.0,
+        -1.0,
+    ],
+)
+def test_modify_requires_positive_finite_amount(
+    new_amount,
+):
+    gateway = ExecutionApprovalGateway()
+
+    with pytest.raises(
+        ValueError,
+        match="new_amount must be a positive finite number",
+    ):
+        gateway.modify(
+            proposal_id="TRADE-001",
+            new_amount=new_amount,
+        )
+
+
+def test_numeric_string_proposal_values_remain_supported():
+    gateway = ExecutionApprovalGateway()
+
+    proposal = gateway.create_proposal(
+        route="ROUTE-001",
+        amount="100",
+        expected_profit="10",
+        fees="1.5",
+        risk="low",
+    )
+
+    assert proposal["amount"] == 100.0
+    assert proposal["expected_profit"] == 10.0
+    assert proposal["fees"] == 1.5
+    assert proposal["net_profit"] == 8.5
+
+
+def test_numeric_string_modified_amount_remains_supported():
+    gateway = ExecutionApprovalGateway()
+
+    result = gateway.modify(
+        proposal_id="TRADE-001",
+        new_amount="250.5",
+    )
+
+    assert result["amount"] == 250.5
