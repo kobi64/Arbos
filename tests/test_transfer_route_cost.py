@@ -1,3 +1,4 @@
+import pytest
 from exchanges.network_registry import NetworkInfo
 from exchanges.transfer_route_cost import TransferRouteCost
 
@@ -326,3 +327,74 @@ def test_economically_rejected_route_preserves_result_values_as_unknown():
     assert result.reason == (
         "no_economically_acceptable_route"
     )
+
+
+@pytest.mark.parametrize(
+    "amount",
+    [
+        None,
+        "bad",
+        float("nan"),
+        float("inf"),
+        float("-inf"),
+        True,
+    ],
+)
+def test_invalid_route_amount_numeric_contract(amount):
+    source = [
+        NetworkInfo(
+            "USDT",
+            "TRC20",
+            withdraw_fee=1.0,
+            min_withdraw=1.0,
+        ),
+    ]
+    destination = [
+        NetworkInfo("USDT", "TRC20"),
+    ]
+
+    result = TransferRouteCost.evaluate(
+        amount=amount,
+        source_networks=source,
+        destination_networks=destination,
+        max_cost_percent=5.0,
+    )
+
+    assert result.executable is False
+    assert result.reason == "invalid_amount"
+
+
+@pytest.mark.parametrize(
+    "limit",
+    [
+        None,
+        "bad",
+        float("nan"),
+        float("inf"),
+        float("-inf"),
+        True,
+        -1.0,
+    ],
+)
+def test_invalid_route_cost_limit_numeric_contract(limit):
+    source = [
+        NetworkInfo(
+            "USDT",
+            "TRC20",
+            withdraw_fee=1.0,
+            min_withdraw=1.0,
+        ),
+    ]
+    destination = [
+        NetworkInfo("USDT", "TRC20"),
+    ]
+
+    result = TransferRouteCost.evaluate(
+        amount=100.0,
+        source_networks=source,
+        destination_networks=destination,
+        max_cost_percent=limit,
+    )
+
+    assert result.executable is False
+    assert result.reason == "invalid_max_cost_percent"

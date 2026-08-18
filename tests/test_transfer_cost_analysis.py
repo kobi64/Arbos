@@ -1,3 +1,4 @@
+import pytest
 from exchanges.network_registry import NetworkInfo
 from exchanges.transfer_cost_analysis import TransferCostAnalysis
 
@@ -286,3 +287,125 @@ def test_result_type_declares_derived_values_optional():
             "float | None",
         }
     )
+
+
+@pytest.mark.parametrize(
+    "amount",
+    [
+        None,
+        "bad",
+        float("nan"),
+        float("inf"),
+        float("-inf"),
+        True,
+    ],
+)
+def test_invalid_amount_numeric_contract(amount):
+    network = NetworkInfo(
+        "USDT",
+        "TRC20",
+        withdraw_fee=1.0,
+    )
+
+    result = TransferCostAnalysis.evaluate(
+        amount=amount,
+        network=network,
+        max_cost_percent=5.0,
+    )
+
+    assert result.acceptable is False
+    assert result.reason == "invalid_amount"
+
+
+@pytest.mark.parametrize(
+    "fee",
+    [
+        "bad",
+        float("nan"),
+        float("inf"),
+        float("-inf"),
+        True,
+        -1.0,
+    ],
+)
+def test_invalid_withdraw_fee_numeric_contract(fee):
+    network = NetworkInfo(
+        "USDT",
+        "TRC20",
+        withdraw_fee=fee,
+    )
+
+    result = TransferCostAnalysis.evaluate(
+        amount=100.0,
+        network=network,
+        max_cost_percent=5.0,
+    )
+
+    assert result.acceptable is False
+    assert result.reason == "invalid_withdrawal_fee"
+
+
+@pytest.mark.parametrize(
+    "limit",
+    [
+        None,
+        "bad",
+        float("nan"),
+        float("inf"),
+        float("-inf"),
+        True,
+        -1.0,
+    ],
+)
+def test_invalid_max_cost_percent_numeric_contract(limit):
+    network = NetworkInfo(
+        "USDT",
+        "TRC20",
+        withdraw_fee=1.0,
+    )
+
+    result = TransferCostAnalysis.evaluate(
+        amount=100.0,
+        network=network,
+        max_cost_percent=limit,
+    )
+
+    assert result.acceptable is False
+    assert result.reason == "invalid_max_cost_percent"
+
+
+def test_numeric_strings_and_zero_fee_remain_supported():
+    network = NetworkInfo(
+        "USDT",
+        "TRC20",
+        withdraw_fee="0",
+    )
+
+    result = TransferCostAnalysis.evaluate(
+        amount="100",
+        network=network,
+        max_cost_percent="5",
+    )
+
+    assert result.acceptable is True
+    assert result.withdraw_fee == 0.0
+    assert result.net_amount == 100.0
+    assert result.cost_percent == 0.0
+
+
+def test_none_withdraw_fee_remains_unknown_not_invalid():
+    network = NetworkInfo(
+        "USDT",
+        "TRC20",
+        withdraw_fee=None,
+    )
+
+    result = TransferCostAnalysis.evaluate(
+        amount=100.0,
+        network=network,
+        max_cost_percent=5.0,
+    )
+
+    assert result.acceptable is False
+    assert result.reason == "withdrawal_fee_unknown"
+    assert result.withdraw_fee is None

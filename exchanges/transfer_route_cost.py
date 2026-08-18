@@ -9,6 +9,7 @@ the configured maximum transfer-cost threshold.
 """
 
 from dataclasses import dataclass
+import math
 from typing import List, Optional
 
 from exchanges.network_compatibility import NetworkCompatibility
@@ -37,10 +38,47 @@ class TransferRouteCost:
         max_cost_percent: float,
     ) -> TransferRouteCostResult:
 
-        if amount <= 0:
+        if isinstance(amount, bool):
             return TransferRouteCostResult(
                 executable=False,
                 reason="invalid_amount",
+            )
+
+        try:
+            amount = float(amount)
+        except (TypeError, ValueError, OverflowError):
+            return TransferRouteCostResult(
+                executable=False,
+                reason="invalid_amount",
+            )
+
+        if not math.isfinite(amount) or amount <= 0:
+            return TransferRouteCostResult(
+                executable=False,
+                reason="invalid_amount",
+            )
+
+        if isinstance(max_cost_percent, bool):
+            return TransferRouteCostResult(
+                executable=False,
+                reason="invalid_max_cost_percent",
+            )
+
+        try:
+            max_cost_percent = float(max_cost_percent)
+        except (TypeError, ValueError, OverflowError):
+            return TransferRouteCostResult(
+                executable=False,
+                reason="invalid_max_cost_percent",
+            )
+
+        if (
+            not math.isfinite(max_cost_percent)
+            or max_cost_percent < 0
+        ):
+            return TransferRouteCostResult(
+                executable=False,
+                reason="invalid_max_cost_percent",
             )
 
         compatible = NetworkCompatibility.compatible_networks(

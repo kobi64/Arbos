@@ -87,3 +87,48 @@ def test_does_not_modify_inputs():
     assert expected_price == 100.0
     assert execution_price == 99.5
     assert max_slippage == 1.0
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("expected_price", None),
+        ("expected_price", "bad"),
+        ("expected_price", float("nan")),
+        ("expected_price", float("inf")),
+        ("expected_price", float("-inf")),
+        ("expected_price", True),
+        ("execution_price", None),
+        ("execution_price", "bad"),
+        ("execution_price", float("nan")),
+        ("execution_price", float("inf")),
+        ("execution_price", float("-inf")),
+        ("execution_price", True),
+        ("max_slippage_percent", None),
+        ("max_slippage_percent", "bad"),
+        ("max_slippage_percent", float("nan")),
+        ("max_slippage_percent", float("inf")),
+        ("max_slippage_percent", float("-inf")),
+        ("max_slippage_percent", True),
+    ],
+)
+def test_rejects_invalid_numeric_contract(field, value):
+    kwargs = {
+        "expected_price": 100.0,
+        "execution_price": 99.5,
+        "max_slippage_percent": 1.0,
+    }
+    kwargs[field] = value
+
+    with pytest.raises(ValueError):
+        SlippageValidation.validate(**kwargs)
+
+
+def test_accepts_numeric_string_prices_and_limit():
+    result = SlippageValidation.validate(
+        expected_price="100",
+        execution_price="99.5",
+        max_slippage_percent="1",
+    )
+
+    assert result["valid"] is True
