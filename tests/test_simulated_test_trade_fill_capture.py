@@ -295,3 +295,103 @@ def test_genuine_numeric_string_fill_values_still_normalize():
     assert result["filled_quantity"] == 0.05
     assert result["average_price"] == 3200.0
     assert result["notional"] == 160.0
+
+
+@pytest.mark.parametrize(
+    "field",
+    [
+        "order_id",
+        "route_id",
+        "approval_id",
+        "permission_id",
+    ],
+)
+def test_missing_fill_control_identity_is_rejected(field):
+    capture = SimulatedTestTradeFillCapture()
+
+    execution = simulated_fill()
+    del execution[field]
+
+    result = capture.capture(
+        execution_result=execution,
+    )
+
+    assert result["fill_captured"] is False
+    assert result["reason"] == "invalid_fill_identity"
+    assert result["live_order_submitted"] is False
+
+
+@pytest.mark.parametrize(
+    "field",
+    [
+        "order_id",
+        "route_id",
+        "approval_id",
+        "permission_id",
+    ],
+)
+@pytest.mark.parametrize(
+    "value",
+    [
+        None,
+        "",
+        "   ",
+        0,
+        False,
+    ],
+)
+def test_invalid_fill_control_identity_is_rejected(
+    field,
+    value,
+):
+    capture = SimulatedTestTradeFillCapture()
+
+    execution = simulated_fill()
+    execution[field] = value
+
+    result = capture.capture(
+        execution_result=execution,
+    )
+
+    assert result["fill_captured"] is False
+    assert result["reason"] == "invalid_fill_identity"
+    assert result["live_order_submitted"] is False
+
+
+def test_fill_control_identity_whitespace_is_normalized():
+    capture = SimulatedTestTradeFillCapture()
+
+    execution = simulated_fill()
+    execution["order_id"] = "  order-1  "
+    execution["route_id"] = "  DIRECT-ETH  "
+    execution["approval_id"] = "  ARB-001  "
+    execution["permission_id"] = "  PERM-001  "
+
+    result = capture.capture(
+        execution_result=execution,
+    )
+
+    assert result["fill_captured"] is True
+    assert result["order_id"] == "order-1"
+    assert result["route_id"] == "DIRECT-ETH"
+    assert result["approval_id"] == "ARB-001"
+    assert result["permission_id"] == "PERM-001"
+
+
+def test_fill_identity_normalization_does_not_mutate_input():
+    capture = SimulatedTestTradeFillCapture()
+
+    execution = simulated_fill()
+    execution["order_id"] = "  order-1  "
+    execution["route_id"] = "  DIRECT-ETH  "
+    execution["approval_id"] = "  ARB-001  "
+    execution["permission_id"] = "  PERM-001  "
+
+    capture.capture(
+        execution_result=execution,
+    )
+
+    assert execution["order_id"] == "  order-1  "
+    assert execution["route_id"] == "  DIRECT-ETH  "
+    assert execution["approval_id"] == "  ARB-001  "
+    assert execution["permission_id"] == "  PERM-001  "
