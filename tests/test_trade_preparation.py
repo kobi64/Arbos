@@ -114,3 +114,112 @@ def test_trade_plan_contains_approval_summary():
     )
 
     assert "approval_summary" in result
+
+
+@pytest.mark.parametrize(
+    "trade_amount",
+    [
+        None,
+        "not-a-number",
+        float("nan"),
+        float("inf"),
+        float("-inf"),
+    ],
+)
+def test_prepare_rejects_invalid_numeric_trade_amount(
+    trade_amount,
+):
+    result = TradePreparation.prepare(
+        asset="BTC",
+        buy_exchange="ExchangeA",
+        sell_exchange="ExchangeB",
+        trade_amount=trade_amount,
+        expected_profit=20.0,
+        estimated_fees=2.0,
+        slippage_allowance=1.0,
+    )
+
+    assert result == {
+        "ready": False,
+        "reason": "invalid_trade_amount",
+    }
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("expected_profit", None),
+        ("expected_profit", "not-a-number"),
+        ("expected_profit", float("nan")),
+        ("expected_profit", float("inf")),
+        ("expected_profit", float("-inf")),
+        ("estimated_fees", None),
+        ("estimated_fees", "not-a-number"),
+        ("estimated_fees", float("nan")),
+        ("estimated_fees", float("inf")),
+        ("estimated_fees", float("-inf")),
+        ("slippage_allowance", None),
+        ("slippage_allowance", "not-a-number"),
+        ("slippage_allowance", float("nan")),
+        ("slippage_allowance", float("inf")),
+        ("slippage_allowance", float("-inf")),
+    ],
+)
+def test_prepare_rejects_invalid_numeric_economic_values(
+    field,
+    value,
+):
+    kwargs = {
+        "asset": "BTC",
+        "buy_exchange": "ExchangeA",
+        "sell_exchange": "ExchangeB",
+        "trade_amount": 1000.0,
+        "expected_profit": 20.0,
+        "estimated_fees": 2.0,
+        "slippage_allowance": 1.0,
+    }
+    kwargs[field] = value
+
+    with pytest.raises(ValueError):
+        TradePreparation.prepare(**kwargs)
+
+
+def test_prepare_rejects_boolean_trade_amount():
+    result = TradePreparation.prepare(
+        asset="BTC",
+        buy_exchange="ExchangeA",
+        sell_exchange="ExchangeB",
+        trade_amount=True,
+        expected_profit=20.0,
+        estimated_fees=2.0,
+        slippage_allowance=1.0,
+    )
+
+    assert result == {
+        "ready": False,
+        "reason": "invalid_trade_amount",
+    }
+
+
+@pytest.mark.parametrize(
+    "field",
+    [
+        "expected_profit",
+        "estimated_fees",
+        "slippage_allowance",
+    ],
+)
+def test_prepare_rejects_boolean_economic_values(field):
+    kwargs = {
+        "asset": "BTC",
+        "buy_exchange": "ExchangeA",
+        "sell_exchange": "ExchangeB",
+        "trade_amount": 1000.0,
+        "expected_profit": 20.0,
+        "estimated_fees": 2.0,
+        "slippage_allowance": 1.0,
+    }
+    kwargs[field] = True
+
+    with pytest.raises(ValueError):
+        TradePreparation.prepare(**kwargs)

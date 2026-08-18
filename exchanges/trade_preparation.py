@@ -12,6 +12,8 @@ Responsibilities:
 - Generate approval summary
 """
 
+import math
+
 
 class TradePreparation:
 
@@ -34,20 +36,90 @@ class TradePreparation:
         if not isinstance(sell_exchange, str) or not sell_exchange.strip():
             raise ValueError("sell exchange is required")
 
-        if trade_amount <= 0:
+        if isinstance(trade_amount, bool):
             return {
                 "ready": False,
                 "reason": "invalid_trade_amount",
             }
 
-        if expected_profit < 0:
-            raise ValueError("expected profit cannot be negative")
+        try:
+            trade_amount = float(trade_amount)
+        except (TypeError, ValueError, OverflowError):
+            return {
+                "ready": False,
+                "reason": "invalid_trade_amount",
+            }
 
-        if estimated_fees < 0:
-            raise ValueError("fees cannot be negative")
+        if (
+            not math.isfinite(trade_amount)
+            or trade_amount <= 0
+        ):
+            return {
+                "ready": False,
+                "reason": "invalid_trade_amount",
+            }
 
-        if slippage_allowance < 0:
-            raise ValueError("slippage allowance cannot be negative")
+        if isinstance(expected_profit, bool):
+            raise ValueError(
+                "expected profit must be a finite non-negative number"
+            )
+
+        try:
+            expected_profit = float(expected_profit)
+        except (TypeError, ValueError, OverflowError):
+            raise ValueError(
+                "expected profit must be a finite non-negative number"
+            )
+
+        if (
+            not math.isfinite(expected_profit)
+            or expected_profit < 0
+        ):
+            raise ValueError(
+                "expected profit must be a finite non-negative number"
+            )
+
+        if isinstance(estimated_fees, bool):
+            raise ValueError(
+                "fees must be a finite non-negative number"
+            )
+
+        try:
+            estimated_fees = float(estimated_fees)
+        except (TypeError, ValueError, OverflowError):
+            raise ValueError(
+                "fees must be a finite non-negative number"
+            )
+
+        if (
+            not math.isfinite(estimated_fees)
+            or estimated_fees < 0
+        ):
+            raise ValueError(
+                "fees must be a finite non-negative number"
+            )
+
+        if isinstance(slippage_allowance, bool):
+            raise ValueError(
+                "slippage allowance must be a finite non-negative number"
+            )
+
+        try:
+            slippage_allowance = float(
+                slippage_allowance
+            )
+        except (TypeError, ValueError, OverflowError):
+            raise ValueError(
+                "slippage allowance must be a finite non-negative number"
+            )
+
+        if (
+            not math.isfinite(slippage_allowance)
+            or slippage_allowance < 0
+        ):
+            raise ValueError(
+                "slippage allowance must be a finite non-negative number"
+            )
 
         net_profit = (
             expected_profit

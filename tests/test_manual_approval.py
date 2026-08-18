@@ -89,3 +89,102 @@ def test_cannot_approve_unknown_request():
 
     assert result["approved"] is False
     assert result["status"] == "not_found"
+
+
+@pytest.mark.parametrize(
+    "trade_amount",
+    [
+        None,
+        "not-a-number",
+        float("nan"),
+        float("inf"),
+        float("-inf"),
+    ],
+)
+def test_request_rejects_invalid_numeric_trade_amount(
+    trade_amount,
+):
+    with pytest.raises(
+        ValueError,
+        match="invalid trade amount",
+    ):
+        ManualApproval.request(
+            asset="BTC",
+            trade_amount=trade_amount,
+            route="ExchangeA -> ExchangeB",
+            expected_profit=25.0,
+            net_profit=18.0,
+        )
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("expected_profit", None),
+        ("expected_profit", "not-a-number"),
+        ("expected_profit", float("nan")),
+        ("expected_profit", float("inf")),
+        ("expected_profit", float("-inf")),
+        ("net_profit", None),
+        ("net_profit", "not-a-number"),
+        ("net_profit", float("nan")),
+        ("net_profit", float("inf")),
+        ("net_profit", float("-inf")),
+    ],
+)
+def test_request_rejects_invalid_numeric_profit(
+    field,
+    value,
+):
+    kwargs = {
+        "asset": "BTC",
+        "trade_amount": 1000.0,
+        "route": "ExchangeA -> ExchangeB",
+        "expected_profit": 25.0,
+        "net_profit": 18.0,
+    }
+    kwargs[field] = value
+
+    with pytest.raises(
+        ValueError,
+        match="profit must be a finite non-negative number",
+    ):
+        ManualApproval.request(**kwargs)
+
+
+def test_request_rejects_boolean_trade_amount():
+    with pytest.raises(
+        ValueError,
+        match="invalid trade amount",
+    ):
+        ManualApproval.request(
+            asset="BTC",
+            trade_amount=True,
+            route="ExchangeA -> ExchangeB",
+            expected_profit=25.0,
+            net_profit=18.0,
+        )
+
+
+@pytest.mark.parametrize(
+    "field",
+    [
+        "expected_profit",
+        "net_profit",
+    ],
+)
+def test_request_rejects_boolean_profit(field):
+    kwargs = {
+        "asset": "BTC",
+        "trade_amount": 1000.0,
+        "route": "ExchangeA -> ExchangeB",
+        "expected_profit": 25.0,
+        "net_profit": 18.0,
+    }
+    kwargs[field] = True
+
+    with pytest.raises(
+        ValueError,
+        match="profit must be a finite non-negative number",
+    ):
+        ManualApproval.request(**kwargs)

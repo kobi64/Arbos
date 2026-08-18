@@ -12,6 +12,8 @@ Responsibilities:
 - Record completion, failure and cancellation
 """
 
+import math
+
 
 class ExecutionEngine:
 
@@ -28,7 +30,15 @@ class ExecutionEngine:
         if not isinstance(asset, str) or not asset.strip():
             raise ValueError("asset is required")
 
-        if amount <= 0:
+        if isinstance(amount, bool):
+            raise ValueError("invalid execution amount")
+
+        try:
+            amount = float(amount)
+        except (TypeError, ValueError, OverflowError):
+            raise ValueError("invalid execution amount")
+
+        if not math.isfinite(amount) or amount <= 0:
             raise ValueError("invalid execution amount")
 
         if not isinstance(route, str) or not route.strip():

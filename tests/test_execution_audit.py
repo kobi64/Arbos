@@ -87,3 +87,39 @@ def test_invalid_state_rejected():
             execution_id="EXEC-007",
             state="UNKNOWN",
         )
+
+
+@pytest.mark.parametrize(
+    "amount",
+    [
+        None,
+        "not-a-number",
+        float("nan"),
+        float("inf"),
+        float("-inf"),
+    ],
+)
+def test_create_record_rejects_invalid_numeric_amount(amount):
+    with pytest.raises(
+        ValueError,
+        match="invalid amount",
+    ):
+        ExecutionAudit.create_record(
+            execution_id="EXEC-NUMERIC",
+            asset="BTC",
+            amount=amount,
+            route="ExchangeA -> ExchangeB",
+        )
+
+
+def test_create_record_rejects_boolean_amount():
+    with pytest.raises(
+        ValueError,
+        match="invalid amount",
+    ):
+        ExecutionAudit.create_record(
+            execution_id="EXEC-BOOL",
+            asset="BTC",
+            amount=True,
+            route="ExchangeA -> ExchangeB",
+        )

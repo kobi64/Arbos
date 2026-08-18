@@ -12,6 +12,8 @@ Responsibilities:
 - Reject trades with reason
 """
 
+import math
+
 
 class ManualApproval:
 
@@ -29,14 +31,48 @@ class ManualApproval:
         if not isinstance(asset, str) or not asset.strip():
             raise ValueError("asset is required")
 
-        if trade_amount <= 0:
+        if isinstance(trade_amount, bool):
+            raise ValueError("invalid trade amount")
+
+        try:
+            trade_amount = float(trade_amount)
+        except (TypeError, ValueError, OverflowError):
+            raise ValueError("invalid trade amount")
+
+        if (
+            not math.isfinite(trade_amount)
+            or trade_amount <= 0
+        ):
             raise ValueError("invalid trade amount")
 
         if not isinstance(route, str) or not route.strip():
             raise ValueError("route is required")
 
-        if expected_profit < 0 or net_profit < 0:
-            raise ValueError("profit cannot be negative")
+        if (
+            isinstance(expected_profit, bool)
+            or isinstance(net_profit, bool)
+        ):
+            raise ValueError(
+                "profit must be a finite non-negative number"
+            )
+
+        try:
+            expected_profit = float(expected_profit)
+            net_profit = float(net_profit)
+        except (TypeError, ValueError, OverflowError):
+            raise ValueError(
+                "profit must be a finite non-negative number"
+            )
+
+        if (
+            not math.isfinite(expected_profit)
+            or not math.isfinite(net_profit)
+            or expected_profit < 0
+            or net_profit < 0
+        ):
+            raise ValueError(
+                "profit must be a finite non-negative number"
+            )
 
         approval_id = f"ARB-{len(cls._pending_requests) + 1:03d}"
 
