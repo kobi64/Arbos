@@ -19,7 +19,7 @@ from exchanges.transfer_feasibility import TransferFeasibility
 class TransferRouteEvaluationResult:
     executable: bool
     network: Optional[str] = None
-    withdraw_fee: float = 0.0
+    withdraw_fee: Optional[float] = None
     net_amount: float = 0.0
     reason: str = ""
     feasibility_diagnostics: Optional[Dict] = None
