@@ -99,3 +99,83 @@ def test_rejects_non_positive_quantity(engine):
             quantity=0.0,
             order_book=sample_book(),
         )
+
+
+
+
+def test_empty_buy_book_is_rejected_as_unavailable(engine):
+    with pytest.raises(
+        ValueError,
+        match="order book unavailable",
+    ):
+        engine.evaluate(
+            side="buy",
+            quantity=1.0,
+            order_book={
+                "asks": [],
+                "bids": [],
+            },
+        )
+
+
+def test_empty_sell_book_is_rejected_as_unavailable(engine):
+    with pytest.raises(
+        ValueError,
+        match="order book unavailable",
+    ):
+        engine.evaluate(
+            side="sell",
+            quantity=1.0,
+            order_book={
+                "asks": [],
+                "bids": [],
+            },
+        )
+
+
+def test_partial_fill_preserves_numeric_average_price_and_slippage(engine):
+    result = engine.evaluate(
+        side="buy",
+        quantity=10.0,
+        order_book={
+            "asks": [
+                [100.0, 2.0],
+                [101.0, 2.0],
+            ],
+            "bids": [],
+        },
+    )
+
+    assert result["filled_quantity"] == 4.0
+    assert result["total_value"] == 402.0
+
+    # A genuine partial execution occurred.
+    assert result["average_price"] == 100.5
+    assert result["slippage_percent"] == pytest.approx(
+        ((100.5 - 100.0) / 100.0) * 100
+    )
+
+    assert result["reason"] == "insufficient_liquidity"
+
+
+def test_single_level_fill_can_have_genuine_zero_slippage(engine):
+    result = engine.evaluate(
+        side="buy",
+        quantity=1.0,
+        order_book={
+            "asks": [
+                [100.0, 5.0],
+            ],
+            "bids": [],
+        },
+    )
+
+    assert result["filled_quantity"] == 1.0
+    assert result["total_value"] == 100.0
+    assert result["average_price"] == 100.0
+
+    # This is a real measured zero.
+    assert result["slippage_percent"] == 0.0
+
+    # Successful evaluation has no failure reason.
+    assert result["reason"] is None
