@@ -126,3 +126,44 @@ def test_unknown_withdraw_fee_is_not_acceptable():
     assert result.withdraw_fee is None
     assert result.net_amount == 0.0
     assert result.reason == "withdrawal_fee_unknown"
+
+
+def test_result_type_declares_withdraw_fee_optional():
+    from typing import get_type_hints
+
+    from exchanges.transfer_cost_analysis import (
+        TransferCostAnalysisResult,
+    )
+
+    hints = get_type_hints(
+        TransferCostAnalysisResult
+    )
+
+    assert (
+        str(hints["withdraw_fee"])
+        in {
+            "typing.Optional[float]",
+            "float | None",
+        }
+    )
+
+
+def test_genuine_zero_withdraw_fee_remains_numeric_zero():
+    network = NetworkInfo(
+        coin="USDT",
+        network="TRC20",
+        withdraw_fee=0.0,
+        min_withdraw=1.0,
+    )
+
+    result = TransferCostAnalysis.evaluate(
+        amount=100.0,
+        network=network,
+        max_cost_percent=5.0,
+    )
+
+    assert result.acceptable is True
+    assert result.withdraw_fee == 0.0
+    assert result.cost_percent == 0.0
+    assert result.net_amount == 100.0
+    assert result.reason == "ok"

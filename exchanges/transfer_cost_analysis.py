@@ -9,6 +9,7 @@ relative to the transfer amount.
 """
 
 from dataclasses import dataclass
+from typing import Optional
 
 from exchanges.network_registry import NetworkInfo
 
@@ -16,7 +17,7 @@ from exchanges.network_registry import NetworkInfo
 @dataclass
 class TransferCostAnalysisResult:
     acceptable: bool
-    withdraw_fee: float = 0.0
+    withdraw_fee: Optional[float] = None
     cost_percent: float = 0.0
     net_amount: float = 0.0
     reason: str = ""
