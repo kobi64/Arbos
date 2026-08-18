@@ -20,7 +20,7 @@ class OrderReconciliationStateRecovery:
                 "recovery_required": True,
                 "recovery_action": "IMPORT_REMOTE_ORDER",
                 "resolved_status": remote.get("status"),
-                "resolved_filled": remote.get("filled", 0.0),
+                "resolved_filled": remote.get("filled"),
             }
 
         if remote is None:
@@ -29,7 +29,7 @@ class OrderReconciliationStateRecovery:
                 "recovery_required": True,
                 "recovery_action": "VERIFY_WITH_EXCHANGE",
                 "resolved_status": local.get("status"),
-                "resolved_filled": local.get("filled", 0.0),
+                "resolved_filled": local.get("filled"),
             }
 
         if local.get("order_id") != remote.get("order_id"):
@@ -38,8 +38,27 @@ class OrderReconciliationStateRecovery:
         local_status = local.get("status")
         remote_status = remote.get("status")
 
-        local_filled = float(local.get("filled", 0.0))
-        remote_filled = float(remote.get("filled", 0.0))
+        local_filled_raw = local.get("filled")
+        remote_filled_raw = remote.get("filled")
+
+        if (
+            local_filled_raw is None
+            or remote_filled_raw is None
+        ):
+            return {
+                "state": "FILL_UNKNOWN",
+                "recovery_required": True,
+                "recovery_action": "VERIFY_WITH_EXCHANGE",
+                "resolved_status": remote_status,
+                "resolved_filled": (
+                    float(remote_filled_raw)
+                    if remote_filled_raw is not None
+                    else None
+                ),
+            }
+
+        local_filled = float(local_filled_raw)
+        remote_filled = float(remote_filled_raw)
 
         if (
             local_status == remote_status
