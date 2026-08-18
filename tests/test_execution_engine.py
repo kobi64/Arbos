@@ -84,3 +84,39 @@ def test_missing_asset_rejected():
             amount=1000.0,
             route="ExchangeA -> ExchangeB",
         )
+
+
+@pytest.mark.parametrize(
+    "amount",
+    [
+        None,
+        "not-a-number",
+        float("nan"),
+        float("inf"),
+        float("-inf"),
+    ],
+)
+def test_execution_request_rejects_invalid_numeric_amount(amount):
+    with pytest.raises(
+        ValueError,
+        match="invalid execution amount",
+    ):
+        ExecutionEngine.create_request(
+            approval_status="approved",
+            asset="BTC",
+            amount=amount,
+            route="ExchangeA -> ExchangeB",
+        )
+
+
+def test_execution_request_rejects_boolean_amount():
+    with pytest.raises(
+        ValueError,
+        match="invalid execution amount",
+    ):
+        ExecutionEngine.create_request(
+            approval_status="approved",
+            asset="BTC",
+            amount=True,
+            route="ExchangeA -> ExchangeB",
+        )

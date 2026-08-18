@@ -7,6 +7,7 @@ Permanent execution event tracking layer.
 """
 
 from datetime import datetime, UTC
+import math
 
 
 class ExecutionAudit:
@@ -30,7 +31,15 @@ class ExecutionAudit:
         if not asset:
             raise ValueError("asset is required")
 
-        if amount <= 0:
+        if isinstance(amount, bool):
+            raise ValueError("invalid amount")
+
+        try:
+            amount = float(amount)
+        except (TypeError, ValueError, OverflowError):
+            raise ValueError("invalid amount")
+
+        if not math.isfinite(amount) or amount <= 0:
             raise ValueError("invalid amount")
 
         if not route:

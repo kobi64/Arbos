@@ -4,6 +4,8 @@ EX-065
 Pre-Execution Validation Pipeline
 """
 
+import math
+
 
 class PreExecutionValidationPipeline:
     VALID_SIDES = {"buy", "sell"}
@@ -40,19 +42,33 @@ class PreExecutionValidationPipeline:
         if normalized_order_type not in self.VALID_ORDER_TYPES:
             reasons.append("INVALID_ORDER_TYPE")
 
-        try:
-            valid_quantity = float(quantity) > 0
-        except (TypeError, ValueError):
+        if isinstance(quantity, bool):
             valid_quantity = False
+        else:
+            try:
+                normalized_quantity = float(quantity)
+                valid_quantity = (
+                    math.isfinite(normalized_quantity)
+                    and normalized_quantity > 0
+                )
+            except (TypeError, ValueError, OverflowError):
+                valid_quantity = False
 
         if not valid_quantity:
             reasons.append("INVALID_QUANTITY")
 
         if normalized_order_type == "limit":
-            try:
-                valid_price = float(price) > 0
-            except (TypeError, ValueError):
+            if isinstance(price, bool):
                 valid_price = False
+            else:
+                try:
+                    normalized_price = float(price)
+                    valid_price = (
+                        math.isfinite(normalized_price)
+                        and normalized_price > 0
+                    )
+                except (TypeError, ValueError, OverflowError):
+                    valid_price = False
 
             if not valid_price:
                 reasons.append("LIMIT_PRICE_REQUIRED")
