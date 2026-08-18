@@ -102,3 +102,102 @@ def test_rejects_non_positive_price(engine):
             price=0.0,
             rules=sample_rules(),
         )
+
+
+@pytest.mark.parametrize(
+    "quantity",
+    [
+        None,
+        "not-a-number",
+        float("nan"),
+        float("inf"),
+        float("-inf"),
+        0.0,
+        -1.0,
+    ],
+)
+def test_rejects_invalid_numeric_quantity(engine, quantity):
+    with pytest.raises(
+        ValueError,
+        match="quantity must be positive",
+    ):
+        engine.validate(
+            quantity=quantity,
+            price=100.0,
+            rules=sample_rules(),
+        )
+
+
+@pytest.mark.parametrize(
+    "price",
+    [
+        None,
+        "not-a-number",
+        float("nan"),
+        float("inf"),
+        float("-inf"),
+        0.0,
+        -1.0,
+    ],
+)
+def test_rejects_invalid_numeric_price(engine, price):
+    with pytest.raises(
+        ValueError,
+        match="price must be positive",
+    ):
+        engine.validate(
+            quantity=0.125,
+            price=price,
+            rules=sample_rules(),
+        )
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("min_quantity", float("nan")),
+        ("min_quantity", float("inf")),
+        ("min_quantity", -1.0),
+        ("max_quantity", float("nan")),
+        ("max_quantity", float("inf")),
+        ("max_quantity", 0.0),
+        ("quantity_step", float("nan")),
+        ("quantity_step", float("inf")),
+        ("quantity_step", 0.0),
+        ("quantity_step", -1.0),
+        ("price_tick", float("nan")),
+        ("price_tick", float("inf")),
+        ("price_tick", 0.0),
+        ("price_tick", -1.0),
+        ("min_notional", float("nan")),
+        ("min_notional", float("inf")),
+        ("min_notional", -1.0),
+    ],
+)
+def test_rejects_invalid_numeric_rule_values(
+    engine,
+    field,
+    value,
+):
+    rules = sample_rules()
+    rules[field] = value
+
+    with pytest.raises(ValueError):
+        engine.validate(
+            quantity=0.125,
+            price=100.0,
+            rules=rules,
+        )
+
+
+def test_rejects_max_quantity_below_min_quantity(engine):
+    rules = sample_rules()
+    rules["min_quantity"] = 1.0
+    rules["max_quantity"] = 0.5
+
+    with pytest.raises(ValueError):
+        engine.validate(
+            quantity=0.125,
+            price=100.0,
+            rules=rules,
+        )
