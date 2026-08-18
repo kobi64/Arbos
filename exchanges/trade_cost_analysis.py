@@ -8,6 +8,7 @@ trade value after fees.
 """
 
 from dataclasses import dataclass
+import math
 from typing import Optional
 
 
@@ -27,13 +28,47 @@ class TradeCostAnalysis:
         fee_percent: float,
     ) -> TradeCostAnalysisResult:
 
-        if trade_value <= 0:
+        if isinstance(trade_value, bool):
             return TradeCostAnalysisResult(
                 valid=False,
                 reason="invalid_trade_value",
             )
 
-        if fee_percent < 0:
+        try:
+            trade_value = float(trade_value)
+        except (TypeError, ValueError, OverflowError):
+            return TradeCostAnalysisResult(
+                valid=False,
+                reason="invalid_trade_value",
+            )
+
+        if (
+            not math.isfinite(trade_value)
+            or trade_value <= 0
+        ):
+            return TradeCostAnalysisResult(
+                valid=False,
+                reason="invalid_trade_value",
+            )
+
+        if isinstance(fee_percent, bool):
+            return TradeCostAnalysisResult(
+                valid=False,
+                reason="invalid_fee_percent",
+            )
+
+        try:
+            fee_percent = float(fee_percent)
+        except (TypeError, ValueError, OverflowError):
+            return TradeCostAnalysisResult(
+                valid=False,
+                reason="invalid_fee_percent",
+            )
+
+        if (
+            not math.isfinite(fee_percent)
+            or fee_percent < 0
+        ):
             return TradeCostAnalysisResult(
                 valid=False,
                 reason="invalid_fee_percent",

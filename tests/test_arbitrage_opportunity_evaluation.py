@@ -1,3 +1,4 @@
+import pytest
 from exchanges.arbitrage_opportunity_evaluation import (
     ArbitrageOpportunityEvaluation,
 )
@@ -158,3 +159,70 @@ def test_calculated_break_even_preserves_zero_profit():
     assert result.net_profit == 0.0
     assert result.profit_percent == 0.0
     assert result.reason == "ok"
+
+
+@pytest.mark.parametrize(
+    "field,value,reason",
+    [
+        ("starting_value", None, "invalid_starting_value"),
+        ("starting_value", "bad", "invalid_starting_value"),
+        ("starting_value", float("nan"), "invalid_starting_value"),
+        ("starting_value", float("inf"), "invalid_starting_value"),
+        ("starting_value", float("-inf"), "invalid_starting_value"),
+        ("starting_value", True, "invalid_starting_value"),
+        ("final_value", None, "invalid_final_value"),
+        ("final_value", "bad", "invalid_final_value"),
+        ("final_value", float("nan"), "invalid_final_value"),
+        ("final_value", float("inf"), "invalid_final_value"),
+        ("final_value", float("-inf"), "invalid_final_value"),
+        ("final_value", True, "invalid_final_value"),
+        (
+            "minimum_profit_percent",
+            None,
+            "invalid_minimum_profit_percent",
+        ),
+        (
+            "minimum_profit_percent",
+            "bad",
+            "invalid_minimum_profit_percent",
+        ),
+        (
+            "minimum_profit_percent",
+            float("nan"),
+            "invalid_minimum_profit_percent",
+        ),
+        (
+            "minimum_profit_percent",
+            float("inf"),
+            "invalid_minimum_profit_percent",
+        ),
+        (
+            "minimum_profit_percent",
+            float("-inf"),
+            "invalid_minimum_profit_percent",
+        ),
+        (
+            "minimum_profit_percent",
+            True,
+            "invalid_minimum_profit_percent",
+        ),
+    ],
+)
+def test_invalid_economic_numeric_contract(
+    field,
+    value,
+    reason,
+):
+    kwargs = {
+        "route_feasible": True,
+        "starting_value": 1000.0,
+        "final_value": 1100.0,
+        "minimum_profit_percent": 1.0,
+    }
+    kwargs[field] = value
+
+    result = ArbitrageOpportunityEvaluation.evaluate(**kwargs)
+
+    assert result.valid is False
+    assert result.executable is False
+    assert result.reason == reason

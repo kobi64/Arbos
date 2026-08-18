@@ -8,6 +8,7 @@ sell-side trading fees into a single cost evaluation.
 """
 
 from dataclasses import dataclass
+import math
 from typing import Optional
 
 
@@ -32,29 +33,66 @@ class ArbitrageCostAnalysis:
         sell_fee_percent: float,
     ) -> ArbitrageCostAnalysisResult:
 
-        if starting_value <= 0:
-            return ArbitrageCostAnalysisResult(
-                valid=False,
-                reason="invalid_starting_value",
-            )
+        numeric_fields = (
+            (
+                "starting_value",
+                starting_value,
+                "invalid_starting_value",
+                False,
+            ),
+            (
+                "buy_fee_percent",
+                buy_fee_percent,
+                "invalid_buy_fee_percent",
+                True,
+            ),
+            (
+                "sell_fee_percent",
+                sell_fee_percent,
+                "invalid_sell_fee_percent",
+                True,
+            ),
+            (
+                "transfer_fee",
+                transfer_fee,
+                "invalid_transfer_fee",
+                True,
+            ),
+        )
 
-        if buy_fee_percent < 0:
-            return ArbitrageCostAnalysisResult(
-                valid=False,
-                reason="invalid_buy_fee_percent",
-            )
+        normalized = {}
 
-        if sell_fee_percent < 0:
-            return ArbitrageCostAnalysisResult(
-                valid=False,
-                reason="invalid_sell_fee_percent",
-            )
+        for name, value, reason, allow_zero in numeric_fields:
+            if isinstance(value, bool):
+                return ArbitrageCostAnalysisResult(
+                    valid=False,
+                    reason=reason,
+                )
 
-        if transfer_fee < 0:
-            return ArbitrageCostAnalysisResult(
-                valid=False,
-                reason="invalid_transfer_fee",
-            )
+            try:
+                number = float(value)
+            except (TypeError, ValueError, OverflowError):
+                return ArbitrageCostAnalysisResult(
+                    valid=False,
+                    reason=reason,
+                )
+
+            if (
+                not math.isfinite(number)
+                or number < 0
+                or (not allow_zero and number == 0)
+            ):
+                return ArbitrageCostAnalysisResult(
+                    valid=False,
+                    reason=reason,
+                )
+
+            normalized[name] = number
+
+        starting_value = normalized["starting_value"]
+        buy_fee_percent = normalized["buy_fee_percent"]
+        sell_fee_percent = normalized["sell_fee_percent"]
+        transfer_fee = normalized["transfer_fee"]
 
         buy_fee = starting_value * (
             buy_fee_percent / 100
