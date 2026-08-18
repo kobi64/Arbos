@@ -318,23 +318,79 @@ class CrossExchangeRouteCandidateGenerator:
             if not destination_bridge_networks:
                 continue
 
-            transfer = (
-                self._transfer_evaluator.evaluate(
-                    amount=quoted_amount,
-                    source_networks=(
-                        source_bridge_networks
-                    ),
-                    destination_networks=(
-                        destination_bridge_networks
-                    ),
+            source_bridge_metadata = (
+                source_network_metadata.get(
+                    bridge_asset,
+                    {},
+                )
+                or {}
+            )
+
+            destination_bridge_metadata = (
+                destination_network_metadata.get(
+                    bridge_asset,
+                    {},
+                )
+                or {}
+            )
+
+            source_transfer_available = (
+                source_bridge_metadata.get(
+                    "transfer_verification_available"
                 )
             )
 
-            transfer_result = (
-                transfer
-                if isinstance(transfer, dict)
-                else transfer.__dict__
+            destination_transfer_available = (
+                destination_bridge_metadata.get(
+                    "transfer_verification_available"
+                )
             )
+
+            transfer_verification_unavailable = (
+                source_transfer_available is False
+                or destination_transfer_available is False
+            )
+
+            if transfer_verification_unavailable:
+                transfer_result = {
+                    "executable": False,
+                    "network": None,
+                    "withdraw_fee": None,
+                    "net_amount": None,
+                    "reason": (
+                        "transfer_verification_unavailable"
+                    ),
+                    "transfer_verification_available": False,
+                    "source_network_metadata_reason": (
+                        source_bridge_metadata.get(
+                            "network_metadata_reason"
+                        )
+                    ),
+                    "destination_network_metadata_reason": (
+                        destination_bridge_metadata.get(
+                            "network_metadata_reason"
+                        )
+                    ),
+                }
+
+            else:
+                transfer = (
+                    self._transfer_evaluator.evaluate(
+                        amount=quoted_amount,
+                        source_networks=(
+                            source_bridge_networks
+                        ),
+                        destination_networks=(
+                            destination_bridge_networks
+                        ),
+                    )
+                )
+
+                transfer_result = (
+                    transfer
+                    if isinstance(transfer, dict)
+                    else transfer.__dict__
+                )
 
             transfer_result = self._enforce_identity(
                 transfer_asset=bridge_asset,
@@ -397,6 +453,21 @@ class CrossExchangeRouteCandidateGenerator:
                 "reason": transfer_result.get(
                     "reason",
                     "",
+                ),
+                "transfer_verification_available": (
+                    transfer_result.get(
+                        "transfer_verification_available"
+                    )
+                ),
+                "source_network_metadata_reason": (
+                    transfer_result.get(
+                        "source_network_metadata_reason"
+                    )
+                ),
+                "destination_network_metadata_reason": (
+                    transfer_result.get(
+                        "destination_network_metadata_reason"
+                    )
                 ),
                 "network_identity": (
                     transfer_result.get(
