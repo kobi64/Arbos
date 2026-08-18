@@ -227,6 +227,10 @@ class ControlledTestTradeOrderSubmissionBoundary:
         self._destination_bindings[
             order["order_id"]
         ] = {
+            "route_id": identity["route_id"],
+            "approval_id": identity["approval_id"],
+            "permission_id": identity["permission_id"],
+            "asset": identity["asset"],
             "exchange": exchange,
             "buy_exchange": buy_exchange,
             "sell_exchange": sell_exchange,

@@ -454,3 +454,184 @@ def test_submission_destination_mismatch_creates_no_order():
     assert result["accepted"] is False
     assert result["live_order_submitted"] is False
     assert "order_id" not in result
+
+
+# EX-332 — internal order record identity integrity audit
+
+
+def test_internal_order_record_preserves_full_execution_identity():
+    boundary = ControlledTestTradeOrderSubmissionBoundary()
+
+    intent = destination_bound_intent(
+        side="buy",
+    )
+
+    result = boundary.submit(intent)
+
+    assert result["accepted"] is True
+
+    order = boundary.get_order(
+        result["order_id"]
+    )
+
+    assert order["route_id"] == "DIRECT-ETH"
+    assert order["approval_id"] == "ARB-001"
+    assert order["permission_id"] == "PERM-001"
+    assert order["asset"] == "ETH"
+
+    assert order["exchange"] == "KUCOIN"
+    assert order["buy_exchange"] == "KUCOIN"
+    assert order["sell_exchange"] == "GATE"
+
+    assert order["symbol"] == "ETH/USDT"
+    assert order["side"] == "BUY"
+    assert order["amount"] == 250.0
+    assert order["status"] == "CREATED"
+
+
+def test_internal_order_identity_is_normalized_and_preserved():
+    boundary = ControlledTestTradeOrderSubmissionBoundary()
+
+    intent = destination_bound_intent(
+        side="buy",
+    )
+
+    intent["route_id"] = "  DIRECT-ETH  "
+    intent["approval_id"] = "  ARB-001  "
+    intent["permission_id"] = "  PERM-001  "
+    intent["asset"] = " eth "
+    intent["exchange"] = " kucoin "
+    intent["buy_exchange"] = " kucoin "
+    intent["sell_exchange"] = " gate "
+    intent["symbol"] = " eth/usdt "
+
+    result = boundary.submit(intent)
+
+    assert result["accepted"] is True
+
+    order = boundary.get_order(
+        result["order_id"]
+    )
+
+    assert order["route_id"] == "DIRECT-ETH"
+    assert order["approval_id"] == "ARB-001"
+    assert order["permission_id"] == "PERM-001"
+    assert order["asset"] == "ETH"
+
+    assert order["exchange"] == "KUCOIN"
+    assert order["buy_exchange"] == "KUCOIN"
+    assert order["sell_exchange"] == "GATE"
+
+    assert order["symbol"] == "ETH/USDT"
+    assert order["side"] == "BUY"
+
+
+def test_internal_order_identity_is_independent_of_source_intent_mutation():
+    boundary = ControlledTestTradeOrderSubmissionBoundary()
+
+    intent = destination_bound_intent(
+        side="buy",
+    )
+
+    result = boundary.submit(intent)
+
+    assert result["accepted"] is True
+
+    intent["route_id"] = "MUTATED-ROUTE"
+    intent["approval_id"] = "MUTATED-APPROVAL"
+    intent["permission_id"] = "MUTATED-PERMISSION"
+    intent["asset"] = "BTC"
+    intent["exchange"] = "GATE"
+    intent["buy_exchange"] = "GATE"
+    intent["sell_exchange"] = "KUCOIN"
+    intent["symbol"] = "BTC/USDT"
+    intent["side"] = "sell"
+    intent["amount"] = 999.0
+
+    order = boundary.get_order(
+        result["order_id"]
+    )
+
+    assert order["route_id"] == "DIRECT-ETH"
+    assert order["approval_id"] == "ARB-001"
+    assert order["permission_id"] == "PERM-001"
+    assert order["asset"] == "ETH"
+
+    assert order["exchange"] == "KUCOIN"
+    assert order["buy_exchange"] == "KUCOIN"
+    assert order["sell_exchange"] == "GATE"
+
+    assert order["symbol"] == "ETH/USDT"
+    assert order["side"] == "BUY"
+    assert order["amount"] == 250.0
+
+
+def test_internal_order_identity_survives_status_update():
+    boundary = ControlledTestTradeOrderSubmissionBoundary()
+
+    result = boundary.submit(
+        destination_bound_intent(
+            side="buy",
+        )
+    )
+
+    assert result["accepted"] is True
+
+    order_id = result["order_id"]
+
+    boundary._orders.update_status(
+        order_id,
+        "FILLED",
+    )
+
+    order = boundary.get_order(order_id)
+
+    assert order["status"] == "FILLED"
+
+    assert order["route_id"] == "DIRECT-ETH"
+    assert order["approval_id"] == "ARB-001"
+    assert order["permission_id"] == "PERM-001"
+    assert order["asset"] == "ETH"
+
+    assert order["exchange"] == "KUCOIN"
+    assert order["buy_exchange"] == "KUCOIN"
+    assert order["sell_exchange"] == "GATE"
+
+    assert order["symbol"] == "ETH/USDT"
+    assert order["side"] == "BUY"
+    assert order["amount"] == 250.0
+
+
+def test_internal_order_identity_survives_cancel():
+    boundary = ControlledTestTradeOrderSubmissionBoundary()
+
+    result = boundary.submit(
+        destination_bound_intent(
+            side="sell",
+        )
+    )
+
+    assert result["accepted"] is True
+
+    order_id = result["order_id"]
+
+    boundary._orders.cancel_order(
+        order_id
+    )
+
+    order = boundary.get_order(order_id)
+
+    assert order["status"] == "CANCELLED"
+
+    assert order["route_id"] == "DIRECT-ETH"
+    assert order["approval_id"] == "ARB-001"
+    assert order["permission_id"] == "PERM-001"
+    assert order["asset"] == "ETH"
+
+    assert order["exchange"] == "GATE"
+    assert order["buy_exchange"] == "KUCOIN"
+    assert order["sell_exchange"] == "GATE"
+
+    assert order["symbol"] == "ETH/USDT"
+    assert order["side"] == "SELL"
+    assert order["amount"] == 250.0
