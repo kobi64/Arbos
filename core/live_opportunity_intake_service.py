@@ -4,6 +4,8 @@ EX-102
 Live Opportunity Intake Service
 """
 
+import math
+
 
 class LiveOpportunityIntakeService:
     def __init__(self, scheduler):
@@ -38,13 +40,40 @@ class LiveOpportunityIntakeService:
         self._received_ids.add(opportunity_id)
 
         queued = self._scheduler.enqueue(dict(opportunity))
+
+        if "priority" not in queued:
+            self._rejected += 1
+            raise ValueError("scheduler priority is required")
+
+        raw_priority = queued["priority"]
+
+        if isinstance(raw_priority, bool):
+            self._rejected += 1
+            raise ValueError(
+                "scheduler priority must be a finite number"
+            )
+
+        try:
+            priority = float(raw_priority)
+        except (TypeError, ValueError):
+            self._rejected += 1
+            raise ValueError(
+                "scheduler priority must be a finite number"
+            )
+
+        if not math.isfinite(priority):
+            self._rejected += 1
+            raise ValueError(
+                "scheduler priority must be a finite number"
+            )
+
         self._accepted += 1
 
         return {
             "accepted": True,
             "queued": queued["queued"],
             "opportunity_id": opportunity_id,
-            "priority": queued.get("priority", 0.0),
+            "priority": priority,
         }
 
     def statistics(self):

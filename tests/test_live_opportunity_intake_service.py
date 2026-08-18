@@ -94,3 +94,101 @@ def test_rejected_submission_updates_statistics(intake):
     assert stats["received"] == 1
     assert stats["accepted"] == 0
     assert stats["rejected"] == 1
+
+
+class SchedulerWithResult:
+    def __init__(self, result):
+        self.result = result
+
+    def enqueue(self, opportunity):
+        return dict(self.result)
+
+
+def valid_intake_opportunity():
+    return {
+        "opportunity_id": "OPP-CONTRACT",
+        "priority": 5,
+        "route": {"route_id": "ROUTE-CONTRACT"},
+    }
+
+
+def test_intake_preserves_scheduler_canonical_priority():
+    intake = LiveOpportunityIntakeService(
+        SchedulerWithResult(
+            {
+                "queued": True,
+                "opportunity_id": "OPP-CONTRACT",
+                "priority": 5.5,
+            }
+        )
+    )
+
+    result = intake.submit(valid_intake_opportunity())
+
+    assert result["priority"] == 5.5
+
+
+def test_intake_requires_scheduler_priority_result():
+    intake = LiveOpportunityIntakeService(
+        SchedulerWithResult(
+            {
+                "queued": True,
+                "opportunity_id": "OPP-CONTRACT",
+            }
+        )
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="scheduler priority is required",
+    ):
+        intake.submit(valid_intake_opportunity())
+
+
+@pytest.mark.parametrize(
+    "priority",
+    [
+        None,
+        "not-a-number",
+        float("nan"),
+        float("inf"),
+        float("-inf"),
+        True,
+        False,
+    ],
+)
+def test_intake_rejects_invalid_scheduler_priority(
+    priority,
+):
+    intake = LiveOpportunityIntakeService(
+        SchedulerWithResult(
+            {
+                "queued": True,
+                "opportunity_id": "OPP-CONTRACT",
+                "priority": priority,
+            }
+        )
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="scheduler priority must be a finite number",
+    ):
+        intake.submit(valid_intake_opportunity())
+
+
+def test_intake_normalizes_scheduler_numeric_string_priority():
+    intake = LiveOpportunityIntakeService(
+        SchedulerWithResult(
+            {
+                "queued": True,
+                "opportunity_id": "OPP-CONTRACT",
+                "priority": "5.5",
+            }
+        )
+    )
+
+    result = intake.submit(valid_intake_opportunity())
+
+    assert result["priority"] == 5.5
+    assert isinstance(result["priority"], float)
