@@ -89,6 +89,36 @@ class SimulatedTestTradeFillCapture:
                 "live_order_submitted": False,
             }
 
+        identity_fields = (
+            "order_id",
+            "route_id",
+            "approval_id",
+            "permission_id",
+        )
+
+        identities = {}
+
+        for field in identity_fields:
+            value = execution_result.get(field)
+
+            if not isinstance(value, str):
+                return {
+                    "fill_captured": False,
+                    "reason": "invalid_fill_identity",
+                    "live_order_submitted": False,
+                }
+
+            value = value.strip()
+
+            if not value:
+                return {
+                    "fill_captured": False,
+                    "reason": "invalid_fill_identity",
+                    "live_order_submitted": False,
+                }
+
+            identities[field] = value
+
         return {
             "fill_captured": True,
             "reason": "simulated_test_trade_fill_captured",
@@ -103,18 +133,18 @@ class SimulatedTestTradeFillCapture:
             "paper_order_id": execution_result.get(
                 "paper_order_id"
             ),
-            "order_id": execution_result.get(
+            "order_id": identities[
                 "order_id"
-            ),
-            "route_id": execution_result.get(
+            ],
+            "route_id": identities[
                 "route_id"
-            ),
-            "approval_id": execution_result.get(
+            ],
+            "approval_id": identities[
                 "approval_id"
-            ),
-            "permission_id": execution_result.get(
+            ],
+            "permission_id": identities[
                 "permission_id"
-            ),
+            ],
             "filled_quantity": filled_quantity,
             "average_price": average_price,
             "notional": notional,
