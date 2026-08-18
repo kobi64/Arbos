@@ -41,6 +41,30 @@ class ControlledTestTradeExecutionAdapter:
                 "live_order_submitted": True,
             }
 
+        exchange_identity = {}
+
+        for field in (
+            "buy_exchange",
+            "sell_exchange",
+        ):
+            value = permission_result.get(
+                field
+            )
+
+            if (
+                not isinstance(value, str)
+                or not value.strip()
+            ):
+                return {
+                    "authorised": False,
+                    "reason": f"{field}_required",
+                    "live_order_submitted": False,
+                }
+
+            exchange_identity[field] = (
+                value.strip()
+            )
+
         trade_amount = float(
             permission_result.get(
                 "trade_amount",
@@ -86,6 +110,12 @@ class ControlledTestTradeExecutionAdapter:
             "asset": permission_result.get(
                 "asset"
             ),
+            "buy_exchange": exchange_identity[
+                "buy_exchange"
+            ],
+            "sell_exchange": exchange_identity[
+                "sell_exchange"
+            ],
             "trade_amount": trade_amount,
             "live_order_submitted": False,
         }
