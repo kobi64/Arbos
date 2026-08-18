@@ -17,6 +17,9 @@ from exchanges.live_market_paper_bridge import (
 )
 
 
+import math
+
+
 class LiveMarketRepeatScalePaperBridge:
     def __init__(self, market_data_provider):
         if market_data_provider is None:
@@ -90,29 +93,55 @@ class LiveMarketRepeatScalePaperBridge:
                 "approval_id_required"
             )
 
-        permitted_amount = float(
+        raw_permitted_amount = (
             permission_result.get(
-                "trade_amount",
-                0.0,
+                "trade_amount"
             )
         )
 
-        if permitted_amount <= 0:
+        try:
+            permitted_amount = float(
+                raw_permitted_amount
+            )
+        except (TypeError, ValueError):
             return self._blocked(
                 "invalid_permitted_trade_amount"
             )
 
+        if (
+            not math.isfinite(
+                permitted_amount
+            )
+            or permitted_amount <= 0
+        ):
+            return self._blocked(
+                "invalid_permitted_trade_amount"
+            )
+
+        if "trade_amount" in order:
+            raw_order_amount = order.get(
+                "trade_amount"
+            )
+        else:
+            raw_order_amount = order.get(
+                "quantity"
+            )
+
         try:
             order_amount = float(
-                order.get(
-                    "trade_amount",
-                    order.get("quantity"),
-                )
+                raw_order_amount
             )
         except (TypeError, ValueError):
-            order_amount = 0.0
+            return self._blocked(
+                "invalid_order_trade_amount"
+            )
 
-        if order_amount <= 0:
+        if (
+            not math.isfinite(
+                order_amount
+            )
+            or order_amount <= 0
+        ):
             return self._blocked(
                 "invalid_order_trade_amount"
             )
