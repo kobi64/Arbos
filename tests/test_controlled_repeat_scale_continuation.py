@@ -4,6 +4,9 @@ from core.controlled_repeat_scale_continuation import (
     ControlledRepeatScaleContinuation,
 )
 from exchanges.network_registry import NetworkInfo
+from core.repeat_scale_market_provenance_binding import (
+    RepeatScaleMarketProvenanceBinding,
+)
 
 
 def feedback(
@@ -73,6 +76,37 @@ def feedback(
         "paper_trade": True,
         "live_order_submitted": False,
     }
+
+
+def market_provenance_binding():
+    provenance = {
+        "route_id": "ROUTE-001",
+        "independent_revalidation_capture": True,
+        "snapshot_age_verified": False,
+        "snapshot_count": 2,
+        "symbols": [
+            "ETH/USDT",
+            "ETH/USDT",
+        ],
+        "exchange_ids": [
+            "kucoin",
+            "gate",
+        ],
+        "earliest_timestamp": 1000.0,
+        "latest_timestamp": 1000.1,
+        "snapshot_spread_ms": 100.0,
+        "entry_symbol": "ETH/USDT",
+        "entry_side": "buy",
+        "available_liquidity": 10000.0,
+        "best_price": 100.0,
+        "average_price": 99.5,
+        "slippage_percent": 0.5,
+    }
+
+    return (
+        RepeatScaleMarketProvenanceBinding
+        .create(provenance)
+    )
 
 
 def source_networks():
@@ -185,6 +219,9 @@ def prepare(
         expected_profit=5.0,
         estimated_fees=0.5,
         slippage_allowance=0.25,
+        market_provenance_binding=(
+            market_provenance_binding()
+        ),
     )
 
 

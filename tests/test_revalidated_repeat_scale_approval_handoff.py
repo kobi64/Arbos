@@ -3,6 +3,40 @@ import pytest
 from core.revalidated_repeat_scale_approval_handoff import (
     RevalidatedRepeatScaleApprovalHandoff,
 )
+from core.repeat_scale_market_provenance_binding import (
+    RepeatScaleMarketProvenanceBinding,
+)
+
+
+def market_provenance_binding():
+    provenance = {
+        "route_id": "ROUTE-001",
+        "snapshot_count": 2,
+        "symbols": [
+            "ETH/USDT",
+            "ETH/USDT",
+        ],
+        "exchange_ids": [
+            "kucoin",
+            "gate",
+        ],
+        "earliest_timestamp": 1000.0,
+        "latest_timestamp": 1000.1,
+        "snapshot_spread_ms": 100.0,
+        "entry_symbol": "ETH/USDT",
+        "entry_side": "buy",
+        "available_liquidity": 10000.0,
+        "best_price": 2500.0,
+        "average_price": 2501.0,
+        "slippage_percent": 0.04,
+    }
+
+    return (
+        RepeatScaleMarketProvenanceBinding
+        .create(
+            provenance
+        )
+    )
 
 
 def revalidated_result(
@@ -28,6 +62,9 @@ def revalidated_result(
         "fresh_execution_permission_required": True,
         "approval_granted": False,
         "permission_granted": False,
+        "market_provenance_binding": (
+            market_provenance_binding()
+        ),
         "test_trade": True,
         "simulated": True,
         "live_order_submitted": False,

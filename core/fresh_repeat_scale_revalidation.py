@@ -30,6 +30,7 @@ class FreshRepeatScaleRevalidation:
         expected_price,
         current_price,
         max_slippage_percent,
+        market_provenance_binding=None,
     ):
         if decision_result is None:
             raise ValueError(
@@ -364,6 +365,12 @@ class FreshRepeatScaleRevalidation:
             "fresh_execution_permission_required": True,
             "approval_granted": False,
             "permission_granted": False,
+            "market_provenance_binding": (
+                dict(market_provenance_binding)
+                if market_provenance_binding
+                is not None
+                else None
+            ),
             "test_trade": True,
             "simulated": True,
             "live_order_submitted": False,

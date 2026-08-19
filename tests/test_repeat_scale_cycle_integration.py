@@ -8,6 +8,10 @@ from core.staged_test_trade_execution_permission import (
 )
 from exchanges.network_registry import NetworkInfo
 
+from core.repeat_scale_market_provenance_binding import (
+    RepeatScaleMarketProvenanceBinding,
+)
+
 
 def validation_result():
     return {
@@ -43,6 +47,37 @@ def destination_networks():
             "TRC20",
         ),
     ]
+
+
+def market_provenance_binding():
+    provenance = {
+        "route_id": "ROUTE-001",
+        "independent_revalidation_capture": True,
+        "snapshot_age_verified": False,
+        "snapshot_count": 2,
+        "symbols": [
+            "ETH/USDT",
+            "ETH/USDT",
+        ],
+        "exchange_ids": [
+            "kucoin",
+            "gate",
+        ],
+        "earliest_timestamp": 1000.0,
+        "latest_timestamp": 1000.1,
+        "snapshot_spread_ms": 100.0,
+        "entry_symbol": "ETH/USDT",
+        "entry_side": "buy",
+        "available_liquidity": 10000.0,
+        "best_price": 100.0,
+        "average_price": 99.5,
+        "slippage_percent": 0.5,
+    }
+
+    return (
+        RepeatScaleMarketProvenanceBinding
+        .create(provenance)
+    )
 
 
 def prepare_cycle(
@@ -91,18 +126,32 @@ def prepare_cycle(
         expected_profit=5.0,
         estimated_fees=0.5,
         slippage_allowance=0.25,
+        market_provenance_binding=(
+            market_provenance_binding()
+        ),
     )
 
 
 def fresh_approval(
     trade_amount=250.0,
     approval_id="ARB-002",
+    market_provenance_id=None,
 ):
+    if market_provenance_id is None:
+        market_provenance_id = (
+            market_provenance_binding()[
+                "market_provenance_id"
+            ]
+        )
+
     return {
         "approval_id": approval_id,
         "route_id": "ROUTE-001",
         "approved": True,
         "status": "approved",
+        "market_provenance_id": (
+            market_provenance_id
+        ),
         "trade_summary": {
             "asset": "ETH",
             "trade_amount": trade_amount,

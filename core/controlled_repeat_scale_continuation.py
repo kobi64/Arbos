@@ -58,6 +58,7 @@ class ControlledRepeatScaleContinuation:
         expected_profit,
         estimated_fees,
         slippage_allowance,
+        market_provenance_binding=None,
     ):
         if feedback_result is None:
             raise ValueError(
@@ -324,6 +325,9 @@ class ControlledRepeatScaleContinuation:
                 estimated_fees=estimated_fees,
                 slippage_allowance=(
                     slippage_allowance
+                ),
+                market_provenance_binding=(
+                    market_provenance_binding
                 ),
             )
         )

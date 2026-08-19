@@ -15,6 +15,10 @@ This module does not approve, authorize, or submit orders.
 
 import math
 
+from core.repeat_scale_market_provenance_binding import (
+    RepeatScaleMarketProvenanceBinding,
+)
+
 
 class RevalidatedRepeatScaleApprovalHandoff:
     def prepare(
@@ -278,6 +282,80 @@ class RevalidatedRepeatScaleApprovalHandoff:
             raw_previous_permission_id.strip()
         )
 
+        provenance_binding = (
+            revalidation_result.get(
+                "market_provenance_binding"
+            )
+        )
+
+        if not isinstance(
+            provenance_binding,
+            dict,
+        ):
+            return {
+                "prepared": False,
+                "approval_ready": False,
+                "reason": (
+                    "market_provenance_binding_required"
+                ),
+                "live_order_submitted": False,
+            }
+
+        market_provenance_id = (
+            provenance_binding.get(
+                "market_provenance_id"
+            )
+        )
+        market_provenance = (
+            provenance_binding.get(
+                "market_provenance_binding"
+            )
+        )
+
+        if (
+            not isinstance(
+                market_provenance_id,
+                str,
+            )
+            or not market_provenance_id.strip()
+            or not isinstance(
+                market_provenance,
+                dict,
+            )
+        ):
+            return {
+                "prepared": False,
+                "approval_ready": False,
+                "reason": (
+                    "market_provenance_binding_required"
+                ),
+                "live_order_submitted": False,
+            }
+
+        market_provenance_id = (
+            market_provenance_id.strip()
+        )
+
+        if not (
+            RepeatScaleMarketProvenanceBinding
+            .verify(
+                market_provenance,
+                market_provenance_id,
+            )
+        ):
+            return {
+                "prepared": False,
+                "approval_ready": False,
+                "reason": (
+                    "market_provenance_binding_mismatch"
+                ),
+                "live_order_submitted": False,
+            }
+
+        verified_market_provenance = dict(
+            market_provenance
+        )
+
         approval_request = {
             "route_id": route_id,
             "decision": revalidation_result.get(
@@ -301,6 +379,12 @@ class RevalidatedRepeatScaleApprovalHandoff:
                     "transfer_net_amount"
                 )
             ),
+            "market_provenance_id": (
+                market_provenance_id
+            ),
+            "market_provenance_binding": (
+                verified_market_provenance
+            ),
         }
 
         return {
@@ -315,6 +399,12 @@ class RevalidatedRepeatScaleApprovalHandoff:
             ),
             "trade_amount": trade_amount,
             "approval_request": approval_request,
+            "market_provenance_id": (
+                market_provenance_id
+            ),
+            "market_provenance_binding": (
+                verified_market_provenance
+            ),
             "previous_approval_id": (
                 previous_approval_id
             ),
