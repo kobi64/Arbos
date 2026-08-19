@@ -385,6 +385,78 @@ class FreshRepeatScaleExecutionPermissionHandoff:
                 "live_order_submitted": False,
             }
 
+        # EX-351:
+        # When fresh revalidation supplied a market provenance
+        # identity, the manual approval must authorize that exact
+        # market state before an execution-permission handoff can
+        # be prepared.
+        market_provenance_id = (
+            approval_handoff.get(
+                "market_provenance_id"
+            )
+        )
+
+        if market_provenance_id is not None:
+            if (
+                not isinstance(
+                    market_provenance_id,
+                    str,
+                )
+                or not market_provenance_id.strip()
+            ):
+                return {
+                    "handoff_ready": False,
+                    "reason": (
+                        "market_provenance_id_required"
+                    ),
+                    "live_order_submitted": False,
+                }
+
+            market_provenance_id = (
+                market_provenance_id.strip()
+            )
+
+            approved_market_provenance_id = (
+                approval_result.get(
+                    "market_provenance_id"
+                )
+            )
+
+            if (
+                not isinstance(
+                    approved_market_provenance_id,
+                    str,
+                )
+                or not (
+                    approved_market_provenance_id
+                    .strip()
+                )
+            ):
+                return {
+                    "handoff_ready": False,
+                    "reason": (
+                        "approved_market_provenance_id_required"
+                    ),
+                    "live_order_submitted": False,
+                }
+
+            approved_market_provenance_id = (
+                approved_market_provenance_id
+                .strip()
+            )
+
+            if (
+                approved_market_provenance_id
+                != market_provenance_id
+            ):
+                return {
+                    "handoff_ready": False,
+                    "reason": (
+                        "approved_market_provenance_id_mismatch"
+                    ),
+                    "live_order_submitted": False,
+                }
+
         raw_fresh_approval_id = approval_result.get(
             "approval_id"
         )
@@ -466,6 +538,9 @@ class FreshRepeatScaleExecutionPermissionHandoff:
                 "decision"
             ),
             "approval_id": fresh_approval_id,
+            "market_provenance_id": (
+                market_provenance_id
+            ),
             "asset": requested_asset,
             "buy_exchange": requested_buy_exchange,
             "sell_exchange": requested_sell_exchange,

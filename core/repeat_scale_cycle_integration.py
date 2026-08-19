@@ -58,6 +58,7 @@ class RepeatScaleCycleIntegration:
         expected_profit,
         estimated_fees,
         slippage_allowance,
+        market_provenance_binding=None,
     ):
         if validation_result is None:
             raise ValueError(
@@ -112,6 +113,9 @@ class RepeatScaleCycleIntegration:
                 current_price=current_price,
                 max_slippage_percent=(
                     max_slippage_percent
+                ),
+                market_provenance_binding=(
+                    market_provenance_binding
                 ),
             )
         )

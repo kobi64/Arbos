@@ -27,6 +27,9 @@ from core.controlled_repeat_scale_continuation import (
 from core.repeat_scale_market_provenance import (
     RepeatScaleMarketProvenance,
 )
+from core.repeat_scale_market_provenance_binding import (
+    RepeatScaleMarketProvenanceBinding,
+)
 
 
 class EndToEndLiveMarketPaperCycleController:
@@ -206,6 +209,7 @@ class EndToEndLiveMarketPaperCycleController:
         ).strip().upper()
 
         market_provenance = None
+        market_provenance_binding = None
 
         revalidation_available_liquidity = (
             available_liquidity
@@ -260,6 +264,13 @@ class EndToEndLiveMarketPaperCycleController:
                 fresh_market[
                     "market_provenance"
                 ]
+            )
+
+            market_provenance_binding = (
+                RepeatScaleMarketProvenanceBinding()
+                .create(
+                    market_provenance
+                )
             )
 
         continuation_result = (
@@ -322,6 +333,9 @@ class EndToEndLiveMarketPaperCycleController:
                 estimated_fees=estimated_fees,
                 slippage_allowance=(
                     slippage_allowance
+                ),
+                market_provenance_binding=(
+                    market_provenance_binding
                 ),
             )
         )
