@@ -117,13 +117,30 @@ class RouteDependencyRegistry:
                 "symbol"
             ] = symbol
 
+            leg_exchange_id = str(
+                normalized_leg.get(
+                    "exchange_id",
+                    exchange_id,
+                )
+                or exchange_id
+            ).strip().lower()
+
+            if not leg_exchange_id:
+                raise ValueError(
+                    "leg exchange_id is required"
+                )
+
+            normalized_leg[
+                "exchange_id"
+            ] = leg_exchange_id
+
             normalized_legs.append(
                 normalized_leg
             )
 
             market_dependencies.add(
                 (
-                    exchange_id,
+                    leg_exchange_id,
                     symbol,
                 )
             )

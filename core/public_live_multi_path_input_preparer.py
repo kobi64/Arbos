@@ -72,6 +72,72 @@ class PublicLiveMultiPathInputPreparer:
             network_identity_metadata_adapter_factory
         )
 
+        # EX-352
+        #
+        # Network metadata is exchange-level state, not
+        # coin-level state. Rebuilding these adapters for
+        # every coin can repeatedly trigger expensive public
+        # currency metadata downloads (notably HTX
+        # fetch_currencies()).
+        #
+        # A preparer is scoped to one ordered exchange pair,
+        # so these adapters can safely be reused across every
+        # coin evaluated for that pair.
+        self._source_network_adapter = None
+        self._destination_network_adapter = None
+        self._source_identity_adapter = None
+        self._destination_identity_adapter = None
+
+    def _network_adapters(self):
+        if self._source_network_adapter is None:
+            self._source_network_adapter = (
+                self._network_metadata_adapter_factory.build(
+                    self._source_exchange
+                )
+            )
+
+        if (
+            self._destination_network_adapter
+            is None
+        ):
+            self._destination_network_adapter = (
+                self._network_metadata_adapter_factory.build(
+                    self._destination_exchange
+                )
+            )
+
+        return (
+            self._source_network_adapter,
+            self._destination_network_adapter,
+        )
+
+    def _identity_adapters(self):
+        if self._source_identity_adapter is None:
+            self._source_identity_adapter = (
+                self
+                ._network_identity_metadata_adapter_factory
+                .build(
+                    self._source_exchange
+                )
+            )
+
+        if (
+            self._destination_identity_adapter
+            is None
+        ):
+            self._destination_identity_adapter = (
+                self
+                ._network_identity_metadata_adapter_factory
+                .build(
+                    self._destination_exchange
+                )
+            )
+
+        return (
+            self._source_identity_adapter,
+            self._destination_identity_adapter,
+        )
+
     @staticmethod
     def _describe_network_metadata(
         adapter,
@@ -382,33 +448,15 @@ class PublicLiveMultiPathInputPreparer:
                     "source buy coin_amount must be positive"
                 )
 
-        source_network_adapter = (
-            self._network_metadata_adapter_factory.build(
-                self._source_exchange
-            )
-        )
+        (
+            source_network_adapter,
+            destination_network_adapter,
+        ) = self._network_adapters()
 
-        destination_network_adapter = (
-            self._network_metadata_adapter_factory.build(
-                self._destination_exchange
-            )
-        )
-
-        source_identity_adapter = (
-            self
-            ._network_identity_metadata_adapter_factory
-            .build(
-                self._source_exchange
-            )
-        )
-
-        destination_identity_adapter = (
-            self
-            ._network_identity_metadata_adapter_factory
-            .build(
-                self._destination_exchange
-            )
-        )
+        (
+            source_identity_adapter,
+            destination_identity_adapter,
+        ) = self._identity_adapters()
 
         source_networks = {
             coin_asset: (
