@@ -23,6 +23,7 @@ class CCXTProMultiSymbolFeedManager:
         retry_delay_seconds=1.0,
         health_supervisor=None,
         backoff_policy=None,
+        cycle_timeout_seconds=10.0,
     ):
         if feed is None:
             raise ValueError("feed is required")
@@ -64,6 +65,15 @@ class CCXTProMultiSymbolFeedManager:
             backoff_policy
         )
 
+        self._cycle_timeout_seconds = float(
+            cycle_timeout_seconds
+        )
+
+        if self._cycle_timeout_seconds <= 0:
+            raise ValueError(
+                "cycle_timeout_seconds must be positive"
+            )
+
         self._completed_updates = 0
         self._failed_updates = 0
         self._running = False
@@ -96,9 +106,14 @@ class CCXTProMultiSymbolFeedManager:
                 cycles_per_symbol
             ):
                 try:
-                    await self._feed.watch_once(
-                        symbol,
-                        limit=self._limit,
+                    await asyncio.wait_for(
+                        self._feed.watch_once(
+                            symbol,
+                            limit=self._limit,
+                        ),
+                        timeout=(
+                            self._cycle_timeout_seconds
+                        ),
                     )
                     completed_updates += 1
                     self._completed_updates += 1

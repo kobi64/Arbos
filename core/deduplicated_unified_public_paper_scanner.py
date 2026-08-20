@@ -291,21 +291,28 @@ class DeduplicatedUnifiedPublicPaperScanner:
                     )
                 )
 
+                # EX-352
+                #
+                # One preparer per ordered exchange pair.
+                # Exchange-level metadata adapters inside
+                # the preparer are then reused across every
+                # overlapping coin instead of repeatedly
+                # downloading identical metadata.
+                preparer = (
+                    self._input_preparer_factory(
+                        source_exchange=(
+                            source_exchange
+                        ),
+                        destination_exchange=(
+                            destination_exchange
+                        ),
+                    )
+                )
+
                 for coin_asset in common_coins:
                     cross_exchange_coin_scans += 1
 
                     try:
-                        preparer = (
-                            self._input_preparer_factory(
-                                source_exchange=(
-                                    source_exchange
-                                ),
-                                destination_exchange=(
-                                    destination_exchange
-                                ),
-                            )
-                        )
-
                         prepared = preparer.prepare(
                             source_exchange_id=(
                                 source_exchange_id
