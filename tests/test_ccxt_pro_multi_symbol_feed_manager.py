@@ -1022,3 +1022,185 @@ def test_run_cycles_staggers_symbol_start_times():
 
     assert eth - btc >= 0.02
     assert sol - btc >= 0.05
+
+
+def test_run_cycles_recovers_failed_symbol_when_enabled():
+    import asyncio
+
+    class RecoveryExchange:
+        id = "kucoin"
+
+    class RecoveryFeed:
+        def __init__(self):
+            self.calls = {}
+
+        async def watch_once(
+            self,
+            symbol,
+            limit=None,
+        ):
+            self.calls[symbol] = (
+                self.calls.get(symbol, 0) + 1
+            )
+
+            if (
+                symbol == "ACS/USDT"
+                and self.calls[symbol] == 1
+            ):
+                raise TimeoutError()
+
+            await asyncio.sleep(0)
+
+            return {
+                "accepted": True,
+                "symbol": symbol,
+            }
+
+    feed = RecoveryFeed()
+
+    manager = CCXTProMultiSymbolFeedManager(
+        feed=feed,
+        exchange=RecoveryExchange(),
+        symbols=[
+            "BTC/USDT",
+            "ACS/USDT",
+        ],
+        recovery_attempts=1,
+        recovery_delay_seconds=0.0,
+    )
+
+    result = asyncio.run(
+        manager.run_cycles(
+            cycles_per_symbol=1,
+        )
+    )
+
+    assert feed.calls["BTC/USDT"] == 1
+    assert feed.calls["ACS/USDT"] == 2
+
+    assert result["completed_updates"] == 2
+    assert result["failed_updates"] == 0
+
+    assert result["initial_failed_updates"] == 1
+    assert result["recovery_attempts"] == 1
+    assert result["recovered_updates"] == 1
+    assert result["unrecovered_failures"] == 0
+    assert result["failures"] == []
+
+    assert result["paper_only"] is True
+    assert result["live_order_submitted"] is False
+
+
+def test_run_cycles_reports_persistent_failure_after_recovery():
+    import asyncio
+
+    class RecoveryExchange:
+        id = "kucoin"
+
+    class FailingFeed:
+        def __init__(self):
+            self.calls = {}
+
+        async def watch_once(
+            self,
+            symbol,
+            limit=None,
+        ):
+            self.calls[symbol] = (
+                self.calls.get(symbol, 0) + 1
+            )
+
+            if symbol == "ACS/USDT":
+                raise TimeoutError()
+
+            await asyncio.sleep(0)
+
+            return {
+                "accepted": True,
+                "symbol": symbol,
+            }
+
+    feed = FailingFeed()
+
+    manager = CCXTProMultiSymbolFeedManager(
+        feed=feed,
+        exchange=RecoveryExchange(),
+        symbols=[
+            "BTC/USDT",
+            "ACS/USDT",
+        ],
+        recovery_attempts=1,
+        recovery_delay_seconds=0.0,
+    )
+
+    result = asyncio.run(
+        manager.run_cycles(
+            cycles_per_symbol=1,
+        )
+    )
+
+    assert feed.calls["BTC/USDT"] == 1
+    assert feed.calls["ACS/USDT"] == 2
+
+    assert result["completed_updates"] == 1
+    assert result["failed_updates"] == 1
+
+    assert result["initial_failed_updates"] == 1
+    assert result["recovery_attempts"] == 1
+    assert result["recovered_updates"] == 0
+    assert result["unrecovered_failures"] == 1
+
+    assert result["failures"] == [
+        {
+            "exchange_id": "kucoin",
+            "symbol": "ACS/USDT",
+            "error_type": "TimeoutError",
+            "error": "",
+        }
+    ]
+
+
+def test_recovery_defaults_to_disabled():
+    manager = CCXTProMultiSymbolFeedManager(
+        feed=FakeFeed(),
+        exchange=FakeExchange(),
+        symbols=[
+            "BTC/USDT",
+        ],
+    )
+
+    assert manager._recovery_attempts == 0
+    assert manager._recovery_delay_seconds == 1.0
+
+
+def test_recovery_configuration_rejects_negative_values():
+    import pytest
+
+    with pytest.raises(
+        ValueError,
+        match="recovery_attempts cannot be negative",
+    ):
+        CCXTProMultiSymbolFeedManager(
+            feed=FakeFeed(),
+            exchange=FakeExchange(),
+            symbols=[
+                "BTC/USDT",
+            ],
+            recovery_attempts=-1,
+        )
+
+    with pytest.raises(
+        ValueError,
+        match=(
+            "recovery_delay_seconds "
+            "cannot be negative"
+        ),
+    ):
+        CCXTProMultiSymbolFeedManager(
+            feed=FakeFeed(),
+            exchange=FakeExchange(),
+            symbols=[
+                "BTC/USDT",
+            ],
+            recovery_delay_seconds=-0.1,
+        )

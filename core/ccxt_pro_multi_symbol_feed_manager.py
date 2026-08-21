@@ -25,6 +25,8 @@ class CCXTProMultiSymbolFeedManager:
         backoff_policy=None,
         cycle_timeout_seconds=10.0,
         subscription_start_stagger_seconds=0.0,
+        recovery_attempts=0,
+        recovery_delay_seconds=1.0,
     ):
         if feed is None:
             raise ValueError("feed is required")
@@ -88,6 +90,25 @@ class CCXTProMultiSymbolFeedManager:
                 "cannot be negative"
             )
 
+        self._recovery_attempts = int(
+            recovery_attempts
+        )
+
+        if self._recovery_attempts < 0:
+            raise ValueError(
+                "recovery_attempts cannot be negative"
+            )
+
+        self._recovery_delay_seconds = float(
+            recovery_delay_seconds
+        )
+
+        if self._recovery_delay_seconds < 0:
+            raise ValueError(
+                "recovery_delay_seconds "
+                "cannot be negative"
+            )
+
         self._completed_updates = 0
         self._failed_updates = 0
         self._running = False
@@ -110,8 +131,9 @@ class CCXTProMultiSymbolFeedManager:
             )
 
         completed_updates = 0
-        failed_updates = 0
-        failures = []
+        initial_failed_updates = 0
+        recovery_attempt_count = 0
+        recovered_updates = 0
 
         exchange_id = str(
             getattr(
@@ -122,12 +144,27 @@ class CCXTProMultiSymbolFeedManager:
             or ""
         ).strip().lower()
 
+        initial_failures = []
+
+        async def watch_symbol_once(
+            symbol,
+        ):
+            await asyncio.wait_for(
+                self._feed.watch_once(
+                    symbol,
+                    limit=self._limit,
+                ),
+                timeout=(
+                    self._cycle_timeout_seconds
+                ),
+            )
+
         async def run_symbol(
             symbol,
             start_index,
         ):
             nonlocal completed_updates
-            nonlocal failed_updates
+            nonlocal initial_failed_updates
 
             start_delay = (
                 start_index
@@ -143,22 +180,17 @@ class CCXTProMultiSymbolFeedManager:
                 cycles_per_symbol
             ):
                 try:
-                    await asyncio.wait_for(
-                        self._feed.watch_once(
-                            symbol,
-                            limit=self._limit,
-                        ),
-                        timeout=(
-                            self._cycle_timeout_seconds
-                        ),
+                    await watch_symbol_once(
+                        symbol
                     )
+
                     completed_updates += 1
                     self._completed_updates += 1
-                except Exception as exc:
-                    failed_updates += 1
-                    self._failed_updates += 1
 
-                    failures.append({
+                except Exception as exc:
+                    initial_failed_updates += 1
+
+                    initial_failures.append({
                         "exchange_id": exchange_id,
                         "symbol": symbol,
                         "error_type": (
@@ -188,6 +220,62 @@ class CCXTProMultiSymbolFeedManager:
             ]
         )
 
+        unresolved_failures = list(
+            initial_failures
+        )
+
+        for _ in range(
+            self._recovery_attempts
+        ):
+            if not unresolved_failures:
+                break
+
+            if (
+                self._recovery_delay_seconds
+                > 0
+            ):
+                await asyncio.sleep(
+                    self._recovery_delay_seconds
+                )
+
+            current_failures = (
+                unresolved_failures
+            )
+
+            unresolved_failures = []
+
+            for failure in current_failures:
+                symbol = failure["symbol"]
+
+                recovery_attempt_count += 1
+
+                try:
+                    await watch_symbol_once(
+                        symbol
+                    )
+
+                    completed_updates += 1
+                    recovered_updates += 1
+                    self._completed_updates += 1
+
+                except Exception as exc:
+                    unresolved_failures.append({
+                        "exchange_id": exchange_id,
+                        "symbol": symbol,
+                        "error_type": (
+                            type(exc).__name__
+                        ),
+                        "error": str(exc),
+                    })
+
+        failed_updates = len(
+            unresolved_failures
+        )
+
+        self._failed_updates += (
+            failed_updates
+        )
+
         return {
             "completed_updates": (
                 completed_updates
@@ -195,7 +283,21 @@ class CCXTProMultiSymbolFeedManager:
             "failed_updates": (
                 failed_updates
             ),
-            "failures": failures,
+            "initial_failed_updates": (
+                initial_failed_updates
+            ),
+            "recovery_attempts": (
+                recovery_attempt_count
+            ),
+            "recovered_updates": (
+                recovered_updates
+            ),
+            "unrecovered_failures": (
+                failed_updates
+            ),
+            "failures": (
+                unresolved_failures
+            ),
             "symbol_count": len(
                 self._symbols
             ),

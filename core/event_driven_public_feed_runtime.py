@@ -51,6 +51,8 @@ class EventDrivenPublicFeedRuntime:
         order_book_limits=None,
         cycle_timeout_seconds=None,
         subscription_start_stagger_seconds=None,
+        recovery_attempts=None,
+        recovery_delay_seconds=None,
     ):
         if engine is None:
             raise ValueError(
@@ -101,6 +103,16 @@ class EventDrivenPublicFeedRuntime:
 
         self._subscription_start_stagger_seconds = (
             subscription_start_stagger_seconds
+            or {}
+        )
+
+        self._recovery_attempts = (
+            recovery_attempts
+            or {}
+        )
+
+        self._recovery_delay_seconds = (
+            recovery_delay_seconds
             or {}
         )
 
@@ -226,6 +238,28 @@ class EventDrivenPublicFeedRuntime:
                 manager_kwargs[
                     "subscription_start_stagger_seconds"
                 ] = start_stagger
+
+            recovery_attempts = (
+                self._recovery_attempts.get(
+                    normalized_id
+                )
+            )
+
+            if recovery_attempts is not None:
+                manager_kwargs[
+                    "recovery_attempts"
+                ] = recovery_attempts
+
+            recovery_delay = (
+                self._recovery_delay_seconds.get(
+                    normalized_id
+                )
+            )
+
+            if recovery_delay is not None:
+                manager_kwargs[
+                    "recovery_delay_seconds"
+                ] = recovery_delay
 
             self._managers[
                 normalized_id

@@ -511,3 +511,65 @@ def test_runtime_uses_default_subscription_start_stagger_when_unconfigured():
         manager._subscription_start_stagger_seconds
         == 0.0
     )
+
+
+def test_runtime_passes_venue_specific_recovery_configuration():
+    class Exchange:
+        def __init__(self, exchange_id):
+            self.id = exchange_id
+
+    class Engine:
+        class Queue:
+            def pending_count(self):
+                return 0
+
+        class Registry:
+            def route_count(self):
+                return 0
+
+        class Cache:
+            pass
+
+        work_queue = Queue()
+        route_registry = Registry()
+        market_cache = Cache()
+
+    runtime = EventDrivenPublicFeedRuntime(
+        engine=Engine(),
+        exchanges={
+            "kucoin": Exchange("kucoin"),
+            "gate": Exchange("gate"),
+        },
+        exchange_symbols={
+            "kucoin": ["BTC/USDT"],
+            "gate": ["ETH/USDT"],
+        },
+        recovery_attempts={
+            "kucoin": 1,
+            "gate": 2,
+        },
+        recovery_delay_seconds={
+            "kucoin": 0.25,
+            "gate": 0.50,
+        },
+    )
+
+    managers = runtime.managers
+
+    assert (
+        managers["kucoin"]._recovery_attempts
+        == 1
+    )
+    assert (
+        managers["kucoin"]._recovery_delay_seconds
+        == 0.25
+    )
+
+    assert (
+        managers["gate"]._recovery_attempts
+        == 2
+    )
+    assert (
+        managers["gate"]._recovery_delay_seconds
+        == 0.50
+    )
