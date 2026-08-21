@@ -446,3 +446,68 @@ def test_runtime_uses_default_cycle_timeout_when_not_configured():
         manager._cycle_timeout_seconds
         == 10.0
     )
+
+
+def test_runtime_injects_exchange_subscription_start_stagger():
+    class Engine:
+        work_queue = object()
+        route_registry = object()
+        market_cache = object()
+
+    class Exchange:
+        id = "xt"
+
+    runtime = EventDrivenPublicFeedRuntime(
+        engine=Engine(),
+        exchanges={
+            "xt": Exchange(),
+        },
+        exchange_symbols={
+            "xt": [
+                "BTC/USDT",
+            ],
+        },
+        subscription_start_stagger_seconds={
+            "xt": 0.5,
+        },
+    )
+
+    manager = runtime.managers[
+        "xt"
+    ]
+
+    assert (
+        manager._subscription_start_stagger_seconds
+        == 0.5
+    )
+
+
+def test_runtime_uses_default_subscription_start_stagger_when_unconfigured():
+    class Engine:
+        work_queue = object()
+        route_registry = object()
+        market_cache = object()
+
+    class Exchange:
+        id = "kucoin"
+
+    runtime = EventDrivenPublicFeedRuntime(
+        engine=Engine(),
+        exchanges={
+            "kucoin": Exchange(),
+        },
+        exchange_symbols={
+            "kucoin": [
+                "BTC/USDT",
+            ],
+        },
+    )
+
+    manager = runtime.managers[
+        "kucoin"
+    ]
+
+    assert (
+        manager._subscription_start_stagger_seconds
+        == 0.0
+    )

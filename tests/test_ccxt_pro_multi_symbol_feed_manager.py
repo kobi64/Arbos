@@ -878,3 +878,147 @@ def test_running_manager_applies_symbol_rotation_incrementally():
         await manager.stop()
 
     asyncio.run(exercise())
+
+
+def test_run_cycles_attributes_failure_to_exchange_symbol_and_exception():
+    import asyncio
+
+    class AttributionExchange:
+        id = "xt"
+
+    class AttributionFeed:
+        async def watch_once(
+            self,
+            symbol,
+            limit=None,
+        ):
+            if symbol == "ETH/USDT":
+                raise RuntimeError(
+                    "simulated websocket failure"
+                )
+
+            return {
+                "processed": True,
+                "symbol": symbol,
+            }
+
+    manager = CCXTProMultiSymbolFeedManager(
+        feed=AttributionFeed(),
+        exchange=AttributionExchange(),
+        symbols=[
+            "BTC/USDT",
+            "ETH/USDT",
+        ],
+    )
+
+    result = asyncio.run(
+        manager.run_cycles(
+            cycles_per_symbol=1,
+        )
+    )
+
+    assert result["completed_updates"] == 1
+    assert result["failed_updates"] == 1
+
+    assert result["failures"] == [
+        {
+            "exchange_id": "xt",
+            "symbol": "ETH/USDT",
+            "error_type": "RuntimeError",
+            "error": (
+                "simulated websocket failure"
+            ),
+        }
+    ]
+
+    assert result["paper_only"] is True
+    assert result["live_order_submitted"] is False
+
+
+def test_subscription_start_stagger_defaults_to_zero():
+    manager = CCXTProMultiSymbolFeedManager(
+        feed=FakeFeed(),
+        exchange=FakeExchange(),
+        symbols=[
+            "BTC/USDT",
+        ],
+    )
+
+    assert (
+        manager._subscription_start_stagger_seconds
+        == 0.0
+    )
+
+
+def test_subscription_start_stagger_rejects_negative_value():
+    import pytest
+
+    with pytest.raises(
+        ValueError,
+        match=(
+            "subscription_start_stagger_seconds "
+            "cannot be negative"
+        ),
+    ):
+        CCXTProMultiSymbolFeedManager(
+            feed=FakeFeed(),
+            exchange=FakeExchange(),
+            symbols=[
+                "BTC/USDT",
+            ],
+            subscription_start_stagger_seconds=-0.1,
+        )
+
+
+def test_run_cycles_staggers_symbol_start_times():
+    import asyncio
+    import time
+
+    class RecordingFeed:
+        def __init__(self):
+            self.started = {}
+
+        async def watch_once(
+            self,
+            symbol,
+            limit=None,
+        ):
+            self.started[symbol] = (
+                time.perf_counter()
+            )
+
+            await asyncio.sleep(0)
+
+            return {
+                "accepted": True,
+                "symbol": symbol,
+            }
+
+    feed = RecordingFeed()
+
+    manager = CCXTProMultiSymbolFeedManager(
+        feed=feed,
+        exchange=FakeExchange(),
+        symbols=[
+            "BTC/USDT",
+            "ETH/USDT",
+            "SOL/USDT",
+        ],
+        subscription_start_stagger_seconds=0.03,
+    )
+
+    result = asyncio.run(
+        manager.run_cycles(
+            cycles_per_symbol=1
+        )
+    )
+
+    assert result["completed_updates"] == 3
+    assert result["failed_updates"] == 0
+
+    btc = feed.started["BTC/USDT"]
+    eth = feed.started["ETH/USDT"]
+    sol = feed.started["SOL/USDT"]
+
+    assert eth - btc >= 0.02
+    assert sol - btc >= 0.05

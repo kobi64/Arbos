@@ -50,6 +50,7 @@ class EventDrivenPublicFeedRuntime:
         backoff_policies=None,
         order_book_limits=None,
         cycle_timeout_seconds=None,
+        subscription_start_stagger_seconds=None,
     ):
         if engine is None:
             raise ValueError(
@@ -95,6 +96,11 @@ class EventDrivenPublicFeedRuntime:
 
         self._cycle_timeout_seconds = (
             cycle_timeout_seconds
+            or {}
+        )
+
+        self._subscription_start_stagger_seconds = (
+            subscription_start_stagger_seconds
             or {}
         )
 
@@ -209,6 +215,17 @@ class EventDrivenPublicFeedRuntime:
                 manager_kwargs[
                     "cycle_timeout_seconds"
                 ] = cycle_timeout
+
+            start_stagger = (
+                self._subscription_start_stagger_seconds.get(
+                    normalized_id
+                )
+            )
+
+            if start_stagger is not None:
+                manager_kwargs[
+                    "subscription_start_stagger_seconds"
+                ] = start_stagger
 
             self._managers[
                 normalized_id
