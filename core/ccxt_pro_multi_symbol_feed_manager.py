@@ -24,6 +24,7 @@ class CCXTProMultiSymbolFeedManager:
         health_supervisor=None,
         backoff_policy=None,
         cycle_timeout_seconds=10.0,
+        subscription_start_stagger_seconds=0.0,
     ):
         if feed is None:
             raise ValueError("feed is required")
@@ -74,6 +75,19 @@ class CCXTProMultiSymbolFeedManager:
                 "cycle_timeout_seconds must be positive"
             )
 
+        self._subscription_start_stagger_seconds = float(
+            subscription_start_stagger_seconds
+        )
+
+        if (
+            self._subscription_start_stagger_seconds
+            < 0
+        ):
+            raise ValueError(
+                "subscription_start_stagger_seconds "
+                "cannot be negative"
+            )
+
         self._completed_updates = 0
         self._failed_updates = 0
         self._running = False
@@ -97,10 +111,33 @@ class CCXTProMultiSymbolFeedManager:
 
         completed_updates = 0
         failed_updates = 0
+        failures = []
 
-        async def run_symbol(symbol):
+        exchange_id = str(
+            getattr(
+                self._exchange,
+                "id",
+                "",
+            )
+            or ""
+        ).strip().lower()
+
+        async def run_symbol(
+            symbol,
+            start_index,
+        ):
             nonlocal completed_updates
             nonlocal failed_updates
+
+            start_delay = (
+                start_index
+                * self._subscription_start_stagger_seconds
+            )
+
+            if start_delay > 0:
+                await asyncio.sleep(
+                    start_delay
+                )
 
             for _ in range(
                 cycles_per_symbol
@@ -117,9 +154,18 @@ class CCXTProMultiSymbolFeedManager:
                     )
                     completed_updates += 1
                     self._completed_updates += 1
-                except Exception:
+                except Exception as exc:
                     failed_updates += 1
                     self._failed_updates += 1
+
+                    failures.append({
+                        "exchange_id": exchange_id,
+                        "symbol": symbol,
+                        "error_type": (
+                            type(exc).__name__
+                        ),
+                        "error": str(exc),
+                    })
 
                     if (
                         self._retry_delay_seconds
@@ -131,8 +177,14 @@ class CCXTProMultiSymbolFeedManager:
 
         await asyncio.gather(
             *[
-                run_symbol(symbol)
-                for symbol in self._symbols
+                run_symbol(
+                    symbol,
+                    index,
+                )
+                for index, symbol
+                in enumerate(
+                    self._symbols
+                )
             ]
         )
 
@@ -143,6 +195,7 @@ class CCXTProMultiSymbolFeedManager:
             "failed_updates": (
                 failed_updates
             ),
+            "failures": failures,
             "symbol_count": len(
                 self._symbols
             ),
