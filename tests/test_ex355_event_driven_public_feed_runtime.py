@@ -351,3 +351,98 @@ def test_runtime_injects_exchange_backoff_policy_into_manager():
     ]
 
     assert manager._backoff_policy is policy
+
+
+def test_runtime_injects_exchange_specific_order_book_limit():
+    class Engine:
+        work_queue = object()
+        route_registry = object()
+        market_cache = object()
+
+    class Exchange:
+        id = "bybit"
+
+    runtime = EventDrivenPublicFeedRuntime(
+        engine=Engine(),
+        exchanges={
+            "bybit": Exchange(),
+        },
+        exchange_symbols={
+            "bybit": [
+                "BTC/USDT",
+            ],
+        },
+        order_book_limits={
+            "bybit": 50,
+        },
+    )
+
+    manager = runtime.managers["bybit"]
+
+    assert manager._limit == 50
+
+
+def test_runtime_injects_exchange_cycle_timeout_into_manager():
+    class Engine:
+        work_queue = object()
+        route_registry = object()
+        market_cache = object()
+
+    class Exchange:
+        id = "xt"
+
+    runtime = EventDrivenPublicFeedRuntime(
+        engine=Engine(),
+        exchanges={
+            "xt": Exchange(),
+        },
+        exchange_symbols={
+            "xt": [
+                "BTC/USDT",
+            ],
+        },
+        cycle_timeout_seconds={
+            "xt": 15.0,
+        },
+    )
+
+    manager = runtime.managers["xt"]
+
+    assert (
+        manager._cycle_timeout_seconds
+        == 15.0
+    )
+
+
+def test_runtime_uses_default_cycle_timeout_when_not_configured():
+    class Engine:
+        work_queue = object()
+        route_registry = object()
+        market_cache = object()
+
+    class Exchange:
+        id = "kucoin"
+
+    runtime = EventDrivenPublicFeedRuntime(
+        engine=Engine(),
+        exchanges={
+            "kucoin": Exchange(),
+        },
+        exchange_symbols={
+            "kucoin": [
+                "BTC/USDT",
+            ],
+        },
+        cycle_timeout_seconds={
+            "xt": 15.0,
+        },
+    )
+
+    manager = runtime.managers[
+        "kucoin"
+    ]
+
+    assert (
+        manager._cycle_timeout_seconds
+        == 10.0
+    )

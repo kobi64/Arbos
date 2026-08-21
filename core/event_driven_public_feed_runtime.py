@@ -48,6 +48,8 @@ class EventDrivenPublicFeedRuntime:
         exchange_symbols,
         health_supervisors=None,
         backoff_policies=None,
+        order_book_limits=None,
+        cycle_timeout_seconds=None,
     ):
         if engine is None:
             raise ValueError(
@@ -83,6 +85,16 @@ class EventDrivenPublicFeedRuntime:
 
         self._backoff_policies = (
             backoff_policies
+            or {}
+        )
+
+        self._order_book_limits = (
+            order_book_limits
+            or {}
+        )
+
+        self._cycle_timeout_seconds = (
+            cycle_timeout_seconds
             or {}
         )
 
@@ -154,6 +166,17 @@ class EventDrivenPublicFeedRuntime:
                 "symbols": symbols,
             }
 
+            order_book_limit = (
+                self._order_book_limits.get(
+                    normalized_id
+                )
+            )
+
+            if order_book_limit is not None:
+                manager_kwargs[
+                    "limit"
+                ] = order_book_limit
+
             supervisor = (
                 self._health_supervisors.get(
                     normalized_id
@@ -175,6 +198,17 @@ class EventDrivenPublicFeedRuntime:
                 manager_kwargs[
                     "backoff_policy"
                 ] = backoff_policy
+
+            cycle_timeout = (
+                self._cycle_timeout_seconds.get(
+                    normalized_id
+                )
+            )
+
+            if cycle_timeout is not None:
+                manager_kwargs[
+                    "cycle_timeout_seconds"
+                ] = cycle_timeout
 
             self._managers[
                 normalized_id
