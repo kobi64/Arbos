@@ -100,3 +100,67 @@ def test_negative_latency_is_rejected(monitor):
             latency_ms=-1,
             opportunities_found=1,
         )
+
+
+def test_status_reports_initializing_before_first_heartbeat(
+    monitor,
+):
+    status = monitor.status(
+        "SCANNER-STATUS-001"
+    )
+
+    assert status["state"] == "INITIALIZING"
+    assert status["initialized"] is False
+    assert status["fresh"] is False
+    assert status["heartbeat_age_seconds"] is None
+    assert status["heartbeats"] == 0
+    assert status["average_latency_ms"] is None
+
+
+def test_status_reports_fresh_after_heartbeat(
+    monitor,
+):
+    monitor.record_heartbeat(
+        scanner_id="SCANNER-STATUS-002",
+        latency_ms=250.0,
+        opportunities_found=0,
+    )
+
+    status = monitor.status(
+        "SCANNER-STATUS-002"
+    )
+
+    assert status["state"] == "FRESH"
+    assert status["initialized"] is True
+    assert status["fresh"] is True
+    assert status["heartbeats"] == 1
+    assert status["average_latency_ms"] == 250.0
+
+
+def test_status_reports_stale_after_timeout():
+    now = [100.0]
+
+    monitor = ScannerHealthMonitor(
+        heartbeat_timeout_seconds=5.0,
+        max_latency_ms=1000.0,
+        clock=lambda: now[0],
+    )
+
+    monitor.record_heartbeat(
+        scanner_id="SCANNER-STATUS-003",
+        latency_ms=100.0,
+        opportunities_found=0,
+    )
+
+    now[0] = 106.0
+
+    status = monitor.status(
+        "SCANNER-STATUS-003"
+    )
+
+    assert status["state"] == "STALE"
+    assert status["initialized"] is True
+    assert status["fresh"] is False
+    assert status["heartbeat_age_seconds"] == 6.0
+    assert status["heartbeats"] == 1
+    assert status["average_latency_ms"] == 100.0

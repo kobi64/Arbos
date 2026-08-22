@@ -53,6 +53,7 @@ class EventDrivenPublicFeedRuntime:
         subscription_start_stagger_seconds=None,
         recovery_attempts=None,
         recovery_delay_seconds=None,
+        max_concurrent_symbol_starts=None,
     ):
         if engine is None:
             raise ValueError(
@@ -113,6 +114,11 @@ class EventDrivenPublicFeedRuntime:
 
         self._recovery_delay_seconds = (
             recovery_delay_seconds
+            or {}
+        )
+
+        self._max_concurrent_symbol_starts = (
+            max_concurrent_symbol_starts
             or {}
         )
 
@@ -261,6 +267,17 @@ class EventDrivenPublicFeedRuntime:
                     "recovery_delay_seconds"
                 ] = recovery_delay
 
+            max_concurrent_starts = (
+                self._max_concurrent_symbol_starts.get(
+                    normalized_id
+                )
+            )
+
+            if max_concurrent_starts is not None:
+                manager_kwargs[
+                    "max_concurrent_symbol_starts"
+                ] = max_concurrent_starts
+
             self._managers[
                 normalized_id
             ] = (
@@ -314,10 +331,15 @@ class EventDrivenPublicFeedRuntime:
             "live_order_submitted": False,
         }
 
-    def process_pending(self):
+    def process_pending(
+        self,
+        max_items=None,
+    ):
         return (
             self._engine
-            .process_pending()
+            .process_pending(
+                max_items=max_items
+            )
         )
 
     def status(self):

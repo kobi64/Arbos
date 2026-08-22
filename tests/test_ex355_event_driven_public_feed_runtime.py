@@ -573,3 +573,69 @@ def test_runtime_passes_venue_specific_recovery_configuration():
         managers["gate"]._recovery_delay_seconds
         == 0.50
     )
+
+
+def test_runtime_injects_exchange_startup_concurrency_into_manager():
+    class Engine:
+        work_queue = object()
+        route_registry = object()
+        market_cache = object()
+
+    class Exchange:
+        id = "gate"
+
+    runtime = EventDrivenPublicFeedRuntime(
+        engine=Engine(),
+        exchanges={
+            "gate": Exchange(),
+        },
+        exchange_symbols={
+            "gate": [
+                "BTC/USDT",
+                "ETH/USDT",
+            ],
+        },
+        max_concurrent_symbol_starts={
+            "gate": 3,
+        },
+    )
+
+    manager = runtime.managers[
+        "gate"
+    ]
+
+    assert (
+        manager._max_concurrent_symbol_starts
+        == 3
+    )
+
+
+def test_runtime_leaves_startup_concurrency_unbounded_when_not_configured():
+    class Engine:
+        work_queue = object()
+        route_registry = object()
+        market_cache = object()
+
+    class Exchange:
+        id = "kucoin"
+
+    runtime = EventDrivenPublicFeedRuntime(
+        engine=Engine(),
+        exchanges={
+            "kucoin": Exchange(),
+        },
+        exchange_symbols={
+            "kucoin": [
+                "BTC/USDT",
+            ],
+        },
+    )
+
+    manager = runtime.managers[
+        "kucoin"
+    ]
+
+    assert (
+        manager._max_concurrent_symbol_starts
+        is None
+    )

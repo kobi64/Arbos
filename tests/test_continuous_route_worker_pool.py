@@ -80,6 +80,52 @@ def test_pool_processes_all_available_work():
 
 
 def test_multiple_workers_process_in_parallel():
+    class ConcurrencyWorker:
+        active = 0
+        max_active = 0
+        lock = threading.Lock()
+        release = threading.Event()
+        four_active = threading.Event()
+
+        def __init__(
+            self,
+            work_queue,
+            market_cache,
+            route_registry,
+        ):
+            self._queue = work_queue
+
+        def process_next(self):
+            item = self._queue.dequeue()
+
+            if item is None:
+                return None
+
+            with self.lock:
+                type(self).active += 1
+                type(self).max_active = max(
+                    type(self).max_active,
+                    type(self).active,
+                )
+
+                if type(self).active >= 4:
+                    type(self).four_active.set()
+
+            try:
+                type(self).release.wait(
+                    timeout=1.0
+                )
+            finally:
+                with self.lock:
+                    type(self).active -= 1
+
+            return {
+                "processed": True,
+                "route_id": item["route_id"],
+                "paper_only": True,
+                "live_order_submitted": False,
+            }
+
     queue = FakeQueue(
         work_items(8)
     )
@@ -89,21 +135,39 @@ def test_multiple_workers_process_in_parallel():
         work_queue=queue,
         market_cache=object(),
         route_registry=object(),
-        worker_factory=FakeWorker,
+        worker_factory=ConcurrencyWorker,
     )
 
-    started = time.perf_counter()
+    result_holder = {}
 
-    result = pool.run_until_empty()
+    def run_pool():
+        result_holder["result"] = (
+            pool.run_until_empty()
+        )
 
-    elapsed = (
-        time.perf_counter()
-        - started
+    runner = threading.Thread(
+        target=run_pool
     )
+
+    runner.start()
+
+    assert ConcurrencyWorker.four_active.wait(
+        timeout=1.0
+    )
+
+    assert ConcurrencyWorker.max_active == 4
+
+    ConcurrencyWorker.release.set()
+
+    runner.join(
+        timeout=2.0
+    )
+
+    assert not runner.is_alive()
+
+    result = result_holder["result"]
 
     assert result["processed_count"] == 8
-
-    assert elapsed < 0.07
 
 
 def test_each_route_is_processed_once():
@@ -175,6 +239,81 @@ def test_worker_count_must_be_positive():
     except ValueError as exc:
         assert str(exc) == (
             "worker_count must be positive"
+        )
+    else:
+        raise AssertionError(
+            "expected ValueError"
+        )
+
+
+def test_bounded_pool_processes_at_most_max_items():
+    queue = FakeQueue(
+        work_items(50)
+    )
+
+    pool = ContinuousRouteWorkerPool(
+        worker_count=4,
+        work_queue=queue,
+        market_cache=object(),
+        route_registry=object(),
+        worker_factory=FakeWorker,
+    )
+
+    result = pool.run_until_empty(
+        max_items=12
+    )
+
+    assert result["processed_count"] == 12
+    assert result["remaining_count"] == 38
+
+
+def test_bounded_pool_can_continue_in_later_cycle():
+    queue = FakeQueue(
+        work_items(20)
+    )
+
+    pool = ContinuousRouteWorkerPool(
+        worker_count=4,
+        work_queue=queue,
+        market_cache=object(),
+        route_registry=object(),
+        worker_factory=FakeWorker,
+    )
+
+    first = pool.run_until_empty(
+        max_items=8
+    )
+
+    second = pool.run_until_empty(
+        max_items=8
+    )
+
+    third = pool.run_until_empty(
+        max_items=8
+    )
+
+    assert first["processed_count"] == 8
+    assert second["processed_count"] == 8
+    assert third["processed_count"] == 4
+    assert third["remaining_count"] == 0
+
+
+def test_max_items_must_be_positive():
+    pool = ContinuousRouteWorkerPool(
+        worker_count=2,
+        work_queue=FakeQueue([]),
+        market_cache=object(),
+        route_registry=object(),
+        worker_factory=FakeWorker,
+    )
+
+    try:
+        pool.run_until_empty(
+            max_items=0
+        )
+    except ValueError as exc:
+        assert str(exc) == (
+            "max_items must be positive"
         )
     else:
         raise AssertionError(

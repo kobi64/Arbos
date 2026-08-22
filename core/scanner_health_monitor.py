@@ -88,6 +88,76 @@ class ScannerHealthMonitor:
             "reason": None,
         }
 
+    def status(self, scanner_id):
+        scanner_id = str(
+            scanner_id
+            or ""
+        ).strip()
+
+        if not scanner_id:
+            raise ValueError(
+                "scanner_id is required"
+            )
+
+        record = self._scanners.get(
+            scanner_id
+        )
+
+        if record is None:
+            return {
+                "scanner_id": scanner_id,
+                "state": "INITIALIZING",
+                "initialized": False,
+                "fresh": False,
+                "heartbeat_age_seconds": None,
+                "heartbeats": 0,
+                "average_latency_ms": None,
+            }
+
+        now = float(
+            self._clock()
+        )
+
+        age_seconds = (
+            now
+            - record["last_heartbeat"]
+        )
+
+        fresh = (
+            age_seconds
+            <= self._heartbeat_timeout_seconds
+        )
+
+        heartbeats = int(
+            record["heartbeats"]
+        )
+
+        average_latency_ms = (
+            record["total_latency_ms"]
+            / heartbeats
+            if heartbeats > 0
+            else None
+        )
+
+        return {
+            "scanner_id": scanner_id,
+            "state": (
+                "FRESH"
+                if fresh
+                else "STALE"
+            ),
+            "initialized": True,
+            "fresh": fresh,
+            "heartbeat_age_seconds": (
+                age_seconds
+            ),
+            "heartbeats": heartbeats,
+            "average_latency_ms": (
+                average_latency_ms
+            ),
+        }
+
+
     def statistics(self, scanner_id):
         record = self._scanners.get(scanner_id)
 
