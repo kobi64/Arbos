@@ -112,7 +112,7 @@ def test_soak_final_shutdown_drains_spawn_tasks_before_close():
     finally_block = source[source.index("    finally:"):]
 
     drain_index = finally_block.index(
-        "exchange.drain_spawn_tasks(cancel=True)"
+        "exchange.drain_spawn_tasks("
     )
     close_index = finally_block.index(
         "exchange.close()"

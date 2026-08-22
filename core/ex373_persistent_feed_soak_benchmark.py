@@ -1108,12 +1108,15 @@ async def main():
     finally:
         # Final lifecycle safety net.
         #
-        # Managers normally drain CCXT spawned tasks during stop().
-        # If benchmark execution exits early, drain any remaining
-        # exchange-owned spawn tasks before closing the sessions.
+        # Managers normally drain CCXT spawned tasks
+        # during stop(). If execution exits early,
+        # drain remaining exchange-owned spawn tasks
+        # before closing exchange resources.
         await asyncio.gather(
             *(
-                exchange.drain_spawn_tasks(cancel=True)
+                exchange.drain_spawn_tasks(
+                    cancel=True
+                )
                 for exchange
                 in exchanges.values()
                 if getattr(

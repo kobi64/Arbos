@@ -68,3 +68,17 @@ def test_ex373_preserves_ex372_subscription_pacing_profile():
         "poloniex": 0.10,
         "xt": 1.00,
     }
+
+
+def test_ex373_uses_venue_specific_timeouts_for_slow_feeds():
+    from core.ex373_sustained_multi_cycle_feed_benchmark import (
+        CYCLE_TIMEOUT_SECONDS,
+    )
+
+    assert CYCLE_TIMEOUT_SECONDS["poloniex"] == 30.0
+    assert CYCLE_TIMEOUT_SECONDS["coinex"] == 20.0
+
+    # Preserve previously tuned profiles.
+    assert CYCLE_TIMEOUT_SECONDS["kucoin"] == 20.0
+    assert CYCLE_TIMEOUT_SECONDS["xt"] == 30.0
+    assert CYCLE_TIMEOUT_SECONDS["binance"] == 30.0

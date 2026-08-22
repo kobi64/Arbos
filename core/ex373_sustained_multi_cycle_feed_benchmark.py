@@ -23,6 +23,10 @@ from core.event_driven_public_feed_runtime import (
 from core.queued_cross_exchange_shared_cache_route_worker import (
     QueuedCrossExchangeSharedCacheRouteWorker,
 )
+from core.ex373_stress_summary_reporter import (
+    build_stress_summary,
+    render_stress_summary,
+)
 from exchanges.order_retry_backoff_policy import (
     OrderRetryBackoffPolicy,
 )
@@ -39,6 +43,8 @@ CYCLE_TIMEOUT_SECONDS = {
     "binance": 30.0,
     "kucoin": 20.0,
     "xt": 30.0,
+    "poloniex": 30.0,
+    "coinex": 20.0,
 }
 
 SUBSCRIPTION_START_STAGGER_SECONDS = {
@@ -728,7 +734,7 @@ async def main():
             ]
 
             if any(
-                isinstance(result, Exception)
+                isinstance(result, BaseException)
                 for result in manager_results
             ):
                 cycle_results.append(
@@ -853,7 +859,23 @@ async def main():
 
         print()
         print("=== RUNTIME STATUS ===")
-        print(runtime.status())
+        runtime_status = runtime.status()
+        print(runtime_status)
+
+        stress_summary = build_stress_summary(
+            requested_coins=REQUESTED_COINS,
+            cycles_per_symbol=CYCLES_PER_SYMBOL,
+            runtime_status=runtime_status,
+            exchange_ids=list(managers.keys()),
+            cycle_results=cycle_results,
+        )
+
+        print()
+        print(
+            render_stress_summary(
+                stress_summary
+            )
+        )
 
     finally:
         await asyncio.gather(
