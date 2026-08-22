@@ -1204,3 +1204,803 @@ def test_recovery_configuration_rejects_negative_values():
             ],
             recovery_delay_seconds=-0.1,
         )
+
+
+def test_persistent_start_staggers_symbol_subscriptions():
+    import asyncio
+    import time
+
+    class RecordingFeed:
+        def __init__(self):
+            self.started = {}
+
+        async def watch_once(
+            self,
+            symbol,
+            limit=None,
+        ):
+            if symbol not in self.started:
+                self.started[
+                    symbol
+                ] = time.perf_counter()
+
+            await asyncio.sleep(3600)
+
+    class Exchange:
+        id = "kucoin"
+
+        async def close(self):
+            pass
+
+    feed = RecordingFeed()
+
+    manager = CCXTProMultiSymbolFeedManager(
+        feed=feed,
+        exchange=Exchange(),
+        symbols=[
+            "BTC/USDT",
+            "ETH/USDT",
+            "SOL/USDT",
+        ],
+        subscription_start_stagger_seconds=0.03,
+    )
+
+    async def exercise():
+        await manager.start()
+
+        while len(feed.started) < 3:
+            await asyncio.sleep(0.001)
+
+        await manager.stop()
+
+    asyncio.run(exercise())
+
+    btc = feed.started["BTC/USDT"]
+    eth = feed.started["ETH/USDT"]
+    sol = feed.started["SOL/USDT"]
+
+    assert eth - btc >= 0.02
+    assert sol - btc >= 0.05
+
+
+def test_stop_during_persistent_start_stagger_prevents_late_start():
+    import asyncio
+
+    class RecordingFeed:
+        def __init__(self):
+            self.started = []
+
+        async def watch_once(
+            self,
+            symbol,
+            limit=None,
+        ):
+            self.started.append(symbol)
+            await asyncio.sleep(3600)
+
+    class Exchange:
+        id = "kucoin"
+
+        async def close(self):
+            pass
+
+    feed = RecordingFeed()
+
+    manager = CCXTProMultiSymbolFeedManager(
+        feed=feed,
+        exchange=Exchange(),
+        symbols=[
+            "BTC/USDT",
+            "ETH/USDT",
+            "SOL/USDT",
+        ],
+        subscription_start_stagger_seconds=0.1,
+    )
+
+    async def exercise():
+        await manager.start()
+
+        while "BTC/USDT" not in feed.started:
+            await asyncio.sleep(0.001)
+
+        await manager.stop()
+
+        await asyncio.sleep(0.12)
+
+    asyncio.run(exercise())
+
+    assert feed.started == [
+        "BTC/USDT",
+    ]
+
+
+def test_running_symbol_rotation_does_not_use_full_start_stagger():
+    import asyncio
+
+    class RecordingFeed:
+        def __init__(self):
+            self.started = []
+
+        async def watch_once(
+            self,
+            symbol,
+            limit=None,
+        ):
+            if symbol not in self.started:
+                self.started.append(symbol)
+
+            await asyncio.sleep(3600)
+
+    class Exchange:
+        id = "kucoin"
+
+        async def close(self):
+            pass
+
+    feed = RecordingFeed()
+
+    manager = CCXTProMultiSymbolFeedManager(
+        feed=feed,
+        exchange=Exchange(),
+        symbols=[
+            "BTC/USDT",
+        ],
+        subscription_start_stagger_seconds=1.0,
+    )
+
+    async def exercise():
+        await manager.start()
+
+        while "BTC/USDT" not in feed.started:
+            await asyncio.sleep(0.001)
+
+        await manager.apply_symbol_rotation(
+            active_symbols=[
+                "BTC/USDT",
+                "XRP/USDT",
+            ]
+        )
+
+        for _ in range(100):
+            if "XRP/USDT" in feed.started:
+                break
+
+            await asyncio.sleep(0.001)
+
+        assert "XRP/USDT" in feed.started
+
+        await manager.stop()
+
+    asyncio.run(exercise())
+
+
+def test_stop_is_idempotent_after_persistent_run():
+    import asyncio
+
+    class Feed:
+        async def watch_once(
+            self,
+            symbol,
+            limit=None,
+        ):
+            await asyncio.sleep(3600)
+
+    class Exchange:
+        id = "binance"
+
+        def __init__(self):
+            self.close_calls = 0
+
+        async def close(self):
+            self.close_calls += 1
+
+    exchange = Exchange()
+
+    manager = CCXTProMultiSymbolFeedManager(
+        feed=Feed(),
+        exchange=exchange,
+        symbols=[
+            "BTC/USDT",
+            "ETH/USDT",
+        ],
+    )
+
+    async def exercise():
+        await manager.start()
+
+        await asyncio.sleep(0)
+
+        first = await manager.stop()
+        second = await manager.stop()
+
+        return first, second
+
+    first, second = asyncio.run(
+        exercise()
+    )
+
+    assert first["stopped"] is True
+    assert first["task_count"] == 2
+    assert first["cancelled_task_count"] == 2
+    assert first["task_error_count"] == 0
+    assert first["close_error"] is None
+
+    assert second["stopped"] is True
+    assert second["already_stopped"] is True
+    assert second["task_count"] == 0
+
+    assert manager.is_running() is False
+
+
+def test_stop_waits_for_cancelled_persistent_tasks_before_exchange_close():
+    import asyncio
+
+    events = []
+
+    class Feed:
+        async def watch_once(
+            self,
+            symbol,
+            limit=None,
+        ):
+            events.append(
+                f"watch:{symbol}"
+            )
+
+            try:
+                await asyncio.sleep(3600)
+
+            except asyncio.CancelledError:
+                events.append(
+                    f"cancel:{symbol}"
+                )
+                raise
+
+    class Exchange:
+        id = "xt"
+
+        async def close(self):
+            events.append(
+                "exchange_close"
+            )
+
+    manager = CCXTProMultiSymbolFeedManager(
+        feed=Feed(),
+        exchange=Exchange(),
+        symbols=[
+            "BTC/USDT",
+            "ETH/USDT",
+        ],
+    )
+
+    async def exercise():
+        await manager.start()
+
+        while (
+            len(
+                [
+                    event
+                    for event in events
+                    if event.startswith(
+                        "watch:"
+                    )
+                ]
+            )
+            < 2
+        ):
+            await asyncio.sleep(0)
+
+        await manager.stop()
+
+    asyncio.run(
+        exercise()
+    )
+
+    close_index = events.index(
+        "exchange_close"
+    )
+
+    cancel_indexes = [
+        index
+        for index, event
+        in enumerate(events)
+        if event.startswith(
+            "cancel:"
+        )
+    ]
+
+    assert len(cancel_indexes) == 2
+
+    assert all(
+        index < close_index
+        for index in cancel_indexes
+    )
+
+
+def test_persistent_statistics_reports_recent_failure_details():
+    import asyncio
+
+    class FailingFeed:
+        async def watch_once(
+            self,
+            symbol,
+            limit=None,
+        ):
+            raise RuntimeError(
+                f"diagnostic websocket failure: {symbol}"
+            )
+
+    class Exchange:
+        id = "kucoin"
+
+        async def close(self):
+            pass
+
+    manager = CCXTProMultiSymbolFeedManager(
+        feed=FailingFeed(),
+        exchange=Exchange(),
+        symbols=[
+            "BTC/USDT",
+        ],
+        retry_delay_seconds=0.01,
+    )
+
+    async def exercise():
+        await manager.start()
+
+        for _ in range(1000):
+            if (
+                manager.statistics()[
+                    "failed_updates"
+                ]
+                >= 1
+            ):
+                break
+
+            await asyncio.sleep(0.001)
+
+        result = manager.statistics()
+
+        await manager.stop()
+
+        return result
+
+    result = asyncio.run(
+        exercise()
+    )
+
+    assert result["failed_updates"] >= 1
+
+    assert result["recent_failures"]
+
+    failure = result["recent_failures"][-1]
+
+    assert failure == {
+        "exchange_id": "kucoin",
+        "symbol": "BTC/USDT",
+        "error_type": "RuntimeError",
+        "error": (
+            "diagnostic websocket failure: BTC/USDT"
+        ),
+    }
+
+    assert result["paper_only"] is True
+    assert result["live_order_submitted"] is False
+
+
+def test_persistent_recent_failures_are_bounded_and_diagnostic():
+    import asyncio
+
+    class FailingFeed:
+        async def watch_once(
+            self,
+            symbol,
+            limit=None,
+        ):
+            raise RuntimeError(
+                f"bounded diagnostic failure: {symbol}"
+            )
+
+    class Exchange:
+        id = "binance"
+
+        async def close(self):
+            pass
+
+    manager = CCXTProMultiSymbolFeedManager(
+        feed=FailingFeed(),
+        exchange=Exchange(),
+        symbols=[
+            "BTC/USDT",
+        ],
+        retry_delay_seconds=0.001,
+    )
+
+    async def exercise():
+        await manager.start()
+
+        for _ in range(2000):
+            result = manager.statistics()
+
+            if result["failed_updates"] >= 20:
+                break
+
+            await asyncio.sleep(0.001)
+
+        result = manager.statistics()
+
+        await manager.stop()
+
+        return result
+
+    result = asyncio.run(
+        exercise()
+    )
+
+    assert result["failed_updates"] >= 20
+
+    failures = result["recent_failures"]
+
+    assert failures
+    assert len(failures) <= 20
+
+    latest = failures[-1]
+
+    assert latest["exchange_id"] == "binance"
+    assert latest["symbol"] == "BTC/USDT"
+    assert latest["error_type"] == "RuntimeError"
+
+    assert (
+        "bounded diagnostic failure: BTC/USDT"
+        in latest["error"]
+    )
+
+
+
+
+
+
+def test_persistent_start_respects_max_concurrent_symbol_starts():
+    import asyncio
+
+    class ConcurrencyFeed:
+        def __init__(self):
+            self.first_started = set()
+
+            self.active_first = 0
+            self.max_active_first = 0
+
+            self.release_first = (
+                asyncio.Event()
+            )
+
+            self.hold_steady_state = (
+                asyncio.Event()
+            )
+
+            self.calls = {}
+
+        async def watch_once(
+            self,
+            symbol,
+            limit=None,
+        ):
+            call_number = (
+                self.calls.get(symbol, 0)
+                + 1
+            )
+
+            self.calls[symbol] = call_number
+
+            if call_number == 1:
+                self.first_started.add(
+                    symbol
+                )
+
+                self.active_first += 1
+
+                self.max_active_first = max(
+                    self.max_active_first,
+                    self.active_first,
+                )
+
+                try:
+                    await self.release_first.wait()
+
+                finally:
+                    self.active_first -= 1
+
+                return {
+                    "accepted": True,
+                    "symbol": symbol,
+                }
+
+            # Once a symbol has completed its initial
+            # subscription/update, its steady-state
+            # watch must NOT retain a startup permit.
+            await self.hold_steady_state.wait()
+
+            return {
+                "accepted": True,
+                "symbol": symbol,
+            }
+
+    class Exchange:
+        id = "gate"
+
+        async def close(self):
+            pass
+
+    async def exercise():
+        symbols = [
+            "BTC/USDT",
+            "ETH/USDT",
+            "SOL/USDT",
+            "XRP/USDT",
+            "ADA/USDT",
+            "DOGE/USDT",
+        ]
+
+        feed = ConcurrencyFeed()
+
+        manager = CCXTProMultiSymbolFeedManager(
+            feed=feed,
+            exchange=Exchange(),
+            symbols=symbols,
+            retry_delay_seconds=0.0,
+            max_concurrent_symbol_starts=2,
+        )
+
+        await manager.start()
+
+        for _ in range(200):
+            if len(feed.first_started) >= 2:
+                break
+
+            await asyncio.sleep(0.001)
+
+        assert len(feed.first_started) == 2
+
+        assert (
+            feed.max_active_first
+            == 2
+        )
+
+        # Allow initialized symbols to move into
+        # steady-state watches. Their startup slots
+        # must then become available to the remaining
+        # symbols.
+        feed.release_first.set()
+
+        for _ in range(500):
+            if (
+                len(feed.first_started)
+                == len(symbols)
+            ):
+                break
+
+            await asyncio.sleep(0.001)
+
+        assert (
+            len(feed.first_started)
+            == len(symbols)
+        )
+
+        assert (
+            feed.max_active_first
+            <= 2
+        )
+
+        await manager.stop()
+
+    asyncio.run(exercise())
+
+def test_symbol_rotation_respects_max_concurrent_symbol_starts():
+    import asyncio
+
+    class RotationConcurrencyFeed:
+        def __init__(self):
+            self.calls = {}
+
+            self.initial_symbols = {
+                "BTC/USDT",
+                "ETH/USDT",
+            }
+
+            self.rotation_symbols = {
+                "SOL/USDT",
+                "XRP/USDT",
+                "ADA/USDT",
+                "DOGE/USDT",
+            }
+
+            self.initial_started = set()
+
+            self.rotation_first_started = set()
+
+            self.active_rotation_first = 0
+            self.max_active_rotation_first = 0
+
+            self.release_initial = asyncio.Event()
+            self.release_rotation = asyncio.Event()
+            self.hold_steady_state = asyncio.Event()
+
+        async def watch_once(
+            self,
+            symbol,
+            limit=None,
+        ):
+            call_number = (
+                self.calls.get(symbol, 0)
+                + 1
+            )
+
+            self.calls[symbol] = call_number
+
+            if (
+                symbol in self.initial_symbols
+                and call_number == 1
+            ):
+                self.initial_started.add(
+                    symbol
+                )
+
+                await self.release_initial.wait()
+
+                return {
+                    "accepted": True,
+                    "symbol": symbol,
+                }
+
+            if (
+                symbol in self.rotation_symbols
+                and call_number == 1
+            ):
+                self.rotation_first_started.add(
+                    symbol
+                )
+
+                self.active_rotation_first += 1
+
+                self.max_active_rotation_first = max(
+                    self.max_active_rotation_first,
+                    self.active_rotation_first,
+                )
+
+                try:
+                    await self.release_rotation.wait()
+                finally:
+                    self.active_rotation_first -= 1
+
+                return {
+                    "accepted": True,
+                    "symbol": symbol,
+                }
+
+            # A successfully initialized symbol may remain
+            # indefinitely in steady state without retaining
+            # a startup permit.
+            await self.hold_steady_state.wait()
+
+            return {
+                "accepted": True,
+                "symbol": symbol,
+            }
+
+    class Exchange:
+        id = "gate"
+
+        async def close(self):
+            pass
+
+    async def exercise():
+        feed = RotationConcurrencyFeed()
+
+        manager = CCXTProMultiSymbolFeedManager(
+            feed=feed,
+            exchange=Exchange(),
+            symbols=[
+                "BTC/USDT",
+                "ETH/USDT",
+            ],
+            retry_delay_seconds=0.0,
+            max_concurrent_symbol_starts=2,
+        )
+
+        await manager.start()
+
+        # Both original symbols should occupy the two
+        # startup permits.
+        for _ in range(200):
+            if len(feed.initial_started) == 2:
+                break
+
+            await asyncio.sleep(0.001)
+
+        assert len(feed.initial_started) == 2
+
+        # Complete their first successful update. They
+        # should then release their startup permits and
+        # enter unrestricted steady state.
+        feed.release_initial.set()
+
+        for _ in range(200):
+            if (
+                feed.calls.get("BTC/USDT", 0) >= 2
+                and
+                feed.calls.get("ETH/USDT", 0) >= 2
+            ):
+                break
+
+            await asyncio.sleep(0.001)
+
+        assert (
+            feed.calls.get("BTC/USDT", 0)
+            >= 2
+        )
+
+        assert (
+            feed.calls.get("ETH/USDT", 0)
+            >= 2
+        )
+
+        # Now introduce four new symbols while the
+        # original symbols remain blocked in steady state.
+        await manager.apply_symbol_rotation(
+            active_symbols=[
+                "BTC/USDT",
+                "ETH/USDT",
+                "SOL/USDT",
+                "XRP/USDT",
+                "ADA/USDT",
+                "DOGE/USDT",
+            ]
+        )
+
+        for _ in range(200):
+            if (
+                len(feed.rotation_first_started)
+                >= 2
+            ):
+                break
+
+            await asyncio.sleep(0.001)
+
+        # Exactly two rotated symbols should be allowed
+        # through the startup gate initially.
+        assert (
+            len(feed.rotation_first_started)
+            == 2
+        )
+
+        assert (
+            feed.max_active_rotation_first
+            == 2
+        )
+
+        # Release the first pair. The remaining rotated
+        # symbols should then acquire the freed permits.
+        feed.release_rotation.set()
+
+        for _ in range(500):
+            if (
+                len(feed.rotation_first_started)
+                == 4
+            ):
+                break
+
+            await asyncio.sleep(0.001)
+
+        assert (
+            len(feed.rotation_first_started)
+            == 4
+        )
+
+        assert (
+            feed.max_active_rotation_first
+            <= 2
+        )
+
+        await manager.stop()
+
+    asyncio.run(exercise())

@@ -27,6 +27,7 @@ class CCXTProMultiSymbolFeedManager:
         subscription_start_stagger_seconds=0.0,
         recovery_attempts=0,
         recovery_delay_seconds=1.0,
+        max_concurrent_symbol_starts=None,
     ):
         if feed is None:
             raise ValueError("feed is required")
@@ -109,8 +110,30 @@ class CCXTProMultiSymbolFeedManager:
                 "cannot be negative"
             )
 
+        if max_concurrent_symbol_starts is None:
+            self._max_concurrent_symbol_starts = None
+
+        else:
+            self._max_concurrent_symbol_starts = int(
+                max_concurrent_symbol_starts
+            )
+
+            if (
+                self._max_concurrent_symbol_starts
+                <= 0
+            ):
+                raise ValueError(
+                    "max_concurrent_symbol_starts "
+                    "must be positive"
+                )
+
+        # Created fresh in start() so the semaphore
+        # belongs to the active asyncio event loop.
+        self._subscription_start_semaphore = None
+
         self._completed_updates = 0
         self._failed_updates = 0
+        self._recent_failures = []
         self._running = False
         self._tasks = {}
 
@@ -332,14 +355,36 @@ class CCXTProMultiSymbolFeedManager:
 
         failure_attempt = 0
 
+        # Startup concurrency protection applies only
+        # until this symbol completes its first successful
+        # feed update. Steady-state websocket watches are
+        # intentionally unrestricted by this semaphore.
+        startup_complete = False
+
         while self._running:
             started = loop.time()
 
             try:
-                await self._feed.watch_once(
-                    symbol,
-                    limit=self._limit,
-                )
+                if (
+                    not startup_complete
+                    and self._subscription_start_semaphore
+                    is not None
+                ):
+                    async with (
+                        self._subscription_start_semaphore
+                    ):
+                        await self._feed.watch_once(
+                            symbol,
+                            limit=self._limit,
+                        )
+
+                else:
+                    await self._feed.watch_once(
+                        symbol,
+                        limit=self._limit,
+                    )
+
+                startup_complete = True
 
                 latency_ms = (
                     loop.time()
@@ -370,6 +415,17 @@ class CCXTProMultiSymbolFeedManager:
 
                 self._failed_updates += 1
                 failure_attempt += 1
+
+                self._recent_failures.append({
+                    "exchange_id": exchange_id,
+                    "symbol": symbol,
+                    "error_type": type(exc).__name__,
+                    "error": str(exc),
+                })
+
+                self._recent_failures = (
+                    self._recent_failures[-100:]
+                )
 
                 if (
                     self._health_supervisor
@@ -424,6 +480,31 @@ class CCXTProMultiSymbolFeedManager:
                         delay_seconds
                     )
 
+    async def _persistent_symbol_start(
+        self,
+        symbol,
+        start_index,
+    ):
+        import asyncio
+
+        start_delay = (
+            start_index
+            * self._subscription_start_stagger_seconds
+        )
+
+        if start_delay > 0:
+            await asyncio.sleep(
+                start_delay
+            )
+
+        if not self._running:
+            return
+
+        await self._persistent_symbol_loop(
+            symbol
+        )
+
+
     async def start(self):
         import asyncio
 
@@ -435,15 +516,32 @@ class CCXTProMultiSymbolFeedManager:
                 "live_order_submitted": False,
             }
 
+        if (
+            self._max_concurrent_symbol_starts
+            is None
+        ):
+            self._subscription_start_semaphore = None
+
+        else:
+            self._subscription_start_semaphore = (
+                asyncio.Semaphore(
+                    self._max_concurrent_symbol_starts
+                )
+            )
+
         self._running = True
 
         self._tasks = {
             symbol: asyncio.create_task(
-                self._persistent_symbol_loop(
-                    symbol
+                self._persistent_symbol_start(
+                    symbol,
+                    index,
                 )
             )
-            for symbol in self._symbols
+            for index, symbol
+            in enumerate(
+                self._symbols
+            )
         }
 
         return {
@@ -458,24 +556,61 @@ class CCXTProMultiSymbolFeedManager:
     async def stop(self):
         import asyncio
 
+        already_stopped = (
+            not self.is_running()
+            and not getattr(
+                self,
+                "_tasks",
+                {},
+            )
+        )
+
         self._running = False
 
-        tasks = getattr(
-            self,
-            "_tasks",
-            {},
+        tasks = dict(
+            getattr(
+                self,
+                "_tasks",
+                {},
+            )
         )
 
         for task in tasks.values():
-            task.cancel()
+            if not task.done():
+                task.cancel()
+
+        task_results = []
 
         if tasks:
-            await asyncio.gather(
-                *tasks.values(),
-                return_exceptions=True,
+            task_results = list(
+                await asyncio.gather(
+                    *tasks.values(),
+                    return_exceptions=True,
+                )
             )
 
         self._tasks = {}
+
+        # CCXT Pro may create independent background Tasks through
+        # exchange.spawn(), including REST order-book snapshots used to
+        # bootstrap websocket order books. Those Tasks are not children
+        # of the manager symbol Tasks and must be drained explicitly
+        # before exchange.close(); otherwise a late REST request can call
+        # exchange.open() and recreate an aiohttp ClientSession during
+        # shutdown.
+        drain_spawn_tasks = getattr(
+            self._exchange,
+            "drain_spawn_tasks",
+            None,
+        )
+
+        if drain_spawn_tasks is not None:
+            await drain_spawn_tasks(
+                cancel=True,
+            )
+
+        # Let spawn completion callbacks settle before transport close.
+        await asyncio.sleep(0)
 
         close = getattr(
             self._exchange,
@@ -483,17 +618,60 @@ class CCXTProMultiSymbolFeedManager:
             None,
         )
 
-        if close is not None:
-            result = close()
+        close_error = None
 
-            if hasattr(
+        if close is not None:
+            try:
+                result = close()
+
+                if hasattr(
+                    result,
+                    "__await__",
+                ):
+                    await result
+
+            except Exception as exc:
+                close_error = (
+                    f"{type(exc).__name__}: {exc}"
+                )
+
+        # Allow close-triggered callbacks/futures to finish before the
+        # caller tears down the event loop.
+        await asyncio.sleep(0)
+
+        cancelled_task_count = sum(
+            1
+            for result in task_results
+            if isinstance(
                 result,
-                "__await__",
-            ):
-                await result
+                asyncio.CancelledError,
+            )
+        )
+
+        task_error_count = sum(
+            1
+            for result in task_results
+            if isinstance(
+                result,
+                BaseException,
+            )
+            and not isinstance(
+                result,
+                asyncio.CancelledError,
+            )
+        )
 
         return {
             "stopped": True,
+            "already_stopped": already_stopped,
+            "task_count": len(tasks),
+            "cancelled_task_count": (
+                cancelled_task_count
+            ),
+            "task_error_count": (
+                task_error_count
+            ),
+            "close_error": close_error,
             "paper_only": True,
             "live_order_submitted": False,
         }
@@ -509,6 +687,9 @@ class CCXTProMultiSymbolFeedManager:
             ),
             "failed_updates": (
                 self._failed_updates
+            ),
+            "recent_failures": list(
+                self._recent_failures
             ),
             "running": self.is_running(),
             "paper_only": True,

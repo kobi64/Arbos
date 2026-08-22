@@ -75,11 +75,26 @@ class ContinuousRouteWorkerPool:
 
     def run_until_empty(
         self,
+        max_items=None,
     ):
+        if max_items is not None:
+            max_items = int(max_items)
+
+            if max_items <= 0:
+                raise ValueError(
+                    "max_items must be positive"
+                )
+
         results = []
         results_lock = (
             threading.Lock()
         )
+
+        budget_lock = (
+            threading.Lock()
+        )
+
+        claimed_items = 0
 
         workers = [
             self._worker_factory(
@@ -101,12 +116,28 @@ class ContinuousRouteWorkerPool:
         def run_worker(
             worker,
         ):
+            nonlocal claimed_items
+
             while True:
+                if max_items is not None:
+                    with budget_lock:
+                        if (
+                            claimed_items
+                            >= max_items
+                        ):
+                            break
+
+                        claimed_items += 1
+
                 result = (
                     worker.process_next()
                 )
 
                 if result is None:
+                    if max_items is not None:
+                        with budget_lock:
+                            claimed_items -= 1
+
                     break
 
                 with results_lock:

@@ -341,3 +341,39 @@ def test_batch_processes_registered_route_once_after_coalescing():
         result["live_order_submitted"]
         is False
     )
+
+
+def test_process_pending_can_be_bounded():
+    engine = EventDrivenSharedCacheScanEngine(
+        worker_factory=FakeWorker,
+        worker_count=4,
+    )
+
+    for index in range(20):
+        engine.register_route(
+            route(
+                f"R-B-{index}",
+                f"C-B-{index}",
+            )
+        )
+
+    engine.publish(
+        snapshot(
+            "BTC/USDT",
+            500,
+        )
+    )
+
+    result = engine.process_pending(
+        max_items=7
+    )
+
+    assert result[
+        "processed_count"
+    ] == 7
+
+    assert (
+        engine.work_queue
+        .pending_count()
+        == 13
+    )

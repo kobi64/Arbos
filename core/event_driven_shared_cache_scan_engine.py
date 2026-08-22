@@ -233,6 +233,7 @@ class EventDrivenSharedCacheScanEngine:
 
     def process_pending(
         self,
+        max_items=None,
     ):
         pool = ContinuousRouteWorkerPool(
             worker_count=self._worker_count,
@@ -246,7 +247,9 @@ class EventDrivenSharedCacheScanEngine:
             ),
         )
 
-        result = pool.run_until_empty()
+        result = pool.run_until_empty(
+            max_items=max_items
+        )
 
         return {
             **result,
